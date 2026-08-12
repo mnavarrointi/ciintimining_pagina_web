@@ -25,12 +25,11 @@
         <div class="container header__content">
 
             <a href="#inicio" class="brand" aria-label="Ir al inicio">
-                <span class="brand__symbol">CI</span>
-
-                <span class="brand__text">
-                    <strong>Inti Mining</strong>
-                    <small>Comercializadora Internacional</small>
-                </span>
+                <img
+                    src="assets/images/LOGO_SFR2.png?v=2"
+                    alt="Inti Mining"
+                    class="brand__logo"
+                >
             </a>
 
             <button
@@ -48,9 +47,9 @@
 
             <nav class="navigation" id="mainNavigation">
                 <a href="#nosotros">Nosotros</a>
-                <a href="#productos">Productos</a>
+                <a href="#portafolio">Portafolio</a>
                 <a href="#proceso">Proceso</a>
-                <a href="#mercados">Mercados</a>
+                <a href="#metales">Metales</a>
                 <a href="#contacto">Contacto</a>
 
                 <a
@@ -58,7 +57,7 @@
                     class="button button--small button--outline"
                     id="platformButton"
                 >
-                    Acceder a plataforma
+                    Ingreso
                 </a>
             </nav>
 
@@ -69,123 +68,154 @@
 
         <!-- Sección principal -->
         <section class="hero" id="inicio">
+
+            <video
+                class="hero__video"
+                autoplay
+                muted
+                loop
+                playsinline
+                preload="metadata"
+            >
+                <source
+                    src="assets/videos/logistica.mp4"
+                    type="video/mp4"
+                >
+            </video>
+
+            <div class="hero__overlay"></div>
+
             <div class="container hero__content">
 
                 <div class="hero__information">
+
                     <span class="eyebrow">
-                        Colombia · Estados Unidos
+                        Comercio Internacional
                     </span>
 
                     <h1>
-                        Conectamos productos colombianos con mercados internacionales
+                        Conectamos Colombia con mercados globales.
                     </h1>
 
                     <p>
-                        Facilitamos operaciones comerciales entre proveedores
-                        colombianos y compradores en Estados Unidos, acompañando
-                        cada etapa del proceso de exportación.
+                        Llevamos productos colombianos a mercados internacionales, gestionando desde el proceso de compra hasta la comercialización final.
                     </p>
 
                     <div class="hero__actions">
-                        <a href="#contacto" class="button button--primary">
-                            Hablar con nosotros
-                        </a>
-
-                        <a href="#productos" class="button button--secondary">
-                            Ver productos
+                        <a href="#productos" class="button button--primary">
+                            Conocer productos
                         </a>
                     </div>
 
-                    <div class="hero__features">
-                        <div>
-                            <strong>Origen</strong>
-                            <span>Productos colombianos</span>
-                        </div>
-
-                        <div>
-                            <strong>Destino</strong>
-                            <span>Mercado estadounidense</span>
-                        </div>
-
-                        <div>
-                            <strong>Gestión</strong>
-                            <span>Operación integral</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="hero__visual">
-                    <div class="trade-card">
-                        <span class="trade-card__label">
-                            Conexión comercial
-                        </span>
-
-                        <div class="trade-route">
-                            <div class="trade-route__country">
-                                <span class="flag flag--colombia"></span>
-                                <strong>Colombia</strong>
-                                <small>Origen</small>
-                            </div>
-
-                            <div class="trade-route__line">
-                                <span>→</span>
-                            </div>
-
-                            <div class="trade-route__country">
-                                <span class="flag flag--usa"></span>
-                                <strong>Estados Unidos</strong>
-                                <small>Destino</small>
-                            </div>
-                        </div>
-
-                        <div class="trade-card__footer">
-                            <span>Abastecimiento</span>
-                            <span>Exportación</span>
-                            <span>Entrega</span>
-                        </div>
-                    </div>
                 </div>
 
             </div>
+
         </section>
 
-        <!-- Nosotros -->
-        <section class="section" id="nosotros">
-            <div class="container split-section">
+    <!-- Nosotros -->
+    <section class="section about-section" id="nosotros">
+        <div class="container about-grid">
 
-                <div>
-                    <span class="section-tag">Quiénes somos</span>
+            <!-- Columna izquierda -->
+            <div class="about-left">
 
-                    <h2>
-                        Una comercializadora internacional orientada a conectar oportunidades
-                    </h2>
-                </div>
+                <span class="section-tag">Quiénes somos</span>
 
-                <div class="section-copy">
+                <div class="about-accent-line"></div>
+
+                <h2>
+                    Una comercializadora internacional orientada a conectar oportunidades
+                </h2>
+
+                <p class="about-intro">
+                    Conectamos Colombia con mercados globales a través de operaciones
+                    claras, trazables y eficientes.
+                </p>
+
+            </div>
+
+            <!-- Columna derecha -->
+            <div class="about-right">
+
+                <div class="about-description">
+
                     <p>
-                        CI Inti Mining es una compañía colombiana dedicada a
-                        facilitar la comercialización y exportación de productos
-                        nacionales hacia mercados internacionales.
+                        CI Inti Mining es una compañía colombiana dedicada a facilitar
+                        la comercialización y exportación de productos nacionales hacia
+                        mercados internacionales.
                     </p>
 
                     <p>
-                        Trabajamos junto a proveedores, productores, compradores
-                        y aliados logísticos para estructurar operaciones comerciales
+                        Trabajamos junto a proveedores, productores, compradores y
+                        aliados logísticos para estructurar operaciones comerciales
                         claras, trazables y eficientes.
                     </p>
+
+                </div>
+
+                <div class="about-features">
+
+                    <article class="about-feature">
+
+                        <div class="about-feature__icon">
+                            ◎
+                        </div>
+
+                        <h3>Enfoque global</h3>
+
+                        <p>
+                            Conectamos productos colombianos con mercados estratégicos.
+                        </p>
+
+                    </article>
+
+                    <article class="about-feature">
+
+                        <div class="about-feature__icon">
+                            ◇
+                        </div>
+
+                        <h3>Operaciones confiables</h3>
+
+                        <p>
+                            Procesos claros y trazables que garantizan transparencia
+                            y seguridad.
+                        </p>
+
+                    </article>
+
+                    <article class="about-feature">
+
+                        <div class="about-feature__icon">
+                            ⇄
+                        </div>
+
+                        <h3>Alianzas que suman</h3>
+
+                        <p>
+                            Construimos relaciones de largo plazo basadas en confianza
+                            y resultados.
+                        </p>
+
+                    </article>
+
                 </div>
 
             </div>
-        </section>
+
+        </div>
+    </section>
+
 
         <!-- Productos -->
-<section class="section section--light" id="productos">
+<section class="section section--light" id="portafolio">
     <div class="container">
 
         <div class="section-heading section-heading--center">
             <span class="section-tag">Portafolio comercial</span>
 
-            <h2>Nuestros Productos</h2>
+            <h2>Nuestro Portafolio</h2>
 
             <p>
                 Trabajamos con productos colombianos seleccionados por su calidad,
@@ -201,7 +231,7 @@
 
                 <div class="product-card__image">
                     <img
-                        src="assets/images/ejemplo.jpg"
+                        src="assets/images/cafe.jpg"
                         alt="Café colombiano de exportación"
                     >
                 </div>
@@ -233,7 +263,7 @@
 
                 <div class="product-card__image">
                     <img
-                        src="assets/images/ejemplo.jpg"
+                        src="assets/images/joyas.png"
                         alt="Joyería colombiana de exportación"
                     >
                 </div>
@@ -265,7 +295,7 @@
 
                 <div class="product-card__image">
                     <img
-                        src="assets/images/ejemplo.jpg"
+                        src="assets/images/fruta.jpg"
                         alt="Frutas colombianas para exportación"
                     >
                 </div>
@@ -295,132 +325,192 @@
         </div>
 
         <div class="products-more">
-            <a href="productos.html" class="button button--primary">
+            <a href="#" class="button button--primary disabled-link" id="productsMoreButton">
                 Ver más
             </a>
         </div>
 
     </div>
 </section>
+
         <!-- Proceso -->
-        <section class="section" id="proceso">
+        <section class="section process-section" id="proceso">
             <div class="container">
 
-                <div class="section-heading">
-                    <span class="section-tag">Cómo trabajamos</span>
+                <div class="process-header">
 
-                    <h2>
-                        Un proceso estructurado de principio a fin
-                    </h2>
-                </div>
+                    <div class="process-header__left">
+                        <span class="section-tag">Exporta con nosotros</span>
 
-                <div class="process">
-
-                    <div class="process-step">
-                        <div class="process-step__number">1</div>
-
-                        <div>
-                            <h3>Identificación de la necesidad</h3>
-
-                            <p>
-                                Revisamos el producto, volumen, especificaciones,
-                                destino y condiciones de compra.
-                            </p>
-                        </div>
+                        <h2>
+                            Llevamos tu producto al mercado internacional.
+                        </h2>
                     </div>
 
-                    <div class="process-step">
-                        <div class="process-step__number">2</div>
-
-                        <div>
-                            <h3>Selección y validación</h3>
-
-                            <p>
-                                Buscamos proveedores y validamos la capacidad
-                                comercial y operativa de la operación.
-                            </p>
-                        </div>
-                    </div>
-
-                    <div class="process-step">
-                        <div class="process-step__number">3</div>
-
-                        <div>
-                            <h3>Estructuración de la operación</h3>
-
-                            <p>
-                                Definimos precios, cantidades, documentos,
-                                responsabilidades y condiciones de entrega.
-                            </p>
-                        </div>
-                    </div>
-
-                    <div class="process-step">
-                        <div class="process-step__number">4</div>
-
-                        <div>
-                            <h3>Exportación y seguimiento</h3>
-
-                            <p>
-                                Coordinamos la salida del producto y realizamos
-                                seguimiento hasta completar la entrega.
-                            </p>
-                        </div>
+                    <div class="process-header__right">
+                        <p>
+                            Acompañamos al productor colombiano en la estructuración
+                            comercial, documental y logística necesaria para llevar
+                            sus productos a nuevos mercados.
+                        </p>
                     </div>
 
                 </div>
 
-            </div>
-        </section>
+                <div class="process-flow">
 
-        <!-- Mercados -->
-        <section class="section section--dark" id="mercados">
-            <div class="container markets">
+                    <article class="process-card">
+                        <div class="process-card__number">01</div>
 
-                <div class="markets__content">
-                    <span class="section-tag section-tag--light">
-                        Alcance internacional
-                    </span>
+                        <span class="process-card__label">
+                            Producto
+                        </span>
 
-                    <h2>
-                        Colombia como origen. Estados Unidos como mercado.
-                    </h2>
+                        <h3>
+                            Identificar Producto
+                        </h3>
 
-                    <p>
-                        Nuestra operación se enfoca inicialmente en conectar
-                        oferta colombiana con compradores, distribuidores y
-                        aliados comerciales en Estados Unidos.
-                    </p>
+                        <p>
+                            Evaluamos las características, capacidad de producción y
+                            potencial comercial del producto.
+                        </p>
+                    </article>
 
-                    <a href="#contacto" class="button button--light">
-                        Evaluar una oportunidad
-                    </a>
-                </div>
+                    <article class="process-card">
+                        <div class="process-card__number">02</div>
 
-                <div class="markets__panel">
-                    <div class="market-item">
-                        <span>Origen</span>
-                        <strong>Colombia</strong>
-                    </div>
+                        <span class="process-card__label">
+                            Cumplimiento
+                        </span>
 
-                    <div class="market-item">
-                        <span>Mercado principal</span>
-                        <strong>Estados Unidos</strong>
-                    </div>
+                        <h3>
+                            Preparación de Aduanas
+                        </h3>
 
-                    <div class="market-item">
-                        <span>Modelo</span>
-                        <strong>Comercio B2B</strong>
-                    </div>
+                        <p>
+                            Revisamos documentación, permisos y requisitos aplicables
+                            para preparar la operación de exportación.
+                        </p>
+                    </article>
 
-                    <div class="market-item">
-                        <span>Enfoque</span>
-                        <strong>Operaciones internacionales</strong>
-                    </div>
+                    <article class="process-card">
+                        <div class="process-card__number">03</div>
+
+                        <span class="process-card__label">
+                            Viabilidad
+                        </span>
+
+                        <h3>
+                            Costeo y Proyección
+                        </h3>
+
+                        <p>
+                            Estructuramos los costos de la operación y evaluamos su
+                            viabilidad comercial.
+                        </p>
+                    </article>
+
+                    <article class="process-card">
+                        <div class="process-card__number">04</div>
+
+                        <span class="process-card__label">
+                            Mercado
+                        </span>
+
+                        <h3>
+                            Labor Comercial
+                        </h3>
+
+                        <p>
+                            Presentamos el producto a compradores, distribuidores y
+                            aliados comerciales en los mercados objetivo.
+                        </p>
+                    </article>
+
+                    <article class="process-card">
+                        <div class="process-card__number">05</div>
+
+                        <span class="process-card__label">
+                            Ejecución
+                        </span>
+
+                        <h3>
+                            Exportación
+                        </h3>
+
+                        <p>
+                            Coordinamos la operación logística y documental hasta la
+                            entrega del producto.
+                        </p>
+                    </article>
+
                 </div>
 
             </div>
         </section>
+
+       <!-- Metales -->
+<section class="metals-section" id="metales">
+
+    <!-- Video de fondo -->
+    <video
+        class="metals-section__video"
+        autoplay
+        muted
+        loop
+        playsinline
+        preload="metadata"
+    >
+        <source
+            src="assets/videos/refineria.mp4"
+            type="video/mp4"
+        >
+    </video>
+
+    <!-- Capa oscura sobre el video -->
+    <div class="metals-section__overlay"></div>
+
+    <!-- Contenido -->
+    <div class="container metals-section__content">
+
+        <span class="metals-section__tag">
+            Metales & Commodities
+        </span>
+
+        <h2>
+            Exportamos metales preciosos, productos mineros y otros commodities.
+        </h2>
+
+        <p>
+            Llevamos más de 15 años de trayectoria comercializando metales
+            preciosos y otros productos mineros en la región. Conocemos los
+            retos puntuales del sector y contamos con un nutrido equipo que da
+            todas las garantías operativas y de cumplimiento que requiere esta
+            actividad.
+        </p>
+
+        <div class="metals-section__details">
+
+            <div>
+                <span>Experiencia</span>
+                <strong>+15 años</strong>
+            </div>
+
+            <div>
+                <span>Especialidad</span>
+                <strong>Metales Preciosos</strong>
+            </div>
+
+            <div>
+                <span>Operación</span>
+                <strong>Colombia - Estados Unidos</strong>
+            </div>
+
+        </div>
+
+    </div>
+
+</section>
 
         <!-- Contacto -->
         <section class="section" id="contacto">
@@ -443,13 +533,13 @@
                         <div>
                             <span>Correo electrónico</span>
                             <a href="mailto:comercial@ciintimining.com">
-                                comercial@ciintimining.com
+                                mnavarro@intimining.com
                             </a>
                         </div>
 
                         <div>
                             <span>Ubicación</span>
-                            <strong>Bogotá, Colombia</strong>
+                            <strong>Calle 100 #8a-50, World Trade Center Torre C,Bogotá, Colombia</strong>
                         </div>
                     </div>
                 </div>
