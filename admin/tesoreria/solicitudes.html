@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>Solicitudes de Pago | Tesorería</title>
+
+  <link rel="stylesheet" href="../../styles.css" />
+
+  <style>
+    body {
+      margin: 0;
+      background: #f5f5f5;
+      font-family: Arial, sans-serif;
+    }
+
+    .page-header {
+      background: white;
+      padding: 18px 28px;
+      border-bottom: 1px solid #ddd;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .page-main {
+      max-width: 1300px;
+      margin: 35px auto;
+      padding: 0 24px;
+    }
+
+    .toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 22px;
+    }
+
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 24px;
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.06);
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+    }
+
+    .form-grid label {
+      display: block;
+      margin-bottom: 6px;
+      font-weight: 600;
+    }
+
+    .form-grid input,
+    .form-grid select,
+    textarea {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th,
+    td {
+      padding: 13px 14px;
+      border-bottom: 1px solid #eee;
+      text-align: left;
+    }
+
+    th {
+      background: #fafafa;
+    }
+
+    button {
+      cursor: pointer;
+      border: 0;
+      padding: 10px 14px;
+      border-radius: 6px;
+    }
+
+    .table-wrapper {
+      overflow-x: auto;
+    }
+
+    @media (max-width: 700px) {
+      .form-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .toolbar {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <header class="page-header">
+    <div>
+      <a href="../index.html">
+        ← Panel Administrativo
+      </a>
+
+      <strong style="margin-left: 20px;">
+        CI Inti Mining · Tesorería
+      </strong>
+    </div>
+
+    <button id="logoutButton">
+      Cerrar sesión
+    </button>
+  </header>
+
+  <main class="page-main">
+
+    <div class="toolbar">
+
+      <div>
+        <h1>Solicitudes de Pago</h1>
+
+        <p>
+          Preparación, revisión y aprobación de pagos.
+        </p>
+      </div>
+
+      <button id="newRequestButton">
+        + Nueva Solicitud
+      </button>
+
+    </div>
+
+
+    <div
+      id="requestFormContainer"
+      class="card"
+      style="display: none;"
+    >
+
+      <h2>Nueva Solicitud</h2>
+
+      <form id="requestForm">
+
+        <div class="form-grid">
+
+          <div>
+            <label>Fecha de solicitud *</label>
+
+            <input
+              type="date"
+              id="fechaSolicitud"
+              required
+            />
+          </div>
+
+
+          <div>
+            <label>Tipo de solicitud *</label>
+
+            <select
+              id="tipoSolicitud"
+              required
+            >
+
+              <option value="">
+                Seleccionar tipo
+              </option>
+
+              <option value="FIJOS">
+                Pagos Fijos
+              </option>
+
+              <option value="EXTRAORDINARIOS">
+                Pagos Extraordinarios
+              </option>
+
+            </select>
+          </div>
+
+
+          <div
+            id="quincenaContainer"
+            style="display: none;"
+          >
+
+            <label>Quincena *</label>
+
+            <select id="quincena">
+
+              <option value="">
+                Seleccionar quincena
+              </option>
+
+              <option value="Q1">
+                Q1 - Primera quincena
+              </option>
+
+              <option value="Q2">
+                Q2 - Segunda quincena
+              </option>
+
+            </select>
+
+          </div>
+
+        </div>
+
+
+        <div style="margin-top: 18px;">
+
+          <label>Observaciones</label>
+
+          <textarea
+            id="observaciones"
+            rows="3"
+          ></textarea>
+
+        </div>
+
+
+        <div style="margin-top: 20px;">
+
+          <button type="submit">
+            Crear Solicitud
+          </button>
+
+          <button
+            type="button"
+            id="cancelRequestButton"
+          >
+            Cancelar
+          </button>
+
+        </div>
+
+
+        <div
+          id="formMessage"
+          style="
+            display: none;
+            margin-top: 15px;
+          "
+        ></div>
+
+      </form>
+
+    </div>
+
+
+    <div class="card">
+
+      <div id="loadingState">
+        Cargando solicitudes...
+      </div>
+
+
+      <div
+        id="errorState"
+        style="display: none;"
+      ></div>
+
+
+      <div
+        id="emptyState"
+        style="display: none;"
+      >
+        No hay solicitudes registradas.
+      </div>
+
+
+      <div
+        id="tableWrapper"
+        class="table-wrapper"
+        style="display: none;"
+      >
+
+        <table>
+
+          <thead>
+
+            <tr>
+              <th>Código</th>
+              <th>Fecha</th>
+              <th>Tipo</th>
+              <th>Quincena</th>
+              <th>Estado</th>
+              <th>Acciones</th>
+            </tr>
+
+          </thead>
+
+
+          <tbody id="requestsTableBody"></tbody>
+
+        </table>
+
+      </div>
+
+    </div>
+
+  </main>
+
+
+  <script
+    src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+  ></script>
+
+  <script
+    src="../../js/supabase-config.js"
+  ></script>
+
+  <script
+    src="../../js/auth.js"
+  ></script>
+
+
+  <script>
+
+    const requestFormContainer =
+      document.getElementById(
+        "requestFormContainer"
+      );
+
+    const requestForm =
+      document.getElementById(
+        "requestForm"
+      );
+
+    const formMessage =
+      document.getElementById(
+        "formMessage"
+      );
+
+    const requestsTableBody =
+      document.getElementById(
+        "requestsTableBody"
+      );
+
+    const tipoSolicitud =
+      document.getElementById(
+        "tipoSolicitud"
+      );
+
+    const quincenaContainer =
+      document.getElementById(
+        "quincenaContainer"
+      );
+
+    const quincenaSelect =
+      document.getElementById(
+        "quincena"
+      );
+
+
+    function actualizarQuincena() {
+
+      if (
+        tipoSolicitud.value === "FIJOS"
+      ) {
+
+        quincenaContainer.style.display =
+          "block";
+
+        quincenaSelect.required = true;
+
+      }
+
+      else if (
+        tipoSolicitud.value ===
+        "EXTRAORDINARIOS"
+      ) {
+
+        quincenaContainer.style.display =
+          "none";
+
+        quincenaSelect.required = false;
+
+        quincenaSelect.value = "";
+
+      }
+
+      else {
+
+        quincenaContainer.style.display =
+          "none";
+
+        quincenaSelect.required = false;
+
+        quincenaSelect.value = "";
+
+      }
+
+    }
+
+
+    tipoSolicitud.addEventListener(
+      "change",
+      actualizarQuincena
+    );
+
+
+    async function cargarSolicitudes() {
+
+      try {
+
+        const authorizedUser =
+          await getAuthorizedUser();
+
+
+        if (!authorizedUser) {
+
+          window.location.href =
+            "../../login.html";
+
+          return;
+
+        }
+
+
+        const { data, error } =
+          await supabaseClient
+            .from("solicitudes_pago")
+            .select(`
+              id,
+              codigo_visible,
+              fecha_solicitud,
+              quincena,
+              tipo_solicitud,
+              estado
+            `)
+            .order(
+              "fecha_solicitud",
+              {
+                ascending: false
+              }
+            );
+
+
+        if (error) {
+          throw error;
+        }
+
+
+        document
+          .getElementById(
+            "loadingState"
+          )
+          .style.display =
+          "none";
+
+
+        document
+          .getElementById(
+            "emptyState"
+          )
+          .style.display =
+          "none";
+
+
+        document
+          .getElementById(
+            "tableWrapper"
+          )
+          .style.display =
+          "none";
+
+
+        if (
+          !data ||
+          data.length === 0
+        ) {
+
+          document
+            .getElementById(
+              "emptyState"
+            )
+            .style.display =
+            "block";
+
+          return;
+
+        }
+
+
+        requestsTableBody.innerHTML =
+          "";
+
+
+        data.forEach(
+          (solicitud) => {
+
+            const row =
+              document.createElement(
+                "tr"
+              );
+
+
+            row.innerHTML = `
+
+              <td>
+                ${
+                  solicitud.codigo_visible ||
+                  ""
+                }
+              </td>
+
+
+              <td>
+                ${
+                  solicitud.fecha_solicitud ||
+                  ""
+                }
+              </td>
+
+
+              <td>
+                ${
+                  solicitud.tipo_solicitud ===
+                  "FIJOS"
+                    ? "Pagos Fijos"
+                    : "Pagos Extraordinarios"
+                }
+              </td>
+
+
+              <td>
+                ${
+                  solicitud.quincena ||
+                  "—"
+                }
+              </td>
+
+
+              <td>
+                ${
+                  solicitud.estado ||
+                  ""
+                }
+              </td>
+
+
+              <td>
+
+                <button
+                  class="open-request-button"
+                  data-id="${solicitud.id}"
+                >
+                  Abrir
+                </button>
+
+              </td>
+
+            `;
+
+
+            requestsTableBody
+              .appendChild(row);
+
+          }
+        );
+
+
+        document
+          .getElementById(
+            "tableWrapper"
+          )
+          .style.display =
+          "block";
+
+
+        document
+          .querySelectorAll(
+            ".open-request-button"
+          )
+          .forEach(
+            (button) => {
+
+              button.addEventListener(
+                "click",
+                () => {
+
+                  window.location.href =
+                    `solicitud-detalle.html?id=${button.dataset.id}`;
+
+                }
+              );
+
+            }
+          );
+
+
+      } catch (error) {
+
+        console.error(
+          "Error cargando solicitudes:",
+          error
+        );
+
+
+        document
+          .getElementById(
+            "loadingState"
+          )
+          .style.display =
+          "none";
+
+
+        const errorState =
+          document.getElementById(
+            "errorState"
+          );
+
+
+        errorState.textContent =
+          "Error: " +
+          (
+            error.message ||
+            error
+          );
+
+
+        errorState.style.display =
+          "block";
+
+      }
+
+    }
+
+
+    document
+      .getElementById(
+        "newRequestButton"
+      )
+      .addEventListener(
+        "click",
+        () => {
+
+          requestForm.reset();
+
+          actualizarQuincena();
+
+
+          document
+            .getElementById(
+              "fechaSolicitud"
+            )
+            .value =
+            new Date()
+              .toISOString()
+              .split("T")[0];
+
+
+          requestFormContainer
+            .style.display =
+            "block";
+
+
+          requestFormContainer
+            .scrollIntoView({
+              behavior: "smooth"
+            });
+
+        }
+      );
+
+
+    document
+      .getElementById(
+        "cancelRequestButton"
+      )
+      .addEventListener(
+        "click",
+        () => {
+
+          requestForm.reset();
+
+          actualizarQuincena();
+
+
+          requestFormContainer
+            .style.display =
+            "none";
+
+
+          formMessage.style.display =
+            "none";
+
+        }
+      );
+
+
+    requestForm.addEventListener(
+      "submit",
+      async (event) => {
+
+        event.preventDefault();
+
+
+        formMessage.style.display =
+          "none";
+
+
+        try {
+
+          const authorizedUser =
+            await getAuthorizedUser();
+
+
+          if (!authorizedUser) {
+
+            window.location.href =
+              "../../login.html";
+
+            return;
+
+          }
+
+
+          const tipo =
+            document
+              .getElementById(
+                "tipoSolicitud"
+              )
+              .value;
+
+
+          const quincena =
+            document
+              .getElementById(
+                "quincena"
+              )
+              .value;
+
+
+          if (
+            tipo === "FIJOS" &&
+            !quincena
+          ) {
+
+            throw new Error(
+              "Las solicitudes de pagos fijos deben tener una quincena."
+            );
+
+          }
+
+
+          if (
+            tipo ===
+              "EXTRAORDINARIOS" &&
+            quincena
+          ) {
+
+            throw new Error(
+              "Las solicitudes extraordinarias no pueden tener quincena."
+            );
+
+          }
+
+
+          const nuevaSolicitud = {
+
+            fecha_solicitud:
+              document
+                .getElementById(
+                  "fechaSolicitud"
+                )
+                .value,
+
+            quincena:
+              tipo === "FIJOS"
+                ? quincena
+                : null,
+
+            tipo_solicitud:
+              tipo,
+
+            observaciones:
+              document
+                .getElementById(
+                  "observaciones"
+                )
+                .value
+                .trim() ||
+              null,
+
+            estado:
+              "BORRADOR",
+
+            created_by:
+              authorizedUser.user_id,
+
+            updated_by:
+              authorizedUser.user_id
+
+          };
+
+
+          const { data, error } =
+            await supabaseClient
+              .from(
+                "solicitudes_pago"
+              )
+              .insert(
+                nuevaSolicitud
+              )
+              .select()
+              .single();
+
+
+          if (error) {
+            throw error;
+          }
+
+
+          formMessage.textContent =
+            "Solicitud creada correctamente.";
+
+
+          formMessage.style.display =
+            "block";
+
+
+          requestForm.reset();
+
+          actualizarQuincena();
+
+
+          requestFormContainer
+            .style.display =
+            "none";
+
+
+          await cargarSolicitudes();
+
+
+        } catch (error) {
+
+          console.error(
+            "Error creando solicitud:",
+            error
+          );
+
+
+          formMessage.textContent =
+            "Error: " +
+            (
+              error.message ||
+              error
+            );
+
+
+          formMessage.style.display =
+            "block";
+
+        }
+
+      }
+    );
+
+
+    document
+      .getElementById(
+        "logoutButton"
+      )
+      .addEventListener(
+        "click",
+        logout
+      );
+
+
+    cargarSolicitudes();
+
+  </script>
+
+</body>
+</html>

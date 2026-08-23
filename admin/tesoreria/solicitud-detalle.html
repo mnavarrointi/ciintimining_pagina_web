@@ -1,0 +1,2079 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>Detalle Solicitud | Tesorería</title>
+
+  <link rel="stylesheet" href="../../styles.css" />
+
+  <style>
+    body {
+      margin: 0;
+      background: #f5f5f5;
+      font-family: Arial, sans-serif;
+    }
+
+    .page-header {
+      background: white;
+      padding: 18px 28px;
+      border-bottom: 1px solid #ddd;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .page-main {
+      max-width: 1400px;
+      margin: 35px auto;
+      padding: 0 24px;
+    }
+
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 24px;
+      box-shadow: 0 8px 25px rgba(0,0,0,0.06);
+    }
+
+    .request-summary {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 18px;
+    }
+
+    .summary-label {
+      font-size: 13px;
+      color: #666;
+      margin-bottom: 4px;
+    }
+
+    .summary-value {
+      font-weight: 600;
+    }
+
+    .toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      cursor: pointer;
+      border: 0;
+      padding: 10px 14px;
+      border-radius: 6px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 1150px;
+    }
+
+    th,
+    td {
+      padding: 13px 14px;
+      text-align: left;
+      border-bottom: 1px solid #eee;
+    }
+
+    th {
+      background: #fafafa;
+    }
+
+    .table-wrapper {
+      overflow-x: auto;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+    }
+
+    .form-grid label {
+      display: block;
+      margin-bottom: 6px;
+      font-weight: 600;
+    }
+
+    .form-grid input,
+    .form-grid select,
+    textarea {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+    }
+
+    .message {
+      margin-top: 15px;
+    }
+
+    .action-buttons {
+      display: flex;
+      gap: 6px;
+    }
+
+    @media (max-width: 800px) {
+      .request-summary,
+      .form-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .toolbar {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <header class="page-header">
+
+    <div>
+      <a href="solicitudes.html">
+        ← Solicitudes de Pago
+      </a>
+
+      <strong style="margin-left: 20px;">
+        CI Inti Mining · Tesorería
+      </strong>
+    </div>
+
+    <button id="logoutButton">
+      Cerrar sesión
+    </button>
+
+  </header>
+
+
+  <main class="page-main">
+
+    <!-- DATOS DE LA SOLICITUD -->
+
+    <div class="card">
+
+      <div id="loadingRequest">
+        Cargando solicitud...
+      </div>
+
+      <div
+        id="requestContent"
+        style="display: none;"
+      >
+
+        <div class="toolbar">
+
+          <div>
+            <h1 id="requestTitle">
+              Solicitud de Pago
+            </h1>
+
+            <p id="requestObservations"></p>
+          </div>
+
+          <div class="actions">
+
+            <button
+              id="loadFixedPaymentsButton"
+              style="display: none;"
+            >
+              Cargar Pagos Fijos
+            </button>
+
+            <button
+              id="addExtraPaymentButton"
+              style="display: none;"
+            >
+              + Agregar Pago Extraordinario
+            </button>
+            <button
+            id="approveRequestButton"
+            style="display: none;"
+            >
+            Aprobar Solicitud
+            </button>
+            <button id="managementFormatButton">
+            Ver Formato Gerencia
+            </button>
+
+          </div>
+
+        </div>
+
+
+        <div class="request-summary">
+
+          <div>
+            <div class="summary-label">
+              Fecha
+            </div>
+
+            <div
+              id="requestDate"
+              class="summary-value"
+            ></div>
+          </div>
+
+
+          <div>
+            <div class="summary-label">
+              Tipo
+            </div>
+
+            <div
+              id="requestType"
+              class="summary-value"
+            ></div>
+          </div>
+
+
+          <div>
+            <div class="summary-label">
+              Quincena
+            </div>
+
+            <div
+              id="requestFortnight"
+              class="summary-value"
+            ></div>
+          </div>
+
+
+          <div>
+            <div class="summary-label">
+              Estado
+            </div>
+
+            <div
+              id="requestStatus"
+              class="summary-value"
+            ></div>
+          </div>
+
+        </div>
+
+        <div
+          id="requestMessage"
+          class="message"
+        ></div>
+
+      </div>
+
+    </div>
+
+
+    <!-- FORMULARIO DE PAGO -->
+
+    <div
+      id="paymentFormContainer"
+      class="card"
+      style="display: none;"
+    >
+
+      <h2 id="paymentFormTitle">
+        Nuevo Pago Extraordinario
+      </h2>
+
+      <form id="paymentForm">
+
+        <div class="form-grid">
+
+          <div>
+            <label>Empresa *</label>
+
+            <select
+              id="empresaId"
+              required
+            ></select>
+          </div>
+
+
+          <div>
+            <label>Beneficiario *</label>
+
+            <select
+              id="beneficiarioId"
+              required
+            ></select>
+          </div>
+
+
+          <div>
+            <label>Categoría</label>
+
+            <select id="categoriaId"></select>
+          </div>
+
+
+          <div>
+            <label>Concepto *</label>
+
+            <input
+              type="text"
+              id="concepto"
+              required
+            />
+          </div>
+
+
+          <div>
+            <label>Moneda *</label>
+
+            <select
+              id="moneda"
+              required
+            >
+              <option value="COP">COP</option>
+              <option value="USD">USD</option>
+              <option value="PEN">PEN</option>
+            </select>
+          </div>
+
+
+          <div>
+            <label>Valor *</label>
+
+            <input
+              type="number"
+              id="valor"
+              min="0.01"
+              step="0.01"
+              required
+            />
+          </div>
+
+
+          <div>
+            <label>
+              Cuenta contable referencia
+            </label>
+
+            <input
+              type="text"
+              id="cuentaContableRef"
+            />
+          </div>
+
+        </div>
+
+
+        <div style="margin-top: 18px;">
+
+          <label>Comentario</label>
+
+          <textarea
+            id="comentario"
+            rows="3"
+          ></textarea>
+
+        </div>
+
+
+        <div style="margin-top: 20px;">
+
+          <button type="submit">
+            Guardar Pago
+          </button>
+
+          <button
+            type="button"
+            id="cancelPaymentButton"
+          >
+            Cancelar
+          </button>
+
+        </div>
+
+
+        <div
+          id="paymentMessage"
+          class="message"
+        ></div>
+
+      </form>
+
+    </div>
+
+
+    <!-- LISTA DE PAGOS -->
+
+    <div class="card">
+
+      <div class="toolbar">
+
+        <div>
+          <h2>Pagos para Aprobación</h2>
+
+          <p>
+            Pagos incluidos actualmente en esta solicitud.
+          </p>
+        </div>
+
+      </div>
+
+
+      <div id="loadingItems">
+        Cargando pagos...
+      </div>
+
+
+      <div
+        id="emptyItems"
+        style="display: none;"
+      >
+        Esta solicitud todavía no tiene pagos.
+      </div>
+
+
+      <div
+        id="itemsTableWrapper"
+        class="table-wrapper"
+        style="display: none;"
+      >
+
+        <table>
+
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Empresa</th>
+              <th>Beneficiario</th>
+              <th>Concepto</th>
+              <th>Categoría</th>
+              <th>Origen</th>
+              <th>Moneda</th>
+              <th>Valor</th>
+              <th>Estado</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+
+          <tbody id="itemsTableBody"></tbody>
+
+        </table>
+
+      </div>
+
+    </div>
+
+  </main>
+
+
+  <script
+    src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+  ></script>
+
+  <script src="../../js/supabase-config.js"></script>
+  <script src="../../js/auth.js"></script>
+
+
+  <script>
+
+    let solicitudActual = null;
+    let usuarioActual = null;
+    let itemsCargados = [];
+    let editingItemId = null;
+
+
+    const urlParams =
+      new URLSearchParams(
+        window.location.search
+      );
+
+    const solicitudId =
+      urlParams.get("id");
+
+
+    const requestMessage =
+      document.getElementById(
+        "requestMessage"
+      );
+
+    const itemsTableBody =
+      document.getElementById(
+        "itemsTableBody"
+      );
+
+    const paymentFormContainer =
+      document.getElementById(
+        "paymentFormContainer"
+      );
+
+    const paymentForm =
+      document.getElementById(
+        "paymentForm"
+      );
+
+    const paymentMessage =
+      document.getElementById(
+        "paymentMessage"
+      );
+
+
+    function formatearValor(
+      value,
+      currency
+    ) {
+
+      return new Intl.NumberFormat(
+        "es-CO",
+        {
+          minimumFractionDigits: 0,
+          maximumFractionDigits: 2
+        }
+      ).format(
+        Number(value)
+      ) + " " + currency;
+
+    }
+
+
+    async function inicializarPagina() {
+
+      try {
+
+        usuarioActual =
+          await getAuthorizedUser();
+
+
+        if (!usuarioActual) {
+
+          window.location.href =
+            "../../login.html";
+
+          return;
+
+        }
+
+
+        if (!solicitudId) {
+
+          throw new Error(
+            "No se recibió el identificador de la solicitud."
+          );
+
+        }
+
+
+        await cargarSolicitud();
+
+        await cargarItems();
+
+
+      } catch (error) {
+
+        console.error(
+          "Error inicializando solicitud:",
+          error
+        );
+
+
+        document
+          .getElementById(
+            "loadingRequest"
+          )
+          .textContent =
+          "Error: " +
+          (
+            error.message ||
+            error
+          );
+
+      }
+
+    }
+
+
+    async function cargarSolicitud() {
+
+      const { data, error } =
+        await supabaseClient
+          .from("solicitudes_pago")
+          .select(`
+            id,
+            codigo_visible,
+            fecha_solicitud,
+            quincena,
+            tipo_solicitud,
+            estado,
+            observaciones
+          `)
+          .eq(
+            "id",
+            solicitudId
+          )
+          .single();
+
+
+      if (error) {
+        throw error;
+      }
+
+
+      solicitudActual = data;
+
+
+      document
+        .getElementById(
+          "requestTitle"
+        )
+        .textContent =
+        data.codigo_visible
+          ? `Solicitud ${data.codigo_visible}`
+          : "Solicitud de Pago";
+
+
+      document
+        .getElementById(
+          "requestDate"
+        )
+        .textContent =
+        data.fecha_solicitud;
+
+
+      document
+        .getElementById(
+          "requestType"
+        )
+        .textContent =
+        data.tipo_solicitud === "FIJOS"
+          ? "Pagos Fijos"
+          : "Pagos Extraordinarios";
+
+
+      document
+        .getElementById(
+          "requestFortnight"
+        )
+        .textContent =
+        data.quincena || "No aplica";
+
+
+      document
+        .getElementById(
+          "requestStatus"
+        )
+        .textContent =
+        data.estado;
+
+
+      document
+        .getElementById(
+          "requestObservations"
+        )
+        .textContent =
+        data.observaciones || "";
+
+
+      document
+        .getElementById(
+          "loadingRequest"
+        )
+        .style.display =
+        "none";
+
+
+      document
+        .getElementById(
+          "requestContent"
+        )
+        .style.display =
+        "block";
+
+
+      document
+        .getElementById(
+          "loadFixedPaymentsButton"
+        )
+        .style.display =
+        "none";
+
+
+      document
+        .getElementById(
+          "addExtraPaymentButton"
+        )
+        .style.display =
+        "none";
+        document
+        .getElementById(
+            "approveRequestButton"
+        )
+        .style.display =
+        "none";
+
+
+     if (
+        data.estado === "BORRADOR"
+        ) {
+
+        document
+            .getElementById(
+            "approveRequestButton"
+            )
+            .style.display =
+            "inline-block";
+
+
+        if (
+            data.tipo_solicitud === "FIJOS"
+        ) {
+
+            document
+            .getElementById(
+                "loadFixedPaymentsButton"
+            )
+            .style.display =
+            "inline-block";
+
+        }
+
+
+        if (
+            data.tipo_solicitud ===
+            "EXTRAORDINARIOS"
+        ) {
+
+            document
+            .getElementById(
+                "addExtraPaymentButton"
+            )
+            .style.display =
+            "inline-block";
+
+        }
+
+        }
+
+        if (
+          data.tipo_solicitud === "FIJOS"
+        ) {
+
+          document
+            .getElementById(
+              "loadFixedPaymentsButton"
+            )
+            .style.display =
+            "inline-block";
+
+        }
+
+
+        if (
+          data.tipo_solicitud ===
+          "EXTRAORDINARIOS"
+        ) {
+
+          document
+            .getElementById(
+              "addExtraPaymentButton"
+            )
+            .style.display =
+            "inline-block";
+
+        }
+
+      }
+
+    
+
+
+    async function cargarItems() {
+
+      const { data, error } =
+        await supabaseClient
+          .from(
+            "solicitud_pago_items"
+          )
+          .select(`
+            id,
+            orden,
+            origen,
+            pago_fijo_id,
+            empresa_id,
+            beneficiario_id,
+            categoria_id,
+            concepto,
+            moneda,
+            valor,
+            cuenta_contable_ref,
+            comentario,
+            estado,
+            empresas (
+              nombre_corto
+            ),
+            beneficiarios (
+              nombre
+            ),
+            categorias (
+              nombre
+            )
+          `)
+          .eq(
+            "solicitud_id",
+            solicitudId
+          )
+          .neq(
+            "estado",
+            "ELIMINADO"
+          )
+          .order(
+            "orden",
+            {
+              ascending: true
+            }
+          );
+
+
+      if (error) {
+        throw error;
+      }
+
+
+      itemsCargados = data || [];
+
+
+      document
+        .getElementById(
+          "loadingItems"
+        )
+        .style.display =
+        "none";
+
+
+      document
+        .getElementById(
+          "emptyItems"
+        )
+        .style.display =
+        "none";
+
+
+      document
+        .getElementById(
+          "itemsTableWrapper"
+        )
+        .style.display =
+        "none";
+
+
+      if (
+        !data ||
+        data.length === 0
+      ) {
+
+        document
+          .getElementById(
+            "emptyItems"
+          )
+          .style.display =
+          "block";
+
+        return;
+
+      }
+
+
+      itemsTableBody.innerHTML = "";
+
+
+      data.forEach(
+        (item) => {
+
+          const row =
+            document.createElement(
+              "tr"
+            );
+
+
+          const acciones =
+            solicitudActual.estado === "BORRADOR"
+              ? `
+                <div class="action-buttons">
+
+                  <button
+                    class="edit-item-button"
+                    data-id="${item.id}"
+                  >
+                    Editar
+                  </button>
+
+                  <button
+                    class="remove-item-button"
+                    data-id="${item.id}"
+                  >
+                    Quitar
+                  </button>
+
+                </div>
+              `
+              : "—";
+
+
+          row.innerHTML = `
+
+            <td>${item.orden}</td>
+
+            <td>
+              ${
+                item.empresas
+                  ?.nombre_corto || ""
+              }
+            </td>
+
+            <td>
+              ${
+                item.beneficiarios
+                  ?.nombre || ""
+              }
+            </td>
+
+            <td>
+              ${item.concepto || ""}
+            </td>
+
+            <td>
+              ${
+                item.categorias
+                  ?.nombre || ""
+              }
+            </td>
+
+            <td>
+              ${
+                item.origen === "FIJO"
+                  ? "Fijo"
+                  : "Extraordinario"
+              }
+            </td>
+
+            <td>
+              ${item.moneda}
+            </td>
+
+            <td>
+              ${
+                formatearValor(
+                  item.valor,
+                  item.moneda
+                )
+              }
+            </td>
+
+            <td>
+              ${item.estado}
+            </td>
+
+            <td>
+              ${acciones}
+            </td>
+
+          `;
+
+
+          itemsTableBody
+            .appendChild(row);
+
+        }
+      );
+
+
+      document
+        .getElementById(
+          "itemsTableWrapper"
+        )
+        .style.display =
+        "block";
+
+
+      document
+        .querySelectorAll(
+          ".edit-item-button"
+        )
+        .forEach(
+          (button) => {
+
+            button.addEventListener(
+              "click",
+              () => {
+
+                editarItem(
+                  button.dataset.id
+                );
+
+              }
+            );
+
+          }
+        );
+
+
+      document
+        .querySelectorAll(
+          ".remove-item-button"
+        )
+        .forEach(
+          (button) => {
+
+            button.addEventListener(
+              "click",
+              () => {
+
+                quitarItem(
+                  button.dataset.id
+                );
+
+              }
+            );
+
+          }
+        );
+
+    }
+
+
+    async function obtenerSiguienteOrden() {
+
+      const { data, error } =
+        await supabaseClient
+          .from(
+            "solicitud_pago_items"
+          )
+          .select("orden")
+          .eq(
+            "solicitud_id",
+            solicitudId
+          )
+          .order(
+            "orden",
+            {
+              ascending: false
+            }
+          )
+          .limit(1);
+
+
+      if (error) {
+        throw error;
+      }
+
+
+      if (
+        !data ||
+        data.length === 0
+      ) {
+        return 1;
+      }
+
+
+      return Number(
+        data[0].orden
+      ) + 1;
+
+    }
+
+
+    async function cargarPagosFijos() {
+
+      if (
+        !solicitudActual ||
+        solicitudActual.tipo_solicitud
+          !== "FIJOS" ||
+        solicitudActual.estado
+          !== "BORRADOR"
+      ) {
+
+        return;
+
+      }
+
+
+      requestMessage.textContent = "";
+
+
+      try {
+
+        const {
+          data: itemsExistentes,
+          error: existingError
+        } =
+          await supabaseClient
+            .from(
+              "solicitud_pago_items"
+            )
+            .select(
+              "pago_fijo_id"
+            )
+            .eq(
+              "solicitud_id",
+              solicitudId
+            )
+            .eq(
+              "origen",
+              "FIJO"
+            );
+
+
+        if (existingError) {
+          throw existingError;
+        }
+
+
+        const idsYaCargados =
+          new Set(
+            (itemsExistentes || [])
+              .map(
+                item =>
+                  item.pago_fijo_id
+              )
+              .filter(Boolean)
+          );
+
+
+        const {
+          data: pagosFijos,
+          error
+        } =
+          await supabaseClient
+            .from("pagos_fijos")
+            .select(`
+              id,
+              empresa_id,
+              beneficiario_id,
+              categoria_id,
+              concepto,
+              moneda,
+              valor_referencia,
+              cuenta_contable_ref
+            `)
+            .eq(
+              "activo",
+              true
+            )
+            .eq(
+              "quincena",
+              solicitudActual.quincena
+            )
+            .order(
+              "numero",
+              {
+                ascending: true
+              }
+            );
+
+
+        if (error) {
+          throw error;
+        }
+
+
+        const pagosPendientes =
+          (pagosFijos || [])
+            .filter(
+              pago =>
+                !idsYaCargados.has(
+                  pago.id
+                )
+            );
+
+
+        if (
+          pagosPendientes.length === 0
+        ) {
+
+          requestMessage.textContent =
+            "Todos los pagos fijos de esta quincena ya fueron cargados.";
+
+          return;
+
+        }
+
+
+        const siguienteOrden =
+          await obtenerSiguienteOrden();
+
+
+        const items =
+          pagosPendientes.map(
+            (pago, index) => ({
+
+              solicitud_id:
+                solicitudId,
+
+              orden:
+                siguienteOrden + index,
+
+              origen:
+                "FIJO",
+
+              pago_fijo_id:
+                pago.id,
+
+              empresa_id:
+                pago.empresa_id,
+
+              beneficiario_id:
+                pago.beneficiario_id,
+
+              categoria_id:
+                pago.categoria_id,
+
+              concepto:
+                pago.concepto,
+
+              moneda:
+                pago.moneda,
+
+              valor:
+                pago.valor_referencia,
+
+              cuenta_contable_ref:
+                pago.cuenta_contable_ref,
+
+              estado:
+                "BORRADOR",
+
+              created_by:
+                usuarioActual.user_id,
+
+              updated_by:
+                usuarioActual.user_id
+
+            })
+          );
+
+
+        const {
+          error: insertError
+        } =
+          await supabaseClient
+            .from(
+              "solicitud_pago_items"
+            )
+            .insert(items);
+
+
+        if (insertError) {
+          throw insertError;
+        }
+
+
+        requestMessage.textContent =
+          `${items.length} pagos fijos cargados correctamente.`;
+
+
+        await cargarItems();
+
+
+      } catch (error) {
+
+        console.error(
+          "Error cargando pagos fijos:",
+          error
+        );
+
+
+        requestMessage.textContent =
+          "Error: " +
+          (
+            error.message ||
+            error
+          );
+
+      }
+
+    }
+
+
+    async function cargarCatalogos() {
+
+      const [
+        empresasResult,
+        beneficiariosResult,
+        categoriasResult
+      ] =
+        await Promise.all([
+
+          supabaseClient
+            .from("empresas")
+            .select(
+              "id, nombre_corto"
+            )
+            .eq("activo", true)
+            .order("nombre_corto"),
+
+          supabaseClient
+            .from("beneficiarios")
+            .select(
+              "id, nombre"
+            )
+            .eq("activo", true)
+            .order("nombre"),
+
+          supabaseClient
+            .from("categorias")
+            .select(
+              "id, nombre"
+            )
+            .eq("activo", true)
+            .order("nombre")
+
+        ]);
+
+
+      if (empresasResult.error) {
+        throw empresasResult.error;
+      }
+
+      if (beneficiariosResult.error) {
+        throw beneficiariosResult.error;
+      }
+
+      if (categoriasResult.error) {
+        throw categoriasResult.error;
+      }
+
+
+      llenarSelect(
+        "empresaId",
+        empresasResult.data,
+        "nombre_corto",
+        "Seleccionar empresa"
+      );
+
+
+      llenarSelect(
+        "beneficiarioId",
+        beneficiariosResult.data,
+        "nombre",
+        "Seleccionar beneficiario"
+      );
+
+
+      llenarSelect(
+        "categoriaId",
+        categoriasResult.data,
+        "nombre",
+        "Sin categoría"
+      );
+
+    }
+
+
+    function llenarSelect(
+      elementId,
+      records,
+      labelField,
+      placeholder
+    ) {
+
+      const select =
+        document.getElementById(
+          elementId
+        );
+
+
+      select.innerHTML = "";
+
+
+      const emptyOption =
+        document.createElement(
+          "option"
+        );
+
+
+      emptyOption.value = "";
+      emptyOption.textContent =
+        placeholder;
+
+
+      select.appendChild(
+        emptyOption
+      );
+
+
+      records.forEach(
+        (record) => {
+
+          const option =
+            document.createElement(
+              "option"
+            );
+
+
+          option.value =
+            record.id;
+
+          option.textContent =
+            record[labelField];
+
+
+          select.appendChild(
+            option
+          );
+
+        }
+      );
+
+    }
+
+
+    async function editarItem(
+      itemId
+    ) {
+
+      if (
+        solicitudActual.estado !==
+        "BORRADOR"
+      ) {
+        return;
+      }
+
+
+      try {
+
+        const item =
+          itemsCargados.find(
+            registro =>
+              registro.id === itemId
+          );
+
+
+        if (!item) {
+
+          alert(
+            "No se encontró el pago."
+          );
+
+          return;
+
+        }
+
+
+        await cargarCatalogos();
+
+
+        editingItemId =
+          item.id;
+
+
+        document
+          .getElementById(
+            "paymentFormTitle"
+          )
+          .textContent =
+          "Editar Pago";
+
+
+        document
+          .getElementById(
+            "empresaId"
+          )
+          .value =
+          item.empresa_id;
+
+
+        document
+          .getElementById(
+            "beneficiarioId"
+          )
+          .value =
+          item.beneficiario_id;
+
+
+        document
+          .getElementById(
+            "categoriaId"
+          )
+          .value =
+          item.categoria_id || "";
+
+
+        document
+          .getElementById(
+            "concepto"
+          )
+          .value =
+          item.concepto || "";
+
+
+        document
+          .getElementById(
+            "moneda"
+          )
+          .value =
+          item.moneda;
+
+
+        document
+          .getElementById(
+            "valor"
+          )
+          .value =
+          item.valor;
+
+
+        document
+          .getElementById(
+            "cuentaContableRef"
+          )
+          .value =
+          item.cuenta_contable_ref || "";
+
+
+        document
+          .getElementById(
+            "comentario"
+          )
+          .value =
+          item.comentario || "";
+
+
+        paymentMessage.textContent =
+          "";
+
+
+        paymentFormContainer
+          .style.display =
+          "block";
+
+
+        paymentFormContainer
+          .scrollIntoView({
+            behavior: "smooth"
+          });
+
+
+      } catch (error) {
+
+        alert(
+          "No fue posible preparar la edición: " +
+          error.message
+        );
+
+      }
+
+    }
+
+
+    async function quitarItem(
+      itemId
+    ) {
+
+      if (
+        solicitudActual.estado !==
+        "BORRADOR"
+      ) {
+        return;
+      }
+
+
+      const confirmar =
+        confirm(
+          "¿Deseas quitar este pago de la solicitud?"
+        );
+
+
+      if (!confirmar) {
+        return;
+      }
+
+
+      try {
+
+        const { error } =
+          await supabaseClient
+            .from(
+              "solicitud_pago_items"
+            )
+            .update({
+
+              estado:
+                "ELIMINADO",
+
+              updated_by:
+                usuarioActual.user_id
+
+            })
+            .eq(
+              "id",
+              itemId
+            );
+
+
+        if (error) {
+          throw error;
+        }
+
+
+        await cargarItems();
+
+
+      } catch (error) {
+
+        console.error(
+          "Error quitando pago:",
+          error
+        );
+
+
+        alert(
+          "No fue posible quitar el pago: " +
+          error.message
+        );
+
+      }
+
+    }
+
+
+    document
+      .getElementById(
+        "loadFixedPaymentsButton"
+      )
+      .addEventListener(
+        "click",
+        cargarPagosFijos
+      );
+
+
+    document
+      .getElementById(
+        "addExtraPaymentButton"
+      )
+      .addEventListener(
+        "click",
+        async () => {
+
+          try {
+
+            editingItemId = null;
+
+
+            await cargarCatalogos();
+
+
+            paymentForm.reset();
+
+
+            document
+              .getElementById(
+                "paymentFormTitle"
+              )
+              .textContent =
+              "Nuevo Pago Extraordinario";
+
+
+            paymentMessage.textContent =
+              "";
+
+
+            paymentFormContainer
+              .style.display =
+              "block";
+
+
+            paymentFormContainer
+              .scrollIntoView({
+                behavior: "smooth"
+              });
+
+
+          } catch (error) {
+
+            alert(
+              "No fue posible cargar los catálogos: " +
+              error.message
+            );
+
+          }
+
+        }
+      );
+
+
+    document
+      .getElementById(
+        "cancelPaymentButton"
+      )
+      .addEventListener(
+        "click",
+        () => {
+
+          editingItemId = null;
+
+          paymentForm.reset();
+
+          paymentFormContainer
+            .style.display =
+            "none";
+
+          paymentMessage.textContent =
+            "";
+
+        }
+      );
+
+
+    paymentForm.addEventListener(
+      "submit",
+      async (event) => {
+
+        event.preventDefault();
+
+
+        paymentMessage.textContent =
+          "";
+
+
+        try {
+
+          if (
+            solicitudActual.estado !==
+            "BORRADOR"
+          ) {
+
+            throw new Error(
+              "La solicitud ya no puede modificarse."
+            );
+
+          }
+
+
+          const datosPago = {
+
+            empresa_id:
+              document
+                .getElementById(
+                  "empresaId"
+                )
+                .value,
+
+            beneficiario_id:
+              document
+                .getElementById(
+                  "beneficiarioId"
+                )
+                .value,
+
+            categoria_id:
+              document
+                .getElementById(
+                  "categoriaId"
+                )
+                .value || null,
+
+            concepto:
+              document
+                .getElementById(
+                  "concepto"
+                )
+                .value
+                .trim(),
+
+            moneda:
+              document
+                .getElementById(
+                  "moneda"
+                )
+                .value,
+
+            valor:
+              Number(
+                document
+                  .getElementById(
+                    "valor"
+                  )
+                  .value
+              ),
+
+            cuenta_contable_ref:
+              document
+                .getElementById(
+                  "cuentaContableRef"
+                )
+                .value
+                .trim() || null,
+
+            comentario:
+              document
+                .getElementById(
+                  "comentario"
+                )
+                .value
+                .trim() || null,
+
+            updated_by:
+              usuarioActual.user_id
+
+          };
+
+
+          if (editingItemId) {
+
+            const { error } =
+              await supabaseClient
+                .from(
+                  "solicitud_pago_items"
+                )
+                .update(
+                  datosPago
+                )
+                .eq(
+                  "id",
+                  editingItemId
+                );
+
+
+            if (error) {
+              throw error;
+            }
+
+
+            paymentMessage.textContent =
+              "Pago actualizado correctamente.";
+
+          }
+
+          else {
+
+            if (
+              solicitudActual.tipo_solicitud
+                !== "EXTRAORDINARIOS"
+            ) {
+
+              throw new Error(
+                "Solo las solicitudes extraordinarias permiten agregar pagos manualmente."
+              );
+
+            }
+
+
+            const siguienteOrden =
+              await obtenerSiguienteOrden();
+
+
+            const nuevoItem = {
+
+              solicitud_id:
+                solicitudId,
+
+              orden:
+                siguienteOrden,
+
+              origen:
+                "EXTRAORDINARIO",
+
+              pago_fijo_id:
+                null,
+
+              ...datosPago,
+
+              estado:
+                "BORRADOR",
+
+              created_by:
+                usuarioActual.user_id
+
+            };
+
+
+            const { error } =
+              await supabaseClient
+                .from(
+                  "solicitud_pago_items"
+                )
+                .insert(
+                  nuevoItem
+                );
+
+
+            if (error) {
+              throw error;
+            }
+
+
+            paymentMessage.textContent =
+              "Pago extraordinario agregado correctamente.";
+
+          }
+
+
+          editingItemId = null;
+
+
+          paymentForm.reset();
+
+
+          document
+            .getElementById(
+              "paymentFormTitle"
+            )
+            .textContent =
+            "Nuevo Pago Extraordinario";
+
+
+          await cargarItems();
+
+
+      } catch (error) {
+
+        console.error(
+          "Error guardando pago:",
+          error
+        );
+
+
+        paymentMessage.textContent =
+          "Error: " +
+          (
+            error.message ||
+            error
+          );
+
+      }
+
+    });
+    document
+    .getElementById(
+        "approveRequestButton"
+    )
+    .addEventListener(
+        "click",
+        async () => {
+
+        if (
+            solicitudActual.estado !==
+            "BORRADOR"
+        ) {
+            return;
+        }
+
+
+        const confirmar =
+            confirm(
+            "¿Confirmas que Gerencia aprobó esta solicitud?\n\n" +
+            "Al aprobarla, todos los pagos incluidos pasarán a Movimientos de Tesorería."
+            );
+
+
+        if (!confirmar) {
+            return;
+        }
+
+
+        const button =
+            document.getElementById(
+            "approveRequestButton"
+            );
+
+
+        button.disabled = true;
+
+        button.textContent =
+            "Aprobando...";
+
+
+        requestMessage.textContent =
+            "";
+
+
+        try {
+
+            const {
+            data,
+            error
+            } =
+            await supabaseClient
+                .rpc(
+                "aprobar_solicitud_pago",
+                {
+                    p_solicitud_id:
+                    solicitudId
+                }
+                );
+
+
+            if (error) {
+            throw error;
+            }
+
+
+            requestMessage.textContent =
+            `Solicitud aprobada correctamente. ` +
+            `${data.movimientos_creados} movimientos fueron creados.`;
+
+
+            await cargarSolicitud();
+
+            await cargarItems();
+
+
+        } catch (error) {
+
+            console.error(
+            "Error aprobando solicitud:",
+            error
+            );
+
+
+            requestMessage.textContent =
+            "Error: " +
+            (
+                error.message ||
+                error
+            );
+
+
+        } finally {
+
+            button.disabled =
+            false;
+
+            button.textContent =
+            "Aprobar Solicitud";
+
+        }
+
+        }
+    );
+
+    document
+      .getElementById(
+        "logoutButton"
+      )
+      .addEventListener(
+        "click",
+        logout
+      );
+
+
+    inicializarPagina();
+    document
+    .getElementById("managementFormatButton")
+    .addEventListener("click", () => {
+
+        window.location.href =
+        `formato-gerencia.html?id=${solicitudId}`;
+
+    });
+  </script>
+
+</body>
+</html>

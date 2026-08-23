@@ -1,0 +1,1264 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+
+  <meta charset="UTF-8" />
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  />
+
+  <title>Formato Gerencia | Tesorería</title>
+
+  <style>
+
+    body {
+      margin: 0;
+      background: #ececec;
+      font-family: Arial, sans-serif;
+    }
+
+    .topbar {
+      background: white;
+      padding: 16px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #ddd;
+    }
+
+    .topbar-actions {
+      display: flex;
+      gap: 10px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 6px;
+      padding: 10px 14px;
+      cursor: pointer;
+    }
+
+    .page-container {
+      padding: 30px;
+      overflow-x: auto;
+    }
+
+    #managementFormat {
+      width: 1500px;
+      margin: auto;
+      background: white;
+      padding: 35px;
+      box-sizing: border-box;
+    }
+
+    .main-title {
+      font-size: 20px;
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+
+    .date-title {
+      margin-bottom: 24px;
+    }
+
+    .company-section {
+      margin-bottom: 32px;
+    }
+
+    .company-title {
+      font-size: 18px;
+      font-weight: bold;
+      padding: 8px 10px;
+      border: 1px solid #777;
+      border-bottom: none;
+    }
+
+    .section-title {
+      font-weight: bold;
+      padding: 7px 10px;
+      border-left: 1px solid #777;
+      border-right: 1px solid #777;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: auto;
+    }
+
+    th,
+    td {
+      border: 1px solid #777;
+      padding: 7px 6px;
+      font-size: 11px;
+      vertical-align: middle;
+    }
+
+    th {
+      background: #efefef;
+      font-weight: bold;
+      text-align: center;
+    }
+
+    td {
+      background: white;
+    }
+
+    .number {
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    .center {
+      text-align: center;
+    }
+
+    .empty-company {
+      padding: 15px;
+      border: 1px solid #777;
+      font-size: 12px;
+    }
+
+    .total-row td {
+      font-weight: bold;
+    }
+
+    .message {
+      padding: 40px;
+      text-align: center;
+    }
+
+    @media (max-width: 700px) {
+
+      .topbar {
+        flex-direction: column;
+        gap: 12px;
+        align-items: flex-start;
+      }
+
+      .page-container {
+        padding: 10px;
+      }
+
+    }
+
+  </style>
+
+</head>
+
+<body>
+
+  <header class="topbar">
+
+    <div>
+
+      <a id="backLink">
+        ← Volver a Solicitud
+      </a>
+
+    </div>
+
+    <div class="topbar-actions">
+
+      <button id="downloadImageButton">
+        Descargar Imagen
+      </button>
+
+      <button id="logoutButton">
+        Cerrar sesión
+      </button>
+
+    </div>
+
+  </header>
+
+
+  <div class="page-container">
+
+    <div
+      id="loadingState"
+      class="message"
+    >
+      Generando formato...
+    </div>
+
+
+    <div
+      id="managementFormat"
+      style="display:none;"
+    >
+
+      <div
+        id="formatTitle"
+        class="main-title"
+      ></div>
+
+      <div
+        id="formatDate"
+        class="date-title"
+      ></div>
+
+
+      <div id="companiesContainer"></div>
+
+    </div>
+
+  </div>
+
+
+  <script
+    src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+  ></script>
+
+  <script
+    src="../../js/supabase-config.js"
+  ></script>
+
+  <script
+    src="../../js/auth.js"
+  ></script>
+
+  <!-- Librería para convertir HTML a imagen -->
+  <script
+    src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"
+  ></script>
+
+
+  <script>
+
+    const params =
+      new URLSearchParams(
+        window.location.search
+      );
+
+    const solicitudId =
+      params.get("id");
+
+
+    let solicitud = null;
+    let items = [];
+
+
+    const companiesContainer =
+      document.getElementById(
+        "companiesContainer"
+      );
+
+
+    function nombreMes(fecha) {
+
+      const date =
+        new Date(
+          fecha + "T12:00:00"
+        );
+
+      return date
+        .toLocaleDateString(
+          "es-CO",
+          {
+            month: "long"
+          }
+        )
+        .toUpperCase();
+
+    }
+
+
+    function formatDate(fecha) {
+
+      const date =
+        new Date(
+          fecha + "T12:00:00"
+        );
+
+      return date
+        .toLocaleDateString(
+          "es-CO"
+        );
+
+    }
+
+
+    function formatNumber(value) {
+
+      return new Intl.NumberFormat(
+        "es-CO",
+        {
+          minimumFractionDigits: 0,
+          maximumFractionDigits: 2
+        }
+      ).format(
+        Number(value || 0)
+      );
+
+    }
+
+
+    async function initialize() {
+
+      const authorizedUser =
+        await getAuthorizedUser();
+
+
+      if (!authorizedUser) {
+
+        window.location.href =
+          "../../login.html";
+
+        return;
+
+      }
+
+
+      if (!solicitudId) {
+
+        document
+          .getElementById(
+            "loadingState"
+          )
+          .textContent =
+          "No se recibió una solicitud.";
+
+        return;
+
+      }
+
+
+      document
+        .getElementById(
+          "backLink"
+        )
+        .href =
+        `solicitud-detalle.html?id=${solicitudId}`;
+
+
+      await loadRequest();
+
+      await loadItems();
+
+      renderFormat();
+
+    }
+
+
+    async function loadRequest() {
+
+      const {
+        data,
+        error
+      } =
+        await supabaseClient
+          .from(
+            "solicitudes_pago"
+          )
+          .select(`
+            id,
+            codigo_visible,
+            fecha_solicitud,
+            quincena,
+            tipo_solicitud,
+            estado
+          `)
+          .eq(
+            "id",
+            solicitudId
+          )
+          .single();
+
+
+      if (error) {
+        throw error;
+      }
+
+
+      solicitud = data;
+
+    }
+
+
+    async function loadItems() {
+
+      const {
+        data,
+        error
+      } =
+        await supabaseClient
+          .from(
+            "solicitud_pago_items"
+          )
+          .select(`
+            id,
+            orden,
+            empresa_id,
+            beneficiario_id,
+            categoria_id,
+            concepto,
+            moneda,
+            valor,
+            origen,
+            estado,
+            comentario,
+
+            empresas (
+              nombre_corto
+            ),
+
+            beneficiarios (
+              nombre
+            ),
+
+            categorias (
+              nombre
+            )
+          `)
+          .eq(
+            "solicitud_id",
+            solicitudId
+          )
+          .neq(
+            "estado",
+            "ELIMINADO"
+          )
+          .order(
+            "orden",
+            {
+              ascending: true
+            }
+          );
+
+
+      if (error) {
+        throw error;
+      }
+
+
+      items =
+        data || [];
+
+    }
+
+
+    function renderFormat() {
+
+      document
+        .getElementById(
+          "formatTitle"
+        )
+        .textContent =
+        solicitud.tipo_solicitud ===
+        "FIJOS"
+          ?
+          `CUENTAS PENDIENTES POR PAGAR - ${
+            solicitud.quincena
+          }`
+          :
+          "CUENTAS PENDIENTES POR PAGAR";
+
+
+      document
+        .getElementById(
+          "formatDate"
+        )
+        .textContent =
+        formatDate(
+          solicitud.fecha_solicitud
+        );
+
+
+      companiesContainer.innerHTML =
+        "";
+
+
+      /*
+       * Orden deliberado para replicar
+       * el formato operacional actual.
+       */
+
+      const companyOrder = [
+        "LOGISTICA AGIL",
+        "INTI MINING",
+        "AURUM"
+      ];
+
+
+      companyOrder.forEach(
+        companyName => {
+
+          const companyItems =
+            items.filter(
+              item =>
+                normalizeCompany(
+                  item.empresas
+                    ?.nombre_corto
+                ) ===
+                companyName
+            );
+
+
+          renderCompanySection(
+            companyName,
+            companyItems
+          );
+
+        }
+      );
+
+
+      /*
+       * Si posteriormente aparece una empresa
+       * adicional, no queremos perder sus pagos.
+       */
+
+      const knownCompanies =
+        new Set(
+          companyOrder
+        );
+
+
+      const additionalCompanies =
+        [
+          ...new Set(
+            items
+              .map(
+                item =>
+                  normalizeCompany(
+                    item.empresas
+                      ?.nombre_corto
+                  )
+              )
+              .filter(Boolean)
+          )
+        ]
+        .filter(
+          name =>
+            !knownCompanies.has(
+              name
+            )
+        );
+
+
+      additionalCompanies.forEach(
+        companyName => {
+
+          const companyItems =
+            items.filter(
+              item =>
+                normalizeCompany(
+                  item.empresas
+                    ?.nombre_corto
+                ) ===
+                companyName
+            );
+
+
+          renderCompanySection(
+            companyName,
+            companyItems
+          );
+
+        }
+      );
+
+
+      document
+        .getElementById(
+          "loadingState"
+        )
+        .style.display =
+        "none";
+
+
+      document
+        .getElementById(
+          "managementFormat"
+        )
+        .style.display =
+        "block";
+
+    }
+
+
+    function normalizeCompany(name) {
+
+      if (!name) {
+        return "";
+      }
+
+
+      const normalized =
+        name
+          .trim()
+          .toUpperCase();
+
+
+      if (
+        normalized.includes(
+          "LOGISTICA"
+        )
+      ) {
+        return "LOGISTICA AGIL";
+      }
+
+
+      if (
+        normalized.includes(
+          "INTI MINING"
+        )
+      ) {
+        return "INTI MINING";
+      }
+
+
+      if (
+        normalized.includes(
+          "AURUM"
+        )
+      ) {
+        return "AURUM";
+      }
+
+
+      return normalized;
+
+    }
+
+
+    function renderCompanySection(
+      companyName,
+      companyItems
+    ) {
+
+      const section =
+        document.createElement(
+          "section"
+        );
+
+
+      section.className =
+        "company-section";
+
+
+      const title =
+        document.createElement(
+          "div"
+        );
+
+
+      title.className =
+        "company-title";
+
+
+      title.textContent =
+        companyName;
+
+
+      section.appendChild(
+        title
+      );
+
+
+      const sectionTitle =
+        document.createElement(
+          "div"
+        );
+
+
+      sectionTitle.className =
+        "section-title";
+
+
+      sectionTitle.textContent =
+        solicitud.tipo_solicitud ===
+        "FIJOS"
+          ?
+          `PAGOS FIJOS ${
+            solicitud.quincena
+          }`
+          :
+          "CUENTAS PENDIENTES POR PAGAR";
+
+
+      section.appendChild(
+        sectionTitle
+      );
+
+
+      if (
+        companyItems.length === 0
+      ) {
+
+        const empty =
+          document.createElement(
+            "div"
+          );
+
+
+        empty.className =
+          "empty-company";
+
+
+        empty.textContent =
+          "Sin pagos incluidos.";
+
+
+        section.appendChild(
+          empty
+        );
+
+
+        companiesContainer
+          .appendChild(
+            section
+          );
+
+
+        return;
+
+      }
+
+
+      if (
+        solicitud.tipo_solicitud ===
+        "FIJOS"
+      ) {
+
+        renderFixedTable(
+          section,
+          companyItems
+        );
+
+      } else {
+
+        renderExtraordinaryTable(
+          section,
+          companyItems
+        );
+
+      }
+
+
+      companiesContainer
+        .appendChild(
+          section
+        );
+
+    }
+
+
+    function renderFixedTable(
+      section,
+      companyItems
+    ) {
+
+      const table =
+        document.createElement(
+          "table"
+        );
+
+
+      table.innerHTML = `
+
+        <thead>
+
+          <tr>
+
+            <th>ITEM</th>
+            <th>BENEFICIARIO</th>
+            <th>CONCEPTO</th>
+            <th>EMPRESA</th>
+            <th>ESTADO</th>
+            <th>TIPO</th>
+            <th>CATEGORIA 1</th>
+            <th>CATEGORIA 2</th>
+            <th>MES CAUSADO</th>
+            <th>MES PAGADO</th>
+            <th>PAGAR SOL</th>
+            <th>PAGAR USD</th>
+            <th>NETO A PAGAR</th>
+            <th>VALOR RETENCIÓN</th>
+            <th>TOTAL</th>
+
+          </tr>
+
+        </thead>
+
+        <tbody></tbody>
+
+      `;
+
+
+      const tbody =
+        table.querySelector(
+          "tbody"
+        );
+
+
+      let totalCOP = 0;
+      let totalUSD = 0;
+      let totalPEN = 0;
+
+
+      companyItems.forEach(
+        item => {
+
+          const row =
+            document.createElement(
+              "tr"
+            );
+
+
+          const pagarSol =
+            item.moneda === "PEN"
+              ? item.valor
+              : "";
+
+
+          const pagarUSD =
+            item.moneda === "USD"
+              ? item.valor
+              : "";
+
+
+          const neto =
+            item.moneda === "COP"
+              ? item.valor
+              : "";
+
+
+          if (
+            item.moneda === "COP"
+          ) {
+            totalCOP +=
+              Number(item.valor);
+          }
+
+
+          if (
+            item.moneda === "USD"
+          ) {
+            totalUSD +=
+              Number(item.valor);
+          }
+
+
+          if (
+            item.moneda === "PEN"
+          ) {
+            totalPEN +=
+              Number(item.valor);
+          }
+
+
+          row.innerHTML = `
+
+            <td class="center">
+              ${item.orden}
+            </td>
+
+            <td>
+              ${
+                item.beneficiarios
+                  ?.nombre || ""
+              }
+            </td>
+
+            <td>
+              ${item.concepto || ""}
+            </td>
+
+            <td>
+              ${
+                item.empresas
+                  ?.nombre_corto || ""
+              }
+            </td>
+
+            <td>
+              PENDIENTE
+            </td>
+
+            <td>
+              FIJO
+            </td>
+
+            <td>
+              ${
+                item.categorias
+                  ?.nombre || ""
+              }
+            </td>
+
+            <td></td>
+
+            <td>
+              ${
+                nombreMes(
+                  solicitud
+                    .fecha_solicitud
+                )
+              }
+            </td>
+
+            <td></td>
+
+            <td class="number">
+              ${
+                pagarSol
+                  ?
+                  formatNumber(
+                    pagarSol
+                  )
+                  :
+                  ""
+              }
+            </td>
+
+            <td class="number">
+              ${
+                pagarUSD
+                  ?
+                  formatNumber(
+                    pagarUSD
+                  )
+                  :
+                  ""
+              }
+            </td>
+
+            <td class="number">
+              ${
+                neto
+                  ?
+                  formatNumber(
+                    neto
+                  )
+                  :
+                  ""
+              }
+            </td>
+
+            <td></td>
+
+            <td class="number">
+              ${
+                formatNumber(
+                  item.valor
+                )
+              }
+            </td>
+
+          `;
+
+
+          tbody.appendChild(
+            row
+          );
+
+        }
+      );
+
+
+      const totalRow =
+        document.createElement(
+          "tr"
+        );
+
+
+      totalRow.className =
+        "total-row";
+
+
+      totalRow.innerHTML = `
+
+        <td colspan="10">
+          TOTAL
+        </td>
+
+        <td class="number">
+          ${
+            totalPEN
+              ?
+              formatNumber(
+                totalPEN
+              )
+              :
+              ""
+          }
+        </td>
+
+        <td class="number">
+          ${
+            totalUSD
+              ?
+              formatNumber(
+                totalUSD
+              )
+              :
+              ""
+          }
+        </td>
+
+        <td class="number">
+          ${
+            totalCOP
+              ?
+              formatNumber(
+                totalCOP
+              )
+              :
+              ""
+          }
+        </td>
+
+        <td></td>
+
+        <td></td>
+
+      `;
+
+
+      tbody.appendChild(
+        totalRow
+      );
+
+
+      section.appendChild(
+        table
+      );
+
+    }
+
+
+    function renderExtraordinaryTable(
+      section,
+      companyItems
+    ) {
+
+      const table =
+        document.createElement(
+          "table"
+        );
+
+
+      table.innerHTML = `
+
+        <thead>
+
+          <tr>
+
+            <th>BENEFICIARIO</th>
+            <th>CONCEPTO</th>
+            <th>EMPRESA</th>
+            <th>ESTADO</th>
+            <th>TIPO</th>
+            <th>CATEGORIA 1</th>
+            <th>CATEGORIA 2</th>
+            <th>MES CAUSADO</th>
+            <th>MES PAGADO</th>
+            <th>PAGAR SOL</th>
+            <th>PAGAR USD</th>
+            <th>NETO A PAGAR</th>
+
+          </tr>
+
+        </thead>
+
+        <tbody></tbody>
+
+      `;
+
+
+      const tbody =
+        table.querySelector(
+          "tbody"
+        );
+
+
+      companyItems.forEach(
+        item => {
+
+          const row =
+            document.createElement(
+              "tr"
+            );
+
+
+          row.innerHTML = `
+
+            <td>
+              ${
+                item.beneficiarios
+                  ?.nombre || ""
+              }
+            </td>
+
+            <td>
+              ${item.concepto || ""}
+            </td>
+
+            <td>
+              ${
+                item.empresas
+                  ?.nombre_corto || ""
+              }
+            </td>
+
+            <td>
+              PENDIENTE
+            </td>
+
+            <td>
+              EXTRAORDINARIO
+            </td>
+
+            <td>
+              ${
+                item.categorias
+                  ?.nombre || ""
+              }
+            </td>
+
+            <td></td>
+
+            <td>
+              ${
+                nombreMes(
+                  solicitud
+                    .fecha_solicitud
+                )
+              }
+            </td>
+
+            <td></td>
+
+            <td class="number">
+
+              ${
+                item.moneda === "PEN"
+                  ?
+                  formatNumber(
+                    item.valor
+                  )
+                  :
+                  ""
+              }
+
+            </td>
+
+            <td class="number">
+
+              ${
+                item.moneda === "USD"
+                  ?
+                  formatNumber(
+                    item.valor
+                  )
+                  :
+                  ""
+              }
+
+            </td>
+
+            <td class="number">
+
+              ${
+                item.moneda === "COP"
+                  ?
+                  formatNumber(
+                    item.valor
+                  )
+                  :
+                  ""
+              }
+
+            </td>
+
+          `;
+
+
+          tbody.appendChild(
+            row
+          );
+
+        }
+      );
+
+
+      section.appendChild(
+        table
+      );
+
+    }
+
+
+    document
+      .getElementById(
+        "downloadImageButton"
+      )
+      .addEventListener(
+        "click",
+        async () => {
+
+          const element =
+            document.getElementById(
+              "managementFormat"
+            );
+
+
+          const canvas =
+            await html2canvas(
+              element,
+              {
+                scale: 2,
+                backgroundColor:
+                  "#ffffff"
+              }
+            );
+
+
+          const link =
+            document.createElement(
+              "a"
+            );
+
+
+          const tipo =
+            solicitud
+              .tipo_solicitud
+              .toLowerCase();
+
+
+          link.download =
+            `solicitud-${tipo}-${solicitud.fecha_solicitud}.png`;
+
+
+          link.href =
+            canvas.toDataURL(
+              "image/png"
+            );
+
+
+          link.click();
+
+        }
+      );
+
+
+    document
+      .getElementById(
+        "logoutButton"
+      )
+      .addEventListener(
+        "click",
+        logout
+      );
+
+
+    initialize();
+
+  </script>
+
+</body>
+</html>
