@@ -1,0 +1,888 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>Pagos Fijos | Tesorería</title>
+
+  <link rel="stylesheet" href="../../styles.css" />
+
+  <style>
+    body {
+      margin: 0;
+      background: #f5f5f5;
+      font-family: Arial, sans-serif;
+    }
+
+    .page-header {
+      background: white;
+      padding: 18px 28px;
+      border-bottom: 1px solid #ddd;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .page-main {
+      max-width: 1400px;
+      margin: 35px auto;
+      padding: 0 24px;
+    }
+
+    .toolbar {
+      margin-bottom: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .table-container {
+      background: white;
+      border-radius: 12px;
+      overflow-x: auto;
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.06);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 900px;
+    }
+
+    th,
+    td {
+      padding: 14px 16px;
+      text-align: left;
+      border-bottom: 1px solid #eee;
+    }
+
+    th {
+      background: #fafafa;
+      font-size: 14px;
+    }
+
+    td {
+      font-size: 14px;
+    }
+
+    .status-active {
+      font-weight: 600;
+    }
+
+    .loading,
+    .error-message,
+    .empty-message {
+      padding: 30px;
+      text-align: center;
+    }
+
+    .logout-button {
+      border: 0;
+      padding: 10px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    .back-link {
+      text-decoration: none;
+      margin-right: 20px;
+    }
+    .form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+    .form-grid label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 600;
+    }
+
+    .form-grid input,
+    .form-grid select {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    }
+
+    @media (max-width: 700px) {
+    .form-grid {
+        grid-template-columns: 1fr;
+    }
+    }
+
+  </style>
+</head>
+
+<body>
+
+  <header class="page-header">
+    <div>
+      <a href="../index.html" class="back-link">
+        ← Panel Administrativo
+      </a>
+
+      <strong>CI Inti Mining · Tesorería</strong>
+    </div>
+
+    <button id="logoutButton" class="logout-button">
+      Cerrar sesión
+    </button>
+  </header>
+
+  <main class="page-main">
+
+    <div class="toolbar">
+        <div>
+            <h1>Pagos Fijos</h1>
+            <p>Base maestra de obligaciones recurrentes.</p>
+        </div>
+
+        <button id="newPaymentButton" class="logout-button">
+            + Nuevo Pago Fijo
+        </button>
+    </div>
+
+
+    <div id="paymentFormContainer" class="table-container"
+     style="display: none; margin-bottom: 25px; padding: 25px;">
+
+      <h2>Nuevo Pago Fijo</h2>
+
+        <form id="paymentForm">
+
+            <div class="form-grid">
+
+            <div>
+                <label>Empresa *</label>
+                <select id="empresaId" required></select>
+            </div>
+
+            <div>
+                <label>Beneficiario *</label>
+                <select id="beneficiarioId" required></select>
+            </div>
+
+            <div>
+                <label>Categoría</label>
+                <select id="categoriaId"></select>
+            </div>
+
+            <div>
+                <label>Concepto *</label>
+                <input type="text" id="concepto" required />
+            </div>
+
+            <div>
+                <label>Periodicidad *</label>
+                <select id="periodicidad" required>
+                <option value="MENSUAL">Mensual</option>
+                <option value="QUINCENAL">Quincenal</option>
+                <option value="TRIMESTRAL">Trimestral</option>
+                <option value="SEMESTRAL">Semestral</option>
+                <option value="ANUAL">Anual</option>
+                </select>
+            </div>
+
+            <div>
+                <label>Quincena</label>
+                <select id="quincena">
+                <option value="">No aplica</option>
+                <option value="Q1">Q1</option>
+                <option value="Q2">Q2</option>
+                </select>
+            </div>
+
+            <div>
+                <label>Moneda *</label>
+                <select id="moneda" required>
+                <option value="COP">COP</option>
+                <option value="USD">USD</option>
+                <option value="PEN">PEN</option>
+                <option value="EUR">EUR</option>
+                </select>
+            </div>
+
+            <div>
+                <label>Valor de referencia *</label>
+                <input
+                type="number"
+                id="valorReferencia"
+                min="0.01"
+                step="0.01"
+                required
+                />
+            </div>
+
+            <div>
+                <label>Cuenta contable referencia</label>
+                <input type="text" id="cuentaContableRef" />
+            </div>
+
+            <div>
+                <label>Fecha inicio</label>
+                <input type="date" id="fechaInicio" />
+            </div>
+
+            </div>
+
+            <div style="margin-top: 18px;">
+            <label>Comentario</label>
+
+            <textarea
+                id="comentario"
+                rows="3"
+                style="width: 100%; box-sizing: border-box;"
+            ></textarea>
+            </div>
+
+            <div style="margin-top: 20px;">
+            <button type="submit" class="logout-button">
+                Guardar Pago Fijo
+            </button>
+
+            <button
+                type="button"
+                id="cancelPaymentButton"
+                class="logout-button"
+            >
+                Cancelar
+            </button>
+            </div>
+
+            <div
+            id="formMessage"
+            style="display: none; margin-top: 15px;"
+            ></div>
+
+        </form>
+
+    </div>
+
+    <div class="table-container">
+
+      <div id="loadingState" class="loading">
+        Cargando pagos fijos...
+      </div>
+
+      <div id="errorState" class="error-message" style="display: none;"></div>
+
+      <div id="emptyState" class="empty-message" style="display: none;">
+        No hay pagos fijos registrados.
+      </div>
+
+      <table id="pagosTable" style="display: none;">
+        <thead>
+          <tr>
+            <th>Código</th>
+            <th>Empresa</th>
+            <th>Beneficiario</th>
+            <th>Concepto</th>
+            <th>Categoría</th>
+            <th>Quincena</th>
+            <th>Moneda</th>
+            <th>Valor referencia</th>
+            <th>Estado</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+
+        <tbody id="pagosTableBody"></tbody>
+      </table>
+
+    </div>
+
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <script src="../../js/supabase-config.js"></script>
+  <script src="../../js/auth.js"></script>
+
+  <script>
+    const loadingState = document.getElementById("loadingState");
+    const errorState = document.getElementById("errorState");
+    const emptyState = document.getElementById("emptyState");
+    const pagosTable = document.getElementById("pagosTable");
+    const pagosTableBody = document.getElementById("pagosTableBody");
+    
+    let editingPaymentId = null;
+    let pagosCargados = [];
+
+    function formatCurrency(value, currency) {
+      return new Intl.NumberFormat("es-CO", {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 2
+      }).format(Number(value)) + " " + currency;
+    }
+
+    async function cargarPagosFijos() {
+      try {
+        const authorizedUser = await getAuthorizedUser();
+
+        if (!authorizedUser) {
+          window.location.href = "../../login.html";
+          return;
+        }
+
+        const { data, error } = await supabaseClient
+        .from("pagos_fijos")
+        .select(`
+            id,
+            codigo_visible,
+            empresa_id,
+            beneficiario_id,
+            categoria_id,
+            concepto,
+            periodicidad,
+            quincena,
+            moneda,
+            valor_referencia,
+            cuenta_contable_ref,
+            fecha_inicio,
+            comentario,
+            activo,
+            empresas (
+            nombre_corto
+            ),
+            beneficiarios (
+            nombre
+            ),
+            categorias (
+            nombre
+            )
+        `)
+        .order("numero", { ascending: true });
+
+        if (error) {
+          throw error;
+        }
+
+        pagosCargados = data;
+
+        loadingState.style.display = "none";
+
+        if (!data || data.length === 0) {
+          emptyState.style.display = "block";
+          return;
+        }
+
+        pagosTableBody.innerHTML = "";
+
+        data.forEach((pago) => {
+          const row = document.createElement("tr");
+
+          row.innerHTML = `
+            <td>${pago.codigo_visible || ""}</td>
+
+            <td>
+              ${pago.empresas?.nombre_corto || ""}
+            </td>
+
+            <td>
+              ${pago.beneficiarios?.nombre || ""}
+            </td>
+
+            <td>
+              ${pago.concepto || ""}
+            </td>
+
+            <td>
+              ${pago.categorias?.nombre || ""}
+            </td>
+
+            <td>
+              ${pago.quincena || ""}
+            </td>
+
+            <td>
+              ${pago.moneda || ""}
+            </td>
+
+            <td>
+              ${formatCurrency(
+                pago.valor_referencia,
+                pago.moneda
+              )}
+            </td>
+
+            <td class="status-active">
+              ${pago.activo ? "Activo" : "Inactivo"}
+            </td>
+            <td>
+                <button
+                    class="edit-payment-button"
+                    data-id="${pago.id}"
+                >
+                    Editar
+                </button>
+
+                ${
+                    pago.activo
+                    ? `
+                        <button
+                        class="deactivate-payment-button"
+                        data-id="${pago.id}"
+                        >
+                        Desactivar
+                        </button>
+                    `
+                    : `
+                        <span>—</span>
+                    `
+                }
+            </td>
+          `;
+
+          pagosTableBody.appendChild(row);
+        });
+
+        document
+            .querySelectorAll(".edit-payment-button")
+            .forEach((button) => {
+
+                button.addEventListener("click", () => {
+                editarPagoFijo(button.dataset.id);
+                });
+
+            });
+
+
+            document
+            .querySelectorAll(".deactivate-payment-button")
+            .forEach((button) => {
+
+                button.addEventListener("click", () => {
+                desactivarPagoFijo(button.dataset.id);
+                });
+
+        });
+
+        pagosTable.style.display = "table";
+
+      } catch (error) {
+        console.error("Error cargando pagos fijos:", error);
+
+        loadingState.style.display = "none";
+
+        errorState.textContent =
+          "Error al cargar pagos fijos: " +
+          (error.message || error);
+
+        errorState.style.display = "block";
+      }
+    }
+
+    document
+      .getElementById("logoutButton")
+      .addEventListener("click", logout);
+
+    cargarPagosFijos();
+
+    async function cargarCatalogos() {
+  const [
+    empresasResult,
+    beneficiariosResult,
+    categoriasResult
+  ] = await Promise.all([
+
+    supabaseClient
+      .from("empresas")
+      .select("id, nombre_corto")
+      .eq("activo", true)
+      .order("nombre_corto"),
+
+    supabaseClient
+      .from("beneficiarios")
+      .select("id, nombre")
+      .eq("activo", true)
+      .order("nombre"),
+
+    supabaseClient
+      .from("categorias")
+      .select("id, nombre")
+      .eq("activo", true)
+      .order("nombre")
+
+  ]);
+
+  if (empresasResult.error) {
+    throw empresasResult.error;
+  }
+
+  if (beneficiariosResult.error) {
+    throw beneficiariosResult.error;
+  }
+
+  if (categoriasResult.error) {
+    throw categoriasResult.error;
+  }
+
+  llenarSelect(
+    "empresaId",
+    empresasResult.data,
+    "nombre_corto",
+    "Seleccionar empresa"
+  );
+
+  llenarSelect(
+    "beneficiarioId",
+    beneficiariosResult.data,
+    "nombre",
+    "Seleccionar beneficiario"
+  );
+
+  llenarSelect(
+    "categoriaId",
+    categoriasResult.data,
+    "nombre",
+    "Sin categoría"
+  );
+}
+
+
+        function llenarSelect(
+        elementId,
+        records,
+        labelField,
+        placeholder
+        ) {
+        const select = document.getElementById(elementId);
+
+        select.innerHTML = "";
+
+        const emptyOption = document.createElement("option");
+
+        emptyOption.value = "";
+        emptyOption.textContent = placeholder;
+
+        select.appendChild(emptyOption);
+
+        records.forEach((record) => {
+            const option = document.createElement("option");
+
+            option.value = record.id;
+            option.textContent = record[labelField];
+
+            select.appendChild(option);
+        });
+        }
+
+    const newPaymentButton =
+  document.getElementById("newPaymentButton");
+
+    const paymentFormContainer =
+    document.getElementById("paymentFormContainer");
+
+    const cancelPaymentButton =
+    document.getElementById("cancelPaymentButton");
+
+
+    newPaymentButton.addEventListener("click", async () => {
+
+        try {
+
+            editingPaymentId = null;
+
+            document
+            .getElementById("paymentForm")
+            .reset();
+
+            paymentFormContainer
+            .querySelector("h2")
+            .textContent = "Nuevo Pago Fijo";
+
+            await cargarCatalogos();
+
+            paymentFormContainer.style.display = "block";
+
+            paymentFormContainer.scrollIntoView({
+            behavior: "smooth"
+            });
+
+        } catch (error) {
+
+            console.error(error);
+
+            alert(
+            "No fue posible cargar los catálogos: " +
+            error.message
+            );
+        }
+
+    });
+
+
+    cancelPaymentButton.addEventListener("click", () => {
+
+        editingPaymentId = null;
+
+        paymentFormContainer.style.display = "none";
+
+        document
+            .getElementById("paymentForm")
+            .reset();
+
+        paymentFormContainer
+            .querySelector("h2")
+            .textContent = "Nuevo Pago Fijo";
+    }); 
+
+    document
+  .getElementById("paymentForm")
+  .addEventListener("submit", async (event) => {
+
+    event.preventDefault();
+
+    const formMessage =
+      document.getElementById("formMessage");
+
+    formMessage.style.display = "none";
+
+    try {
+
+      const authorizedUser =
+        await getAuthorizedUser();
+
+      if (!authorizedUser) {
+        window.location.href = "../../login.html";
+        return;
+      }
+
+      const nuevoPago = {
+
+        empresa_id:
+          document.getElementById("empresaId").value,
+
+        beneficiario_id:
+          document.getElementById("beneficiarioId").value,
+
+        categoria_id:
+          document.getElementById("categoriaId").value || null,
+
+        concepto:
+          document.getElementById("concepto").value.trim(),
+
+        periodicidad:
+          document.getElementById("periodicidad").value,
+
+        quincena:
+          document.getElementById("quincena").value || null,
+
+        moneda:
+          document.getElementById("moneda").value,
+
+        valor_referencia:
+          Number(
+            document.getElementById("valorReferencia").value
+          ),
+
+        cuenta_contable_ref:
+          document
+            .getElementById("cuentaContableRef")
+            .value
+            .trim() || null,
+
+        fecha_inicio:
+          document.getElementById("fechaInicio").value || null,
+
+        comentario:
+          document.getElementById("comentario")
+            .value
+            .trim() || null,
+
+        activo: true,
+
+        created_by: authorizedUser.user_id,
+        updated_by: authorizedUser.user_id
+      };
+
+
+      let result;
+
+        if (editingPaymentId) {
+
+        result = await supabaseClient
+            .from("pagos_fijos")
+            .update({
+            ...nuevoPago,
+            updated_by: authorizedUser.user_id
+            })
+            .eq("id", editingPaymentId)
+            .select()
+            .single();
+
+        } else {
+
+        result = await supabaseClient
+            .from("pagos_fijos")
+            .insert(nuevoPago)
+            .select()
+            .single();
+
+        }
+
+        if (result.error) {
+        throw result.error;
+    }
+
+
+      formMessage.textContent =
+        "Pago fijo creado correctamente.";
+
+      formMessage.style.display = "block";
+
+
+      document
+        .getElementById("paymentForm")
+        .reset();
+
+
+      await cargarPagosFijos();
+
+
+    } catch (error) {
+
+      console.error(
+        "Error creando pago fijo:",
+        error
+      );
+
+      formMessage.textContent =
+        "Error: " + (error.message || error);
+
+      formMessage.style.display = "block";
+    }
+
+  });
+
+  async function editarPagoFijo(paymentId) {
+        try {
+
+            const pago = pagosCargados.find(
+            (item) => item.id === paymentId
+            );
+
+            if (!pago) {
+            alert("No se encontró el pago fijo.");
+            return;
+            }
+
+            await cargarCatalogos();
+
+            editingPaymentId = pago.id;
+
+            document.getElementById("empresaId").value =
+            pago.empresa_id;
+
+            document.getElementById("beneficiarioId").value =
+            pago.beneficiario_id;
+
+            document.getElementById("categoriaId").value =
+            pago.categoria_id || "";
+
+            document.getElementById("concepto").value =
+            pago.concepto || "";
+
+            document.getElementById("periodicidad").value =
+            pago.periodicidad || "MENSUAL";
+
+            document.getElementById("quincena").value =
+            pago.quincena || "";
+
+            document.getElementById("moneda").value =
+            pago.moneda || "COP";
+
+            document.getElementById("valorReferencia").value =
+            pago.valor_referencia || "";
+
+            document.getElementById("cuentaContableRef").value =
+            pago.cuenta_contable_ref || "";
+
+            document.getElementById("fechaInicio").value =
+            pago.fecha_inicio || "";
+
+            document.getElementById("comentario").value =
+            pago.comentario || "";
+
+            paymentFormContainer.style.display = "block";
+
+            const title =
+            paymentFormContainer.querySelector("h2");
+
+            title.textContent = "Editar Pago Fijo";
+
+            paymentFormContainer.scrollIntoView({
+            behavior: "smooth"
+            });
+
+        } catch (error) {
+
+            console.error("Error preparando edición:", error);
+
+            alert(
+            "No fue posible editar el pago: " +
+            error.message
+            );
+        }
+    }
+
+    async function desactivarPagoFijo(paymentId) {
+
+        const confirmar = confirm(
+            "¿Estás seguro de que deseas desactivar este pago fijo?"
+        );
+
+        if (!confirmar) {
+            return;
+        }
+
+        try {
+
+            const authorizedUser =
+            await getAuthorizedUser();
+
+            if (!authorizedUser) {
+            window.location.href = "../../login.html";
+            return;
+            }
+
+            const { error } = await supabaseClient
+            .from("pagos_fijos")
+            .update({
+                activo: false,
+                updated_by: authorizedUser.user_id
+            })
+            .eq("id", paymentId);
+
+
+            if (error) {
+            throw error;
+            }
+
+
+            await cargarPagosFijos();
+
+        } catch (error) {
+
+            console.error(
+            "Error desactivando pago fijo:",
+            error
+            );
+
+            alert(
+            "No fue posible desactivar el pago: " +
+            error.message
+            );
+        }
+    }
+
+
+  </script>
+
+</body>
+</html>

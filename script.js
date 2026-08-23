@@ -35,15 +35,6 @@ navigationLinks.forEach((link) => {
 });
 
 
-// Botón temporal de acceso a plataforma
-platformButton.addEventListener("click", (event) => {
-    event.preventDefault();
-
-    window.alert(
-        "La plataforma documental de CI Inti Mining estará disponible próximamente."
-    );
-});
-
 
 // Formulario temporal
 contactForm.addEventListener("submit", (event) => {
