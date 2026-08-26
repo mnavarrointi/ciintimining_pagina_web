@@ -1,0 +1,4990 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Bandeja de Conciliación | CI Inti Mining</title>
+
+  <link rel="stylesheet" href="../../styles.css">
+
+  <style>
+    body {
+      margin: 0;
+      background: #f5f5f5;
+      font-family: Arial, sans-serif;
+    }
+
+    .page-header {
+      background: white;
+      padding: 18px 28px;
+      border-bottom: 1px solid #ddd;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .page-main {
+      max-width: 1550px;
+      margin: 35px auto;
+      padding: 0 24px;
+    }
+
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 24px;
+      box-shadow: 0 8px 25px rgba(0,0,0,0.06);
+    }
+
+    .toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 20px;
+      margin-bottom: 25px;
+    }
+
+    .filters {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: end;
+      gap: 15px;
+    }
+
+    .filter-group {
+      min-width: 190px;
+    }
+
+    .filter-group label,
+    .modal-field label {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    input,
+    select,
+    textarea {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 7px;
+      background: white;
+      font-family: inherit;
+    }
+
+    textarea {
+      min-height: 90px;
+      resize: vertical;
+    }
+
+    button {
+      border: 0;
+      border-radius: 7px;
+      padding: 10px 15px;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.5;
+    }
+
+    .primary-button {
+      background: #222;
+      color: white;
+    }
+
+    .secondary-button {
+      background: #eee;
+      color: #222;
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 15px;
+    }
+
+    .summary-box {
+      background: #fafafa;
+      padding: 18px;
+      border-radius: 10px;
+    }
+
+    .summary-label {
+      font-size: 12px;
+      color: #666;
+    }
+
+    .summary-value {
+      margin-top: 5px;
+      font-size: 24px;
+      font-weight: 700;
+    }
+
+    .coverage-container {
+      margin-top: 22px;
+    }
+
+    .coverage-bar {
+      width: 100%;
+      height: 14px;
+      background: #eee;
+      border-radius: 20px;
+      overflow: hidden;
+    }
+
+    .coverage-progress {
+      width: 0%;
+      height: 100%;
+      background: #222;
+      transition: width 0.3s;
+    }
+
+    .period-status {
+      margin-top: 15px;
+      padding: 14px;
+      border-radius: 8px;
+      font-weight: 600;
+    }
+
+    .period-open {
+      background: #fff5d6;
+    }
+
+    .period-closed {
+      background: #eef8ee;
+    }
+
+    .movement-card {
+      border: 1px solid #ddd;
+      border-radius: 12px;
+      margin-bottom: 20px;
+      overflow: hidden;
+    }
+
+    .movement-header {
+      padding: 18px;
+      background: #fafafa;
+      display: flex;
+      justify-content: space-between;
+      gap: 20px;
+      align-items: flex-start;
+    }
+
+    .bank-info {
+      flex: 1;
+    }
+
+    .bank-title {
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .bank-meta {
+      margin-top: 5px;
+      color: #666;
+      line-height: 1.5;
+    }
+
+    .bank-description {
+      margin-top: 12px;
+      font-weight: 600;
+    }
+
+    .bank-value {
+      font-size: 20px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 5px 10px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 700;
+      margin-top: 8px;
+      margin-right: 5px;
+    }
+
+    .badge-pending {
+      background: #fff5d6;
+    }
+
+    .badge-reconciled {
+      background: #e6f7e6;
+    }
+
+    .badge-bank-rule {
+      background: #e9eefc;
+    }
+
+    .badge-nonoperating {
+      background: #f0e9ff;
+    }
+
+    .proposals {
+      padding: 18px;
+    }
+
+    .proposal {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 140px 200px;
+      gap: 20px;
+      align-items: center;
+      padding: 16px 0;
+      border-bottom: 1px solid #eee;
+    }
+
+    .proposal:last-child {
+      border-bottom: 0;
+    }
+
+    .proposal-title {
+      font-weight: 700;
+    }
+
+    .proposal-meta {
+      margin-top: 4px;
+      font-size: 13px;
+      color: #666;
+      line-height: 1.5;
+    }
+
+    .confidence {
+      text-align: center;
+    }
+
+    .confidence-number {
+      font-size: 20px;
+      font-weight: 700;
+    }
+
+    .confidence-label {
+      margin-top: 3px;
+      font-size: 11px;
+      color: #666;
+    }
+
+    .proposal-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+
+    .no-proposal {
+      padding: 20px;
+      background: #fffaf0;
+    }
+
+    .no-proposal strong {
+      display: block;
+      margin-bottom: 8px;
+    }
+
+    .reconciled-info {
+      padding: 20px;
+      background: #f4fbf4;
+    }
+
+    .empty-state {
+      padding: 25px;
+      text-align: center;
+      color: #666;
+    }
+
+    .message {
+      margin-top: 15px;
+    }
+
+    .success-message {
+      padding: 12px;
+      border-radius: 8px;
+      background: #eef8ee;
+    }
+
+    .error-message {
+      padding: 12px;
+      border-radius: 8px;
+      background: #ffeaea;
+    }
+
+    .warning-message {
+      padding: 12px;
+      border-radius: 8px;
+      background: #fff5d6;
+    }
+
+    .inline-actions {
+      display: flex;
+      gap: 8px;
+      align-items: end;
+    }
+
+    .inline-actions select {
+      flex: 1;
+    }
+
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.45);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      padding: 20px;
+    }
+
+    .modal-overlay.secondary-modal {
+      z-index: 10050;
+      background: rgba(0,0,0,0.58);
+    }
+
+    .modal {
+      width: min(820px, 100%);
+      max-height: 90vh;
+      overflow-y: auto;
+      background: white;
+      border-radius: 14px;
+      padding: 24px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+    }
+
+    .modal.small-modal {
+      width: min(620px, 100%);
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+
+    .modal-close {
+      background: #eee;
+      font-size: 18px;
+      line-height: 1;
+    }
+
+    .modal-bank-summary {
+      background: #fafafa;
+      border-radius: 10px;
+      padding: 15px;
+      line-height: 1.5;
+      margin-bottom: 20px;
+    }
+
+    .modal-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .modal-field-full {
+      grid-column: 1 / -1;
+    }
+
+    .locked-field {
+      background: #f3f3f3;
+    }
+
+    .modal-actions {
+      margin-top: 22px;
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+    }
+
+    .helper-text {
+      margin-top: 6px;
+      font-size: 12px;
+      color: #666;
+      line-height: 1.4;
+    }
+
+    .transfer-section {
+      padding: 16px;
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      background: #fafafa;
+    }
+
+    .transfer-direction {
+      padding: 12px;
+      border-radius: 8px;
+      background: #eef3ff;
+      margin-bottom: 15px;
+      font-weight: 600;
+    }
+
+    .nonoperating-direction {
+      padding: 12px;
+      border-radius: 8px;
+      background: #f4efff;
+      margin-bottom: 15px;
+      font-weight: 600;
+    }
+
+    .counterpart-list {
+      margin-top: 15px;
+    }
+
+    .counterpart-item {
+      border: 1px solid #ddd;
+      border-radius: 9px;
+      padding: 14px;
+      margin-bottom: 10px;
+      background: white;
+    }
+
+    .counterpart-item.selected {
+      border: 2px solid #222;
+    }
+
+    .counterpart-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 15px;
+      align-items: center;
+    }
+
+    .counterpart-meta {
+      color: #666;
+      font-size: 13px;
+      line-height: 1.5;
+      margin-top: 4px;
+    }
+
+    .new-beneficiary-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    @media (max-width: 900px) {
+      .summary-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .proposal {
+        grid-template-columns: 1fr;
+      }
+
+      .confidence {
+        text-align: left;
+      }
+
+      .proposal-actions {
+        flex-direction: row;
+        flex-wrap: wrap;
+      }
+
+      .page-header,
+      .toolbar {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .modal-grid,
+      .new-beneficiary-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .modal-field-full {
+        grid-column: auto;
+      }
+
+      .counterpart-row {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+    }
+
+    @media (max-width: 550px) {
+      .summary-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .inline-actions {
+        flex-direction: column;
+        align-items: stretch;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+<header class="page-header">
+
+  <div>
+    <a href="conciliacion.html">← Cargas Bancarias</a>
+    <strong style="margin-left:20px;">CI Inti Mining · Conciliación</strong>
+  </div>
+
+  <button id="logoutButton">
+    Cerrar sesión
+  </button>
+
+</header>
+
+
+<main class="page-main">
+
+  <div class="toolbar">
+
+    <div>
+      <h1>Bandeja de Conciliación</h1>
+      <p>
+        Todo movimiento bancario debe terminar relacionado con una explicación registrada en el sistema.
+      </p>
+    </div>
+
+  </div>
+
+
+  <div class="card">
+
+    <div class="filters">
+
+      <div class="filter-group">
+        <label>Periodo</label>
+        <input type="month" id="periodFilter">
+      </div>
+
+      <div class="filter-group">
+        <label>Grupo</label>
+
+        <select id="groupFilter">
+          <option value="NACIONAL">Nacional</option>
+          <option value="INTERNACIONAL">Internacional</option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label>Estado</label>
+
+        <select id="statusFilter">
+          <option value="">Todos</option>
+          <option value="PENDIENTE">Pendientes</option>
+          <option value="CONCILIADO">Conciliados</option>
+        </select>
+      </div>
+
+      <button id="applyFiltersButton" class="secondary-button">
+        Aplicar
+      </button>
+
+      <button id="generateProposalsButton" class="primary-button">
+        Generar Propuestas
+      </button>
+
+    </div>
+
+    <div id="generalMessage" class="message"></div>
+
+  </div>
+
+
+  <div class="card">
+
+    <h2>Cobertura del Periodo</h2>
+
+    <div class="summary-grid">
+
+      <div class="summary-box">
+        <div class="summary-label">Movimientos Banco</div>
+        <div id="totalBankMovements" class="summary-value">0</div>
+      </div>
+
+      <div class="summary-box">
+        <div class="summary-label">Conciliados</div>
+        <div id="reconciledCount" class="summary-value">0</div>
+      </div>
+
+      <div class="summary-box">
+        <div class="summary-label">Pendientes</div>
+        <div id="pendingCount" class="summary-value">0</div>
+      </div>
+
+      <div class="summary-box">
+        <div class="summary-label">Cobertura</div>
+        <div id="coveragePercent" class="summary-value">0%</div>
+      </div>
+
+    </div>
+
+    <div class="coverage-container">
+      <div class="coverage-bar">
+        <div id="coverageProgress" class="coverage-progress"></div>
+      </div>
+    </div>
+
+    <div id="periodStatus" class="period-status period-open">
+      El periodo todavía tiene movimientos bancarios pendientes de explicación.
+    </div>
+
+  </div>
+
+
+  <div class="card">
+
+    <h2>Movimientos Bancarios</h2>
+
+    <div id="loadingState">
+      Cargando movimientos...
+    </div>
+
+    <div id="movementsContainer"></div>
+
+    <div id="emptyState" class="empty-state" style="display:none;">
+      No existen movimientos para los filtros seleccionados.
+    </div>
+
+  </div>
+
+</main>
+
+
+<!-- MODAL PRINCIPAL: EXPLICAR MOVIMIENTO -->
+
+<div id="explainModalOverlay" class="modal-overlay">
+
+  <div class="modal">
+
+    <div class="modal-header">
+
+      <div>
+
+        <h2 style="margin:0 0 6px;">
+          Explicar movimiento
+        </h2>
+
+        <div style="color:#666;">
+          Registra por qué ocurrió este movimiento bancario.
+        </div>
+
+      </div>
+
+      <button
+        id="closeExplainModalButton"
+        class="modal-close"
+        type="button"
+      >
+        ×
+      </button>
+
+    </div>
+
+
+    <div id="modalBankSummary" class="modal-bank-summary"></div>
+
+
+    <form id="explainMovementForm">
+
+      <div class="modal-grid">
+
+        <div class="modal-field modal-field-full">
+
+          <label>Clasificación *</label>
+
+          <select id="explainClassification" required>
+
+            <option value="">
+              Seleccionar
+            </option>
+
+            <option value="GASTO_BANCARIO">
+              Gasto Bancario
+            </option>
+
+            <option value="GMF">
+              GMF
+            </option>
+
+            <option value="RENDIMIENTOS">
+              Rendimientos
+            </option>
+
+            <option value="PAGO_EGRESO">
+              Pago / Egreso operativo
+            </option>
+
+            <option value="TRANSFERENCIA">
+              Transferencia entre cuentas propias
+            </option>
+
+            <option value="TRANSFERENCIA_NO_OPERATIVA">
+              Transferencia no operativa
+            </option>
+
+            <option value="INGRESO">
+              Ingreso operativo
+            </option>
+
+            <option value="ERROR_HUMANO">
+              Error humano
+            </option>
+
+            <option value="OTRO">
+              Otro
+            </option>
+
+          </select>
+
+          <div class="helper-text">
+            Gasto Bancario, GMF y Rendimientos se explican directamente desde el banco.
+            Una transferencia entre cuentas propias relaciona dos cuentas nuestras.
+            Una transferencia no operativa entra o sale del sistema pero no cuenta como ingreso o gasto operativo.
+          </div>
+
+        </div>
+
+
+        <!-- CAMPOS OPERATIVOS GENERALES -->
+
+        <div
+          id="operationalFields"
+          class="modal-field-full"
+          style="display:none;"
+        >
+
+          <div class="modal-grid">
+
+            <div class="modal-field">
+
+              <label>Empresa *</label>
+
+              <select id="explainCompany">
+                <option value="">
+                  Seleccionar empresa
+                </option>
+              </select>
+
+            </div>
+
+
+            <div class="modal-field">
+
+              <label>Beneficiario / Contraparte</label>
+
+              <div class="inline-actions">
+
+                <select id="explainBeneficiary">
+                  <option value="">
+                    Sin beneficiario
+                  </option>
+                </select>
+
+                <button
+                  type="button"
+                  id="openNewBeneficiaryButton"
+                  class="secondary-button"
+                >
+                  + Nuevo
+                </button>
+
+              </div>
+
+              <div class="helper-text">
+                Si la contraparte no existe, créala aquí sin salir de la conciliación.
+              </div>
+
+            </div>
+
+
+            <div class="modal-field modal-field-full">
+
+              <label>Concepto *</label>
+
+              <input
+                type="text"
+                id="explainConcept"
+                placeholder="Describe qué ocurrió"
+              >
+
+            </div>
+
+          </div>
+
+        </div>
+
+
+        <!-- TRANSFERENCIA NO OPERATIVA -->
+
+        <div
+          id="nonOperatingTransferInfo"
+          class="modal-field-full"
+          style="display:none;"
+        >
+
+          <div class="transfer-section">
+
+            <h3 style="margin-top:0;">
+              Transferencia no operativa
+            </h3>
+
+            <div
+              id="nonOperatingDirection"
+              class="nonoperating-direction"
+            ></div>
+
+            <div class="helper-text">
+              Este movimiento será registrado y conciliado, pero quedará marcado con
+              <strong>impacto_operativo = false</strong>. Por lo tanto, no se sumará como ingreso ni gasto operativo.
+            </div>
+
+          </div>
+
+        </div>
+
+
+        <!-- TRANSFERENCIA ENTRE CUENTAS PROPIAS -->
+
+        <div
+          id="transferFields"
+          class="modal-field-full transfer-section"
+          style="display:none;"
+        >
+
+          <h3 style="margin-top:0;">
+            Transferencia entre cuentas propias
+          </h3>
+
+          <div
+            id="transferDirection"
+            class="transfer-direction"
+          ></div>
+
+
+          <div class="modal-grid">
+
+            <div class="modal-field">
+
+              <label>Empresa propietaria</label>
+
+              <input
+                type="text"
+                id="transferCompany"
+                class="locked-field"
+                readonly
+              >
+
+            </div>
+
+
+            <div class="modal-field">
+
+              <label>Cuenta contraparte *</label>
+
+              <select id="transferCounterAccount">
+                <option value="">
+                  Seleccionar cuenta
+                </option>
+              </select>
+
+              <div class="helper-text">
+                Debe ser otra cuenta de la misma empresa y de la misma moneda.
+              </div>
+
+            </div>
+
+          </div>
+
+
+          <div style="margin-top:18px;">
+
+            <strong>
+              Contrapartes bancarias sugeridas
+            </strong>
+
+            <div class="helper-text">
+              Buscamos movimientos con mismo valor y moneda, naturaleza opuesta y fecha cercana.
+            </div>
+
+            <div
+              id="transferCandidatesLoading"
+              style="margin-top:12px; display:none;"
+            >
+              Buscando contrapartes...
+            </div>
+
+            <div
+              id="transferCandidates"
+              class="counterpart-list"
+            ></div>
+
+            <div
+              id="transferNoCandidates"
+              class="warning-message"
+              style="margin-top:12px; display:none;"
+            >
+              No encontramos todavía la otra cara de la transferencia.
+              Puedes seleccionar la cuenta contraparte y guardar el movimiento como pendiente de contraparte.
+            </div>
+
+          </div>
+
+        </div>
+
+
+        <!-- DATOS FIJOS DEL BANCO -->
+
+        <div class="modal-field">
+
+          <label>Fecha</label>
+
+          <input
+            type="text"
+            id="explainDate"
+            class="locked-field"
+            readonly
+          >
+
+        </div>
+
+
+        <div class="modal-field">
+
+          <label>Cuenta bancaria</label>
+
+          <input
+            type="text"
+            id="explainAccount"
+            class="locked-field"
+            readonly
+          >
+
+        </div>
+
+
+        <div class="modal-field">
+
+          <label>Valor</label>
+
+          <input
+            type="text"
+            id="explainValue"
+            class="locked-field"
+            readonly
+          >
+
+        </div>
+
+
+        <div class="modal-field">
+
+          <label>Naturaleza bancaria</label>
+
+          <input
+            type="text"
+            id="explainNature"
+            class="locked-field"
+            readonly
+          >
+
+        </div>
+
+
+        <div class="modal-field modal-field-full">
+
+          <label>Comentario</label>
+
+          <textarea
+            id="explainComment"
+            placeholder="Información adicional, motivo del error, detalle de la operación, etc."
+          ></textarea>
+
+        </div>
+
+      </div>
+
+
+      <div id="explainFormMessage" class="message"></div>
+
+
+      <div class="modal-actions">
+
+        <button
+          type="button"
+          id="cancelExplainButton"
+          class="secondary-button"
+        >
+          Cancelar
+        </button>
+
+        <button
+          type="submit"
+          id="saveExplanationButton"
+          class="primary-button"
+        >
+          Guardar y conciliar
+        </button>
+
+      </div>
+
+    </form>
+
+  </div>
+
+</div>
+
+
+<!-- MODAL NUEVO BENEFICIARIO -->
+
+<div
+  id="newBeneficiaryModalOverlay"
+  class="modal-overlay secondary-modal"
+>
+
+  <div class="modal small-modal">
+
+    <div class="modal-header">
+
+      <div>
+
+        <h2 style="margin:0 0 6px;">
+          Nuevo beneficiario
+        </h2>
+
+        <div style="color:#666;">
+          El sistema verificará primero si ya existe.
+        </div>
+
+      </div>
+
+      <button
+        id="closeNewBeneficiaryButton"
+        class="modal-close"
+        type="button"
+      >
+        ×
+      </button>
+
+    </div>
+
+
+    <form id="newBeneficiaryForm">
+
+      <div class="new-beneficiary-grid">
+
+        <div class="modal-field modal-field-full">
+
+          <label>Nombre *</label>
+
+          <input
+            type="text"
+            id="newBeneficiaryName"
+            required
+            placeholder="Nombre o razón social"
+          >
+
+        </div>
+
+
+        <div class="modal-field">
+
+          <label>Tipo *</label>
+
+          <select
+            id="newBeneficiaryType"
+            required
+          >
+
+            <option value="PROVEEDOR">
+              Proveedor
+            </option>
+
+            <option value="EMPLEADO">
+              Empleado
+            </option>
+
+            <option value="ENTIDAD_GOBIERNO">
+              Entidad de Gobierno
+            </option>
+
+            <option value="BANCO">
+              Banco
+            </option>
+
+            <option value="CLIENTE">
+              Cliente
+            </option>
+
+            <option value="OTRO">
+              Otro
+            </option>
+
+          </select>
+
+        </div>
+
+
+        <div class="modal-field">
+
+          <label>País</label>
+
+          <select id="newBeneficiaryCountry">
+
+            <option value="">
+              Sin especificar
+            </option>
+
+            <option value="CO">
+              Colombia
+            </option>
+
+            <option value="PE">
+              Perú
+            </option>
+
+            <option value="US">
+              Estados Unidos
+            </option>
+
+          </select>
+
+        </div>
+
+
+        <div class="modal-field modal-field-full">
+
+          <label>Identificación</label>
+
+          <input
+            type="text"
+            id="newBeneficiaryIdentification"
+            placeholder="NIT, RUC, documento, EIN, etc."
+          >
+
+          <div class="helper-text">
+            Si existe una identificación, úsala: mejora la detección de duplicados.
+          </div>
+
+        </div>
+
+      </div>
+
+
+      <div id="newBeneficiaryMessage" class="message"></div>
+
+
+      <div class="modal-actions">
+
+        <button
+          type="button"
+          id="cancelNewBeneficiaryButton"
+          class="secondary-button"
+        >
+          Cancelar
+        </button>
+
+        <button
+          type="submit"
+          id="saveNewBeneficiaryButton"
+          class="primary-button"
+        >
+          Verificar y crear
+        </button>
+
+      </div>
+
+    </form>
+
+  </div>
+
+</div>
+
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../../js/supabase-config.js"></script>
+<script src="../../js/auth.js"></script>
+
+
+<script>
+
+  let usuarioActual = null;
+
+  let movimientosBanco = [];
+
+  let movimientoSeleccionado = null;
+
+  let empresasDisponibles = [];
+
+  let beneficiariosDisponibles = [];
+
+  let cuentasDisponibles = [];
+
+  let transferenciaCandidatos = [];
+
+  let transferenciaContraparteSeleccionada = null;
+
+
+  const periodFilter =
+    document.getElementById(
+      "periodFilter"
+    );
+
+
+  const groupFilter =
+    document.getElementById(
+      "groupFilter"
+    );
+
+
+  const statusFilter =
+    document.getElementById(
+      "statusFilter"
+    );
+
+
+  const movementsContainer =
+    document.getElementById(
+      "movementsContainer"
+    );
+
+
+  const generalMessage =
+    document.getElementById(
+      "generalMessage"
+    );
+
+
+  const explainModalOverlay =
+    document.getElementById(
+      "explainModalOverlay"
+    );
+
+
+  const newBeneficiaryModalOverlay =
+    document.getElementById(
+      "newBeneficiaryModalOverlay"
+    );
+
+
+  const explainMovementForm =
+    document.getElementById(
+      "explainMovementForm"
+    );
+
+
+  const explainClassification =
+    document.getElementById(
+      "explainClassification"
+    );
+
+
+  const operationalFields =
+    document.getElementById(
+      "operationalFields"
+    );
+
+
+  const transferFields =
+    document.getElementById(
+      "transferFields"
+    );
+
+
+  const nonOperatingTransferInfo =
+    document.getElementById(
+      "nonOperatingTransferInfo"
+    );
+
+
+  function establecerMesActual() {
+
+    const hoy =
+      new Date();
+
+
+    periodFilter.value =
+      `${
+        hoy.getFullYear()
+      }-${
+        String(
+          hoy.getMonth() + 1
+        ).padStart(
+          2,
+          "0"
+        )
+      }`;
+
+  }
+
+
+  function obtenerRangoMes() {
+
+    if (!periodFilter.value) {
+      return null;
+    }
+
+
+    const [
+      year,
+      month
+    ] =
+      periodFilter
+        .value
+        .split("-");
+
+
+    const inicio =
+      `${year}-${month}-01`;
+
+
+    const siguienteMes =
+      new Date(
+        Number(year),
+        Number(month),
+        1
+      );
+
+
+    const fin =
+      `${
+        siguienteMes.getFullYear()
+      }-${
+        String(
+          siguienteMes.getMonth() + 1
+        ).padStart(
+          2,
+          "0"
+        )
+      }-01`;
+
+
+    return {
+      inicio,
+      fin
+    };
+
+  }
+
+
+  function formatearValor(
+    value,
+    currency
+  ) {
+
+    return (
+      new Intl.NumberFormat(
+        "es-CO",
+        {
+          minimumFractionDigits: 0,
+          maximumFractionDigits: 2
+        }
+      )
+      .format(
+        Number(
+          value ||
+          0
+        )
+      )
+      +
+      " "
+      +
+      currency
+    );
+
+  }
+
+
+  function formatearFecha(
+    fecha
+  ) {
+
+    if (!fecha) {
+      return "—";
+    }
+
+
+    const [
+      year,
+      month,
+      day
+    ] =
+      fecha.split("-");
+
+
+    return (
+      `${day}/${month}/${year}`
+    );
+
+  }
+
+
+  function nombreCategoriaBancaria(
+    categoria
+  ) {
+
+    if (
+      categoria ===
+      "COSTOS_BANCARIOS"
+    ) {
+      return "Gasto Bancario";
+    }
+
+
+    if (
+      categoria ===
+      "GMF"
+    ) {
+      return "GMF";
+    }
+
+
+    if (
+      categoria ===
+      "RENDIMIENTOS"
+    ) {
+      return "Rendimientos";
+    }
+
+
+    return categoria || "";
+
+  }
+
+
+  async function inicializarPagina() {
+
+    try {
+
+      usuarioActual =
+        await getAuthorizedUser();
+
+
+      if (!usuarioActual) {
+
+        window.location.href =
+          "../../login.html";
+
+        return;
+
+      }
+
+
+      establecerMesActual();
+
+
+      await cargarCatalogos();
+
+      await cargarMovimientos();
+
+
+    } catch (error) {
+
+      console.error(
+        error
+      );
+
+
+      generalMessage.innerHTML = `
+
+        <div class="error-message">
+
+          Error inicializando la bandeja:
+
+          ${
+            error.message ||
+            error
+          }
+
+        </div>
+
+      `;
+
+    }
+
+  }
+
+
+  async function cargarCatalogos() {
+
+    const [
+      empresasResponse,
+      beneficiariosResponse,
+      cuentasResponse
+    ] =
+      await Promise.all([
+
+        supabaseClient
+          .from(
+            "empresas"
+          )
+          .select(
+            "id, nombre_corto"
+          )
+          .eq(
+            "activo",
+            true
+          )
+          .order(
+            "nombre_corto"
+          ),
+
+        supabaseClient
+          .from(
+            "beneficiarios"
+          )
+          .select(
+            "id, nombre, tipo, identificacion, pais"
+          )
+          .eq(
+            "activo",
+            true
+          )
+          .order(
+            "nombre"
+          ),
+
+        supabaseClient
+          .from(
+            "cuentas_bancarias"
+          )
+          .select(`
+            id,
+            empresa_id,
+            banco,
+            nombre_cuenta,
+            numero_mask,
+            moneda,
+            activo,
+
+            empresas (
+              id,
+              nombre_corto
+            )
+          `)
+          .eq(
+            "activo",
+            true
+          )
+          .order(
+            "banco"
+          )
+
+      ]);
+
+
+    if (
+      empresasResponse.error
+    ) {
+      throw empresasResponse.error;
+    }
+
+
+    if (
+      beneficiariosResponse.error
+    ) {
+      throw beneficiariosResponse.error;
+    }
+
+
+    if (
+      cuentasResponse.error
+    ) {
+      throw cuentasResponse.error;
+    }
+
+
+    empresasDisponibles =
+      empresasResponse.data ||
+      [];
+
+
+    beneficiariosDisponibles =
+      beneficiariosResponse.data ||
+      [];
+
+
+    cuentasDisponibles =
+      cuentasResponse.data ||
+      [];
+
+
+    llenarCatalogosModal();
+
+  }
+
+
+  function llenarCatalogosModal() {
+
+    const companySelect =
+      document.getElementById(
+        "explainCompany"
+      );
+
+
+    const beneficiarySelect =
+      document.getElementById(
+        "explainBeneficiary"
+      );
+
+
+    const empresaActual =
+      companySelect.value;
+
+
+    const beneficiarioActual =
+      beneficiarySelect.value;
+
+
+    companySelect.innerHTML = `
+      <option value="">
+        Seleccionar empresa
+      </option>
+    `;
+
+
+    beneficiarySelect.innerHTML = `
+      <option value="">
+        Sin beneficiario
+      </option>
+    `;
+
+
+    empresasDisponibles.forEach(
+      empresa => {
+
+        const option =
+          document.createElement(
+            "option"
+          );
+
+
+        option.value =
+          empresa.id;
+
+
+        option.textContent =
+          empresa.nombre_corto;
+
+
+        companySelect.appendChild(
+          option
+        );
+
+      }
+    );
+
+
+    beneficiariosDisponibles.forEach(
+      beneficiario => {
+
+        const option =
+          document.createElement(
+            "option"
+          );
+
+
+        option.value =
+          beneficiario.id;
+
+
+        option.textContent =
+          beneficiario.nombre;
+
+
+        beneficiarySelect.appendChild(
+          option
+        );
+
+      }
+    );
+
+
+    if (
+      empresaActual
+    ) {
+
+      companySelect.value =
+        empresaActual;
+
+    }
+
+
+    if (
+      beneficiarioActual
+    ) {
+
+      beneficiarySelect.value =
+        beneficiarioActual;
+
+    }
+
+  }
+
+
+  async function recargarBeneficiarios(
+    seleccionarId = null
+  ) {
+
+    const {
+      data,
+      error
+    } =
+      await supabaseClient
+        .from(
+          "beneficiarios"
+        )
+        .select(
+          "id, nombre, tipo, identificacion, pais"
+        )
+        .eq(
+          "activo",
+          true
+        )
+        .order(
+          "nombre"
+        );
+
+
+    if (error) {
+      throw error;
+    }
+
+
+    beneficiariosDisponibles =
+      data ||
+      [];
+
+
+    llenarCatalogosModal();
+
+
+    if (
+      seleccionarId
+    ) {
+
+      document
+        .getElementById(
+          "explainBeneficiary"
+        )
+        .value =
+        seleccionarId;
+
+    }
+
+  }
+
+
+  async function cargarMovimientos() {
+
+    const rango =
+      obtenerRangoMes();
+
+
+    if (!rango) {
+      return;
+    }
+
+
+    document
+      .getElementById(
+        "loadingState"
+      )
+      .style.display =
+      "block";
+
+
+    document
+      .getElementById(
+        "emptyState"
+      )
+      .style.display =
+      "none";
+
+
+    movementsContainer.innerHTML =
+      "";
+
+
+    let query =
+      supabaseClient
+        .from(
+          "movimientos_bancarios"
+        )
+        .select(`
+          id,
+          numero,
+          fecha_movimiento,
+          fecha_valor,
+          descripcion_original,
+          referencia,
+          naturaleza,
+          valor,
+          moneda,
+          saldo,
+          estado_conciliacion,
+          categoria_bancaria,
+          explicacion_automatica,
+
+          cuentas_bancarias (
+            id,
+            empresa_id,
+            banco,
+            nombre_cuenta,
+            numero_mask,
+            moneda,
+            grupo_conciliacion,
+
+            empresas (
+              id,
+              nombre_corto
+            )
+          ),
+
+          conciliaciones (
+            id,
+            estado,
+            metodo,
+            confianza,
+            criterio,
+            comentario,
+            confirmada_at,
+
+            movimientos_tesoreria (
+              id,
+              tipo_movimiento,
+              origen,
+              clasificacion_operativa,
+              impacto_operativo,
+              concepto,
+              fecha_causacion,
+              fecha_pago,
+              valor_original,
+              moneda,
+              estado,
+
+              empresas (
+                nombre_corto
+              ),
+
+              beneficiarios (
+                nombre
+              ),
+
+              cuentas_bancarias (
+                banco,
+                nombre_cuenta,
+                numero_mask
+              )
+            )
+          )
+        `)
+        .gte(
+          "fecha_movimiento",
+          rango.inicio
+        )
+        .lt(
+          "fecha_movimiento",
+          rango.fin
+        )
+        .order(
+          "fecha_movimiento",
+          {
+            ascending: true
+          }
+        )
+        .order(
+          "numero",
+          {
+            ascending: true
+          }
+        );
+
+
+    if (
+      statusFilter.value
+    ) {
+
+      query =
+        query.eq(
+          "estado_conciliacion",
+          statusFilter.value
+        );
+
+    }
+
+
+    const {
+      data,
+      error
+    } =
+      await query;
+
+
+    if (error) {
+      throw error;
+    }
+
+
+    movimientosBanco =
+      (
+        data ||
+        []
+      )
+      .filter(
+        movimiento =>
+          movimiento
+            .cuentas_bancarias
+            ?.grupo_conciliacion ===
+          groupFilter.value
+      );
+
+
+    document
+      .getElementById(
+        "loadingState"
+      )
+      .style.display =
+      "none";
+
+
+    await cargarResumenCompleto();
+
+
+    renderizarMovimientos();
+
+  }
+
+
+  async function cargarResumenCompleto() {
+
+    const rango =
+      obtenerRangoMes();
+
+
+    const {
+      data,
+      error
+    } =
+      await supabaseClient
+        .from(
+          "movimientos_bancarios"
+        )
+        .select(`
+          id,
+          estado_conciliacion,
+
+          cuentas_bancarias (
+            grupo_conciliacion
+          )
+        `)
+        .gte(
+          "fecha_movimiento",
+          rango.inicio
+        )
+        .lt(
+          "fecha_movimiento",
+          rango.fin
+        );
+
+
+    if (error) {
+      throw error;
+    }
+
+
+    const todos =
+      (
+        data ||
+        []
+      )
+      .filter(
+        movimiento =>
+          movimiento
+            .cuentas_bancarias
+            ?.grupo_conciliacion ===
+          groupFilter.value
+      );
+
+
+    const total =
+      todos.length;
+
+
+    const conciliados =
+      todos.filter(
+        item =>
+          item
+            .estado_conciliacion ===
+          "CONCILIADO"
+      ).length;
+
+
+    const pendientes =
+      total -
+      conciliados;
+
+
+    const cobertura =
+      total === 0
+        ?
+        100
+        :
+        (
+          conciliados /
+          total
+        ) *
+        100;
+
+
+    document
+      .getElementById(
+        "totalBankMovements"
+      )
+      .textContent =
+      total;
+
+
+    document
+      .getElementById(
+        "reconciledCount"
+      )
+      .textContent =
+      conciliados;
+
+
+    document
+      .getElementById(
+        "pendingCount"
+      )
+      .textContent =
+      pendientes;
+
+
+    document
+      .getElementById(
+        "coveragePercent"
+      )
+      .textContent =
+      `${
+        cobertura.toFixed(
+          1
+        )
+      }%`;
+
+
+    document
+      .getElementById(
+        "coverageProgress"
+      )
+      .style.width =
+      `${
+        Math.min(
+          cobertura,
+          100
+        )
+      }%`;
+
+
+    const periodStatus =
+      document.getElementById(
+        "periodStatus"
+      );
+
+
+    if (
+      pendientes === 0 &&
+      total > 0
+    ) {
+
+      periodStatus.className =
+        "period-status period-closed";
+
+
+      periodStatus.textContent =
+        "✓ Periodo completamente explicado. Cobertura de conciliación: 100%.";
+
+    }
+
+    else {
+
+      periodStatus.className =
+        "period-status period-open";
+
+
+      periodStatus.textContent =
+        `⚠ El periodo tiene ${
+          pendientes
+        } movimiento(s) bancario(s) pendiente(s) de explicación.`;
+
+    }
+
+  }
+
+
+  function renderizarMovimientos() {
+
+    movementsContainer.innerHTML =
+      "";
+
+
+    document
+      .getElementById(
+        "emptyState"
+      )
+      .style.display =
+      "none";
+
+
+    if (
+      movimientosBanco.length ===
+      0
+    ) {
+
+      document
+        .getElementById(
+          "emptyState"
+        )
+        .style.display =
+        "block";
+
+
+      return;
+
+    }
+
+
+    movimientosBanco.forEach(
+      movimiento => {
+
+        const card =
+          document.createElement(
+            "div"
+          );
+
+
+        card.className =
+          "movement-card";
+
+
+        const cuenta =
+          movimiento
+            .cuentas_bancarias;
+
+
+        const conciliacionConfirmada =
+          (
+            movimiento
+              .conciliaciones ||
+            []
+          )
+          .find(
+            item =>
+              item.estado ===
+              "CONFIRMADA"
+          );
+
+
+        const propuestas =
+          (
+            movimiento
+              .conciliaciones ||
+            []
+          )
+          .filter(
+            item =>
+              item.estado ===
+              "PROPUESTA"
+          )
+          .sort(
+            (
+              a,
+              b
+            ) =>
+              Number(
+                b.confianza ||
+                0
+              )
+              -
+              Number(
+                a.confianza ||
+                0
+              )
+          );
+
+
+        const estadoBadge =
+          movimiento
+            .estado_conciliacion ===
+            "CONCILIADO"
+            ?
+            `
+              <span class="badge badge-reconciled">
+                CONCILIADO
+              </span>
+            `
+            :
+            `
+              <span class="badge badge-pending">
+                PENDIENTE
+              </span>
+            `;
+
+
+        const categoriaBadge =
+          movimiento
+            .categoria_bancaria
+            ?
+            `
+              <span class="badge badge-bank-rule">
+                ${
+                  nombreCategoriaBancaria(
+                    movimiento
+                      .categoria_bancaria
+                  )
+                }
+              </span>
+            `
+            :
+            "";
+
+
+        const nonOperatingBadge =
+          conciliacionConfirmada
+            ?.movimientos_tesoreria
+            ?.impacto_operativo ===
+            false
+            ?
+            `
+              <span class="badge badge-nonoperating">
+                NO OPERATIVO
+              </span>
+            `
+            :
+            "";
+
+
+        card.innerHTML = `
+
+          <div class="movement-header">
+
+            <div class="bank-info">
+
+              <div class="bank-title">
+
+                ${
+                  cuenta?.banco ||
+                  ""
+                }
+
+                ·
+
+                ${
+                  cuenta?.moneda ||
+                  ""
+                }
+
+              </div>
+
+
+              <div class="bank-meta">
+
+                ${
+                  cuenta
+                    ?.empresas
+                    ?.nombre_corto ||
+                  ""
+                }
+
+                ·
+
+                ${
+                  cuenta
+                    ?.numero_mask ||
+                  "Sin número"
+                }
+
+                <br>
+
+                Fecha:
+                ${
+                  formatearFecha(
+                    movimiento
+                      .fecha_movimiento
+                  )
+                }
+
+                ·
+
+                ${
+                  movimiento
+                    .naturaleza
+                }
+
+                ${
+                  movimiento
+                    .referencia
+                    ?
+                    `
+                      <br>
+                      Ref:
+                      ${
+                        movimiento
+                          .referencia
+                      }
+                    `
+                    :
+                    ""
+                }
+
+              </div>
+
+
+              <div class="bank-description">
+
+                ${
+                  movimiento
+                    .descripcion_original ||
+                  "Sin descripción bancaria"
+                }
+
+              </div>
+
+              ${estadoBadge}
+
+              ${categoriaBadge}
+
+              ${nonOperatingBadge}
+
+            </div>
+
+
+            <div class="bank-value">
+
+              ${
+                formatearValor(
+                  movimiento.valor,
+                  movimiento.moneda
+                )
+              }
+
+            </div>
+
+          </div>
+
+        `;
+
+
+        if (
+          conciliacionConfirmada
+        ) {
+
+          renderizarConciliado(
+            card,
+            movimiento,
+            conciliacionConfirmada
+          );
+
+        }
+
+        else if (
+          propuestas.length > 0
+        ) {
+
+          renderizarPropuestas(
+            card,
+            movimiento,
+            propuestas
+          );
+
+        }
+
+        else {
+
+          renderizarSinPropuesta(
+            card,
+            movimiento
+          );
+
+        }
+
+
+        movementsContainer
+          .appendChild(
+            card
+          );
+
+      }
+    );
+
+  }
+
+
+  function renderizarConciliado(
+    card,
+    movimientoBanco,
+    conciliacion
+  ) {
+
+    const movimiento =
+      conciliacion
+        .movimientos_tesoreria;
+
+
+    const div =
+      document.createElement(
+        "div"
+      );
+
+
+    div.className =
+      "reconciled-info";
+
+
+    const tipoResolucion =
+      conciliacion
+        .criterio
+        ?.tipo_resolucion;
+
+
+    if (
+      tipoResolucion ===
+      "TRANSFERENCIA_INTERNA"
+    ) {
+
+      const estadoTransferencia =
+        conciliacion
+          .criterio
+          ?.estado_transferencia;
+
+
+      div.innerHTML = `
+
+        <strong>
+          Transferencia entre cuentas propias
+        </strong>
+
+        <br><br>
+
+        ${
+          estadoTransferencia ===
+          "EMPAREJADA"
+          ?
+          "✓ Salida e ingreso bancario emparejados."
+          :
+          "⚠ Transferencia identificada; la contraparte bancaria todavía no estaba disponible al momento de explicarla."
+        }
+
+        ${
+          conciliacion.comentario
+          ?
+          `
+            <br><br>
+            ${conciliacion.comentario}
+          `
+          :
+          ""
+        }
+
+      `;
+
+    }
+
+    else if (
+      movimiento
+        ?.clasificacion_operativa ===
+      "TRANSFERENCIA_NO_OPERATIVA"
+    ) {
+
+      const direccion =
+        conciliacion
+          .criterio
+          ?.direccion_transferencia
+        ||
+        (
+          movimientoBanco
+            .naturaleza ===
+          "CREDITO"
+          ?
+          "INGRESO"
+          :
+          "SALIDA"
+        );
+
+
+      div.innerHTML = `
+
+        <strong>
+          Transferencia no operativa
+        </strong>
+
+        <br><br>
+
+        Dirección:
+        <strong>
+          ${
+            direccion ===
+            "INGRESO"
+            ?
+            "Ingreso de recursos"
+            :
+            "Salida de recursos"
+          }
+        </strong>
+
+        <br>
+
+        Contraparte:
+        ${
+          movimiento
+            .beneficiarios
+            ?.nombre ||
+          "Sin contraparte"
+        }
+
+        <br>
+
+        Concepto:
+        ${
+          movimiento.concepto ||
+          ""
+        }
+
+        <br>
+
+        Impacto operativo:
+        <strong>
+          NO
+        </strong>
+
+        <br><br>
+
+        Este movimiento se contabiliza y afecta saldos,
+        pero no debe sumarse como ingreso o gasto operativo.
+
+        ${
+          conciliacion.comentario
+          ?
+          `
+            <br><br>
+            ${conciliacion.comentario}
+          `
+          :
+          ""
+        }
+
+      `;
+
+    }
+
+    else if (
+      !movimiento &&
+      movimientoBanco
+        .categoria_bancaria
+    ) {
+
+      div.innerHTML = `
+
+        <strong>
+          Explicado por clasificación bancaria
+        </strong>
+
+        <br><br>
+
+        Categoría:
+        <strong>
+          ${
+            nombreCategoriaBancaria(
+              movimientoBanco
+                .categoria_bancaria
+            )
+          }
+        </strong>
+
+        <br>
+
+        ${
+          conciliacion.comentario ||
+          movimientoBanco
+            .explicacion_automatica ||
+          ""
+        }
+
+      `;
+
+    }
+
+    else if (
+      !movimiento
+    ) {
+
+      div.innerHTML = `
+
+        <strong>
+          Movimiento explicado y conciliado.
+        </strong>
+
+      `;
+
+    }
+
+    else {
+
+      div.innerHTML = `
+
+        <strong>
+          Contraparte confirmada
+        </strong>
+
+        <br><br>
+
+        ${
+          movimiento
+            .beneficiarios
+            ?.nombre ||
+          "Sin beneficiario"
+        }
+
+        ·
+
+        ${
+          movimiento.concepto ||
+          ""
+        }
+
+        <br>
+
+        ${
+          formatearFecha(
+            movimiento.fecha_pago ||
+            movimiento.fecha_causacion
+          )
+        }
+
+        ·
+
+        ${
+          formatearValor(
+            movimiento.valor_original,
+            movimiento.moneda
+          )
+        }
+
+        <br>
+
+        Tipo:
+        ${
+          movimiento.tipo_movimiento
+        }
+
+        ·
+
+        Origen:
+        ${
+          movimiento.origen
+        }
+
+      `;
+
+    }
+
+
+    card.appendChild(
+      div
+    );
+
+  }
+
+
+  function renderizarPropuestas(
+    card,
+    movimientoBanco,
+    propuestas
+  ) {
+
+    const container =
+      document.createElement(
+        "div"
+      );
+
+
+    container.className =
+      "proposals";
+
+
+    const title =
+      document.createElement(
+        "strong"
+      );
+
+
+    title.textContent =
+      "Propuestas encontradas";
+
+
+    container.appendChild(
+      title
+    );
+
+
+    propuestas.forEach(
+      propuesta => {
+
+        const movimiento =
+          propuesta
+            .movimientos_tesoreria;
+
+
+        if (!movimiento) {
+          return;
+        }
+
+
+        const porcentaje =
+          Number(
+            propuesta.confianza ||
+            0
+          )
+          *
+          100;
+
+
+        const row =
+          document.createElement(
+            "div"
+          );
+
+
+        row.className =
+          "proposal";
+
+
+        row.innerHTML = `
+
+          <div>
+
+            <div class="proposal-title">
+
+              ${
+                movimiento
+                  .beneficiarios
+                  ?.nombre ||
+                "Sin beneficiario"
+              }
+
+              ·
+
+              ${
+                movimiento.concepto ||
+                ""
+              }
+
+            </div>
+
+
+            <div class="proposal-meta">
+
+              Empresa:
+              ${
+                movimiento
+                  .empresas
+                  ?.nombre_corto ||
+                ""
+              }
+
+              <br>
+
+              Fecha:
+              ${
+                formatearFecha(
+                  movimiento.fecha_pago ||
+                  movimiento.fecha_causacion
+                )
+              }
+
+              ·
+
+              ${
+                formatearValor(
+                  movimiento.valor_original,
+                  movimiento.moneda
+                )
+              }
+
+              <br>
+
+              Tipo:
+              ${
+                movimiento.tipo_movimiento
+              }
+
+              ·
+
+              Origen:
+              ${
+                movimiento.origen
+              }
+
+            </div>
+
+          </div>
+
+
+          <div class="confidence">
+
+            <div class="confidence-number">
+
+              ${
+                porcentaje.toFixed(
+                  0
+                )
+              }%
+
+            </div>
+
+            <div class="confidence-label">
+              Confianza
+            </div>
+
+          </div>
+
+
+          <div class="proposal-actions">
+
+            <button
+              class="primary-button confirm-button"
+              data-id="${propuesta.id}"
+            >
+              Confirmar
+            </button>
+
+
+            <button
+              class="secondary-button reject-button"
+              data-id="${propuesta.id}"
+            >
+              No corresponde
+            </button>
+
+          </div>
+
+        `;
+
+
+        container.appendChild(
+          row
+        );
+
+      }
+    );
+
+
+    const explainArea =
+      document.createElement(
+        "div"
+      );
+
+
+    explainArea.style.marginTop =
+      "15px";
+
+
+    explainArea.innerHTML = `
+
+      <button
+        class="secondary-button explain-button"
+        data-bank-id="${movimientoBanco.id}"
+      >
+        Ninguna corresponde / Explicar movimiento
+      </button>
+
+    `;
+
+
+    container.appendChild(
+      explainArea
+    );
+
+
+    card.appendChild(
+      container
+    );
+
+
+    conectarEventosPropuestas(
+      container
+    );
+
+  }
+
+
+  function renderizarSinPropuesta(
+    card,
+    movimiento
+  ) {
+
+    const div =
+      document.createElement(
+        "div"
+      );
+
+
+    div.className =
+      "no-proposal";
+
+
+    div.innerHTML = `
+
+      <strong>
+        Sin contraparte encontrada
+      </strong>
+
+      Este movimiento bancario todavía necesita una explicación registrada en el sistema.
+
+      <br><br>
+
+      <button
+        class="primary-button explain-button"
+        data-bank-id="${movimiento.id}"
+      >
+        Explicar movimiento
+      </button>
+
+    `;
+
+
+    card.appendChild(
+      div
+    );
+
+
+    conectarBotonesExplicar(
+      div
+    );
+
+  }
+
+
+  function conectarEventosPropuestas(
+    container
+  ) {
+
+    container
+      .querySelectorAll(
+        ".confirm-button"
+      )
+      .forEach(
+        button => {
+
+          button.addEventListener(
+            "click",
+            async () => {
+
+              await confirmarPropuesta(
+                button.dataset.id
+              );
+
+            }
+          );
+
+        }
+      );
+
+
+    container
+      .querySelectorAll(
+        ".reject-button"
+      )
+      .forEach(
+        button => {
+
+          button.addEventListener(
+            "click",
+            async () => {
+
+              await rechazarPropuesta(
+                button.dataset.id
+              );
+
+            }
+          );
+
+        }
+      );
+
+
+    conectarBotonesExplicar(
+      container
+    );
+
+  }
+
+
+  function conectarBotonesExplicar(
+    container
+  ) {
+
+    container
+      .querySelectorAll(
+        ".explain-button"
+      )
+      .forEach(
+        button => {
+
+          button.addEventListener(
+            "click",
+            () => {
+
+              abrirModalExplicacion(
+                button
+                  .dataset
+                  .bankId
+              );
+
+            }
+          );
+
+        }
+      );
+
+  }
+
+
+  function abrirModalExplicacion(
+    bankId
+  ) {
+
+    movimientoSeleccionado =
+      movimientosBanco.find(
+        item =>
+          item.id ===
+          bankId
+      );
+
+
+    if (
+      !movimientoSeleccionado
+    ) {
+
+      alert(
+        "No se encontró el movimiento bancario."
+      );
+
+      return;
+
+    }
+
+
+    transferenciaCandidatos =
+      [];
+
+
+    transferenciaContraparteSeleccionada =
+      null;
+
+
+    explainMovementForm.reset();
+
+
+    operationalFields.style.display =
+      "none";
+
+
+    transferFields.style.display =
+      "none";
+
+
+    nonOperatingTransferInfo.style.display =
+      "none";
+
+
+    document
+      .getElementById(
+        "explainFormMessage"
+      )
+      .innerHTML =
+      "";
+
+
+    const cuenta =
+      movimientoSeleccionado
+        .cuentas_bancarias;
+
+
+    document
+      .getElementById(
+        "modalBankSummary"
+      )
+      .innerHTML = `
+
+        <strong>
+          ${
+            cuenta?.banco ||
+            ""
+          }
+          ·
+          ${
+            cuenta?.numero_mask ||
+            ""
+          }
+        </strong>
+
+        <br>
+
+        ${
+          movimientoSeleccionado
+            .descripcion_original ||
+          ""
+        }
+
+        <br>
+
+        ${
+          formatearFecha(
+            movimientoSeleccionado
+              .fecha_movimiento
+          )
+        }
+
+        ·
+
+        ${
+          formatearValor(
+            movimientoSeleccionado.valor,
+            movimientoSeleccionado.moneda
+          )
+        }
+
+        ·
+
+        ${
+          movimientoSeleccionado
+            .naturaleza
+        }
+
+      `;
+
+
+    document
+      .getElementById(
+        "explainDate"
+      )
+      .value =
+      formatearFecha(
+        movimientoSeleccionado
+          .fecha_movimiento
+      );
+
+
+    document
+      .getElementById(
+        "explainAccount"
+      )
+      .value =
+      `${
+        cuenta?.banco ||
+        ""
+      } · ${
+        cuenta?.numero_mask ||
+        ""
+      }`;
+
+
+    document
+      .getElementById(
+        "explainValue"
+      )
+      .value =
+      formatearValor(
+        movimientoSeleccionado.valor,
+        movimientoSeleccionado.moneda
+      );
+
+
+    document
+      .getElementById(
+        "explainNature"
+      )
+      .value =
+      movimientoSeleccionado
+        .naturaleza;
+
+
+    const suggestedCompanyId =
+      cuenta
+        ?.empresas
+        ?.id;
+
+
+    if (
+      suggestedCompanyId
+    ) {
+
+      document
+        .getElementById(
+          "explainCompany"
+        )
+        .value =
+        suggestedCompanyId;
+
+    }
+
+
+    explainModalOverlay.style.display =
+      "flex";
+
+  }
+
+
+  function cerrarModalExplicacion() {
+
+    explainModalOverlay.style.display =
+      "none";
+
+
+    movimientoSeleccionado =
+      null;
+
+
+    transferenciaCandidatos =
+      [];
+
+
+    transferenciaContraparteSeleccionada =
+      null;
+
+
+    explainMovementForm.reset();
+
+
+    operationalFields.style.display =
+      "none";
+
+
+    transferFields.style.display =
+      "none";
+
+
+    nonOperatingTransferInfo.style.display =
+      "none";
+
+  }
+
+
+  explainClassification
+    .addEventListener(
+      "change",
+      async () => {
+
+        const clasificacion =
+          explainClassification.value;
+
+
+        const esClasificacionBancaria =
+          [
+            "GASTO_BANCARIO",
+            "GMF",
+            "RENDIMIENTOS"
+          ]
+          .includes(
+            clasificacion
+          );
+
+
+        const esTransferenciaInterna =
+          clasificacion ===
+          "TRANSFERENCIA";
+
+
+        const esTransferenciaNoOperativa =
+          clasificacion ===
+          "TRANSFERENCIA_NO_OPERATIVA";
+
+
+        operationalFields.style.display =
+          (
+            clasificacion &&
+            !esClasificacionBancaria &&
+            !esTransferenciaInterna
+          )
+          ?
+          "block"
+          :
+          "none";
+
+
+        transferFields.style.display =
+          esTransferenciaInterna
+          ?
+          "block"
+          :
+          "none";
+
+
+        nonOperatingTransferInfo.style.display =
+          esTransferenciaNoOperativa
+          ?
+          "block"
+          :
+          "none";
+
+
+        if (
+          esTransferenciaInterna
+        ) {
+
+          await prepararTransferenciaInterna();
+
+        }
+
+
+        if (
+          esTransferenciaNoOperativa
+        ) {
+
+          prepararTransferenciaNoOperativa();
+
+        }
+
+
+        actualizarPlaceholderConcepto(
+          clasificacion
+        );
+
+      }
+    );
+
+
+  function prepararTransferenciaNoOperativa() {
+
+    if (
+      !movimientoSeleccionado
+    ) {
+      return;
+    }
+
+
+    const esIngreso =
+      movimientoSeleccionado
+        .naturaleza ===
+      "CREDITO";
+
+
+    document
+      .getElementById(
+        "nonOperatingDirection"
+      )
+      .textContent =
+      esIngreso
+      ?
+      "INGRESO NO OPERATIVO: los recursos entraron a la compañía, pero no constituyen un ingreso operativo."
+      :
+      "SALIDA NO OPERATIVA: los recursos salieron de la compañía, pero no constituyen un gasto operativo.";
+
+
+    const suggestedCompanyId =
+      movimientoSeleccionado
+        .cuentas_bancarias
+        ?.empresas
+        ?.id;
+
+
+    if (
+      suggestedCompanyId
+    ) {
+
+      document
+        .getElementById(
+          "explainCompany"
+        )
+        .value =
+        suggestedCompanyId;
+
+    }
+
+  }
+
+
+  function actualizarPlaceholderConcepto(
+    clasificacion
+  ) {
+
+    const input =
+      document.getElementById(
+        "explainConcept"
+      );
+
+
+    if (
+      clasificacion ===
+      "TRANSFERENCIA_NO_OPERATIVA"
+    ) {
+
+      input.placeholder =
+        movimientoSeleccionado
+          ?.naturaleza ===
+        "CREDITO"
+        ?
+        "Ej. Préstamo temporal recibido / fondeo extraordinario"
+        :
+        "Ej. Devolución de préstamo / entrega temporal de recursos";
+
+      return;
+
+    }
+
+
+    if (
+      clasificacion ===
+      "ERROR_HUMANO"
+    ) {
+
+      input.placeholder =
+        "Ej. Transferencia realizada por error al proveedor X";
+
+      return;
+
+    }
+
+
+    if (
+      clasificacion ===
+      "INGRESO"
+    ) {
+
+      input.placeholder =
+        "Ej. Ingreso por operación / devolución operativa";
+
+      return;
+
+    }
+
+
+    if (
+      clasificacion ===
+      "PAGO_EGRESO"
+    ) {
+
+      input.placeholder =
+        "Ej. Pago proveedor / honorarios / servicio";
+
+      return;
+
+    }
+
+
+    input.placeholder =
+      "Describe qué ocurrió";
+
+  }
+
+
+  async function prepararTransferenciaInterna() {
+
+    if (
+      !movimientoSeleccionado
+    ) {
+      return;
+    }
+
+
+    const cuentaActual =
+      movimientoSeleccionado
+        .cuentas_bancarias;
+
+
+    const empresaActual =
+      cuentaActual
+        ?.empresas;
+
+
+    document
+      .getElementById(
+        "transferCompany"
+      )
+      .value =
+      empresaActual
+        ?.nombre_corto ||
+      "";
+
+
+    const direccion =
+      movimientoSeleccionado
+        .naturaleza ===
+        "DEBITO"
+        ?
+        "SALIDA: el dinero salió de esta cuenta hacia otra cuenta propia."
+        :
+        "ENTRADA: el dinero ingresó a esta cuenta desde otra cuenta propia.";
+
+
+    document
+      .getElementById(
+        "transferDirection"
+      )
+      .textContent =
+      direccion;
+
+
+    llenarCuentasContraparte();
+
+
+    await buscarContrapartesTransferencia();
+
+  }
+
+
+  function llenarCuentasContraparte() {
+
+    const select =
+      document.getElementById(
+        "transferCounterAccount"
+      );
+
+
+    select.innerHTML = `
+      <option value="">
+        Seleccionar cuenta
+      </option>
+    `;
+
+
+    if (
+      !movimientoSeleccionado
+    ) {
+      return;
+    }
+
+
+    const cuentaActual =
+      movimientoSeleccionado
+        .cuentas_bancarias;
+
+
+    const candidatas =
+      cuentasDisponibles
+        .filter(
+          cuenta =>
+            cuenta.id !==
+            cuentaActual.id
+            &&
+            cuenta.empresa_id ===
+            cuentaActual.empresa_id
+            &&
+            cuenta.moneda ===
+            movimientoSeleccionado.moneda
+        );
+
+
+    candidatas.forEach(
+      cuenta => {
+
+        const option =
+          document.createElement(
+            "option"
+          );
+
+
+        option.value =
+          cuenta.id;
+
+
+        option.textContent =
+          `${
+            cuenta.banco
+          } · ${
+            cuenta.nombre_cuenta ||
+            ""
+          } · ${
+            cuenta.numero_mask ||
+            "Sin número"
+          }`;
+
+
+        select.appendChild(
+          option
+        );
+
+      }
+    );
+
+  }
+
+
+  async function buscarContrapartesTransferencia() {
+
+    if (
+      !movimientoSeleccionado
+    ) {
+      return;
+    }
+
+
+    const loading =
+      document.getElementById(
+        "transferCandidatesLoading"
+      );
+
+
+    const container =
+      document.getElementById(
+        "transferCandidates"
+      );
+
+
+    const empty =
+      document.getElementById(
+        "transferNoCandidates"
+      );
+
+
+    loading.style.display =
+      "block";
+
+
+    container.innerHTML =
+      "";
+
+
+    empty.style.display =
+      "none";
+
+
+    transferenciaCandidatos =
+      [];
+
+
+    transferenciaContraparteSeleccionada =
+      null;
+
+
+    try {
+
+      const {
+        data,
+        error
+      } =
+        await supabaseClient
+          .rpc(
+            "buscar_contrapartes_transferencia",
+            {
+              p_movimiento_bancario_id:
+                movimientoSeleccionado.id
+            }
+          );
+
+
+      if (
+        error
+      ) {
+        throw error;
+      }
+
+
+      transferenciaCandidatos =
+        data ||
+        [];
+
+
+      if (
+        transferenciaCandidatos.length ===
+        0
+      ) {
+
+        empty.style.display =
+          "block";
+
+
+        return;
+
+      }
+
+
+      transferenciaCandidatos.forEach(
+        candidato => {
+
+          const div =
+            document.createElement(
+              "div"
+            );
+
+
+          div.className =
+            "counterpart-item";
+
+
+          div.dataset.id =
+            candidato.movimiento_bancario_id;
+
+
+          div.innerHTML = `
+
+            <div class="counterpart-row">
+
+              <div>
+
+                <strong>
+                  ${
+                    candidato.banco
+                  }
+                  ·
+                  ${
+                    candidato.numero_mask ||
+                    ""
+                  }
+                </strong>
+
+                <div class="counterpart-meta">
+
+                  ${
+                    formatearFecha(
+                      candidato.fecha_movimiento
+                    )
+                  }
+
+                  ·
+
+                  ${
+                    candidato.naturaleza
+                  }
+
+                  ·
+
+                  ${
+                    formatearValor(
+                      candidato.valor,
+                      candidato.moneda
+                    )
+                  }
+
+                  <br>
+
+                  ${
+                    candidato.descripcion_original ||
+                    ""
+                  }
+
+                  <br>
+
+                  Diferencia:
+                  ${
+                    candidato.dias_diferencia
+                  }
+                  día(s)
+
+                </div>
+
+              </div>
+
+
+              <button
+                type="button"
+                class="secondary-button select-transfer-candidate"
+                data-id="${candidato.movimiento_bancario_id}"
+                data-account-id="${candidato.cuenta_bancaria_id}"
+              >
+                Usar contraparte
+              </button>
+
+            </div>
+
+          `;
+
+
+          container.appendChild(
+            div
+          );
+
+        }
+      );
+
+
+      container
+        .querySelectorAll(
+          ".select-transfer-candidate"
+        )
+        .forEach(
+          button => {
+
+            button.addEventListener(
+              "click",
+              () => {
+
+                seleccionarContraparteTransferencia(
+                  button.dataset.id,
+                  button.dataset.accountId
+                );
+
+              }
+            );
+
+          }
+        );
+
+
+    } catch (error) {
+
+      console.error(
+        error
+      );
+
+
+      empty.style.display =
+        "block";
+
+
+      empty.textContent =
+        "No fue posible buscar contrapartes automáticamente. Puedes seleccionar manualmente la cuenta contraparte.";
+
+
+    } finally {
+
+      loading.style.display =
+        "none";
+
+    }
+
+  }
+
+
+  function seleccionarContraparteTransferencia(
+    movimientoId,
+    cuentaId
+  ) {
+
+    transferenciaContraparteSeleccionada =
+      movimientoId;
+
+
+    document
+      .getElementById(
+        "transferCounterAccount"
+      )
+      .value =
+      cuentaId;
+
+
+    document
+      .querySelectorAll(
+        ".counterpart-item"
+      )
+      .forEach(
+        item => {
+
+          item.classList.toggle(
+            "selected",
+            item.dataset.id ===
+            movimientoId
+          );
+
+        }
+      );
+
+  }
+
+
+  document
+    .getElementById(
+      "transferCounterAccount"
+    )
+    .addEventListener(
+      "change",
+      event => {
+
+        const cuentaId =
+          event.target.value;
+
+
+        if (
+          transferenciaContraparteSeleccionada
+        ) {
+
+          const candidato =
+            transferenciaCandidatos
+              .find(
+                item =>
+                  item.movimiento_bancario_id ===
+                  transferenciaContraparteSeleccionada
+              );
+
+
+          if (
+            !candidato ||
+            candidato.cuenta_bancaria_id !==
+            cuentaId
+          ) {
+
+            transferenciaContraparteSeleccionada =
+              null;
+
+
+            document
+              .querySelectorAll(
+                ".counterpart-item"
+              )
+              .forEach(
+                item =>
+                  item.classList.remove(
+                    "selected"
+                  )
+              );
+
+          }
+
+        }
+
+      }
+    );
+
+
+  /* NUEVO BENEFICIARIO */
+
+
+  function abrirNuevoBeneficiario() {
+
+    document
+      .getElementById(
+        "newBeneficiaryForm"
+      )
+      .reset();
+
+
+    document
+      .getElementById(
+        "newBeneficiaryMessage"
+      )
+      .innerHTML =
+      "";
+
+
+    newBeneficiaryModalOverlay.style.display =
+      "flex";
+
+  }
+
+
+  function cerrarNuevoBeneficiario() {
+
+    newBeneficiaryModalOverlay.style.display =
+      "none";
+
+
+    document
+      .getElementById(
+        "newBeneficiaryForm"
+      )
+      .reset();
+
+  }
+
+
+  async function guardarNuevoBeneficiario(
+    event
+  ) {
+
+    event.preventDefault();
+
+
+    const nombre =
+      document
+        .getElementById(
+          "newBeneficiaryName"
+        )
+        .value
+        .trim();
+
+
+    const tipo =
+      document
+        .getElementById(
+          "newBeneficiaryType"
+        )
+        .value;
+
+
+    const identificacion =
+      document
+        .getElementById(
+          "newBeneficiaryIdentification"
+        )
+        .value
+        .trim();
+
+
+    const pais =
+      document
+        .getElementById(
+          "newBeneficiaryCountry"
+        )
+        .value;
+
+
+    const message =
+      document.getElementById(
+        "newBeneficiaryMessage"
+      );
+
+
+    const button =
+      document.getElementById(
+        "saveNewBeneficiaryButton"
+      );
+
+
+    if (
+      !nombre
+    ) {
+
+      message.innerHTML = `
+
+        <div class="error-message">
+
+          El nombre es obligatorio.
+
+        </div>
+
+      `;
+
+
+      return;
+
+    }
+
+
+    button.disabled =
+      true;
+
+
+    message.innerHTML =
+      "Verificando beneficiario...";
+
+
+    try {
+
+      const {
+        data,
+        error
+      } =
+        await supabaseClient
+          .rpc(
+            "crear_beneficiario_validado",
+            {
+
+              p_nombre:
+                nombre,
+
+              p_tipo:
+                tipo,
+
+              p_identificacion:
+                identificacion ||
+                null,
+
+              p_pais:
+                pais ||
+                null
+
+            }
+          );
+
+
+      if (
+        error
+      ) {
+        throw error;
+      }
+
+
+      const beneficiarioId =
+        data
+          ?.beneficiario_id;
+
+
+      await recargarBeneficiarios(
+        beneficiarioId
+      );
+
+
+      if (
+        data
+          ?.duplicado
+      ) {
+
+        message.innerHTML = `
+
+          <div class="warning-message">
+
+            Ya existe un beneficiario coincidente:
+
+            <strong>
+              ${
+                data.nombre
+              }
+            </strong>
+
+            <br><br>
+
+            No se creó un duplicado.
+            Se seleccionará el registro existente.
+
+          </div>
+
+        `;
+
+      }
+
+      else {
+
+        message.innerHTML = `
+
+          <div class="success-message">
+
+            Beneficiario creado correctamente:
+
+            <strong>
+              ${
+                data.nombre
+              }
+            </strong>
+
+          </div>
+
+        `;
+
+      }
+
+
+      setTimeout(
+        () => {
+
+          cerrarNuevoBeneficiario();
+
+        },
+        900
+      );
+
+
+    } catch (error) {
+
+      console.error(
+        error
+      );
+
+
+      message.innerHTML = `
+
+        <div class="error-message">
+
+          ${
+            error.message ||
+            error
+          }
+
+        </div>
+
+      `;
+
+
+    } finally {
+
+      button.disabled =
+        false;
+
+    }
+
+  }
+
+
+  async function guardarExplicacion(
+    event
+  ) {
+
+    event.preventDefault();
+
+
+    if (
+      !movimientoSeleccionado
+    ) {
+
+      return;
+
+    }
+
+
+    const clasificacion =
+      explainClassification.value;
+
+
+    const comentario =
+      document
+        .getElementById(
+          "explainComment"
+        )
+        .value
+        .trim();
+
+
+    const message =
+      document.getElementById(
+        "explainFormMessage"
+      );
+
+
+    const saveButton =
+      document.getElementById(
+        "saveExplanationButton"
+      );
+
+
+    if (
+      !clasificacion
+    ) {
+
+      message.innerHTML = `
+
+        <div class="error-message">
+
+          Debes seleccionar una clasificación.
+
+        </div>
+
+      `;
+
+
+      return;
+
+    }
+
+
+    saveButton.disabled =
+      true;
+
+
+    message.innerHTML =
+      "Guardando explicación...";
+
+
+    try {
+
+      const categoriasBancarias = {
+
+        GASTO_BANCARIO:
+          "COSTOS_BANCARIOS",
+
+        GMF:
+          "GMF",
+
+        RENDIMIENTOS:
+          "RENDIMIENTOS"
+
+      };
+
+
+      if (
+        categoriasBancarias[
+          clasificacion
+        ]
+      ) {
+
+        const {
+          error
+        } =
+          await supabaseClient
+            .rpc(
+              "resolver_movimiento_bancario_clasificacion",
+              {
+
+                p_movimiento_bancario_id:
+                  movimientoSeleccionado.id,
+
+                p_categoria_bancaria:
+                  categoriasBancarias[
+                    clasificacion
+                  ],
+
+                p_comentario:
+                  comentario ||
+                  null
+
+              }
+            );
+
+
+        if (
+          error
+        ) {
+          throw error;
+        }
+
+      }
+
+      else if (
+        clasificacion ===
+        "TRANSFERENCIA"
+      ) {
+
+        const cuentaContraparteId =
+          document
+            .getElementById(
+              "transferCounterAccount"
+            )
+            .value;
+
+
+        if (
+          !cuentaContraparteId
+        ) {
+
+          throw new Error(
+            "Debes seleccionar la cuenta contraparte de la transferencia."
+          );
+
+        }
+
+
+        const {
+          error
+        } =
+          await supabaseClient
+            .rpc(
+              "resolver_transferencia_interna",
+              {
+
+                p_movimiento_bancario_id:
+                  movimientoSeleccionado.id,
+
+                p_cuenta_contraparte_id:
+                  cuentaContraparteId,
+
+                p_movimiento_contraparte_id:
+                  transferenciaContraparteSeleccionada ||
+                  null,
+
+                p_comentario:
+                  comentario ||
+                  null
+
+              }
+            );
+
+
+        if (
+          error
+        ) {
+          throw error;
+        }
+
+      }
+
+      else {
+
+        const empresaId =
+          document
+            .getElementById(
+              "explainCompany"
+            )
+            .value;
+
+
+        const beneficiarioId =
+          document
+            .getElementById(
+              "explainBeneficiary"
+            )
+            .value;
+
+
+        const concepto =
+          document
+            .getElementById(
+              "explainConcept"
+            )
+            .value
+            .trim();
+
+
+        if (
+          !empresaId
+        ) {
+
+          throw new Error(
+            "Debes seleccionar la empresa."
+          );
+
+        }
+
+
+        if (
+          !concepto
+        ) {
+
+          throw new Error(
+            "Debes ingresar un concepto."
+          );
+
+        }
+
+
+        const {
+          error
+        } =
+          await supabaseClient
+            .rpc(
+              "resolver_movimiento_bancario_con_tesoreria",
+              {
+
+                p_movimiento_bancario_id:
+                  movimientoSeleccionado.id,
+
+                p_empresa_id:
+                  empresaId,
+
+                p_beneficiario_id:
+                  beneficiarioId ||
+                  null,
+
+                p_clasificacion_operativa:
+                  clasificacion,
+
+                p_concepto:
+                  concepto,
+
+                p_comentario:
+                  comentario ||
+                  null
+
+              }
+            );
+
+
+        if (
+          error
+        ) {
+          throw error;
+        }
+
+      }
+
+
+      cerrarModalExplicacion();
+
+
+      generalMessage.innerHTML = `
+
+        <div class="success-message">
+
+          Movimiento explicado y conciliado correctamente.
+
+        </div>
+
+      `;
+
+
+      await cargarMovimientos();
+
+
+    } catch (error) {
+
+      console.error(
+        error
+      );
+
+
+      message.innerHTML = `
+
+        <div class="error-message">
+
+          ${
+            error.message ||
+            error
+          }
+
+        </div>
+
+      `;
+
+
+    } finally {
+
+      saveButton.disabled =
+        false;
+
+    }
+
+  }
+
+
+  async function generarPropuestas() {
+
+    const rango =
+      obtenerRangoMes();
+
+
+    if (
+      !rango
+    ) {
+      return;
+    }
+
+
+    const button =
+      document.getElementById(
+        "generateProposalsButton"
+      );
+
+
+    button.disabled =
+      true;
+
+
+    generalMessage.innerHTML =
+      "Clasificando movimientos bancarios y buscando coincidencias...";
+
+
+    try {
+
+      const finDate =
+        new Date(
+          rango.fin +
+          "T00:00:00"
+        );
+
+
+      finDate.setDate(
+        finDate.getDate() - 1
+      );
+
+
+      const fechaHasta =
+        finDate
+          .toISOString()
+          .split("T")[0];
+
+
+      const {
+        data: resultadoReglas,
+        error: errorReglas
+      } =
+        await supabaseClient
+          .rpc(
+            "clasificar_movimientos_bancarios_recurrentes",
+            {
+
+              p_fecha_desde:
+                rango.inicio,
+
+              p_fecha_hasta:
+                fechaHasta
+
+            }
+          );
+
+
+      if (
+        errorReglas
+      ) {
+        throw errorReglas;
+      }
+
+
+      const {
+        data: resultadoPropuestas,
+        error: errorPropuestas
+      } =
+        await supabaseClient
+          .rpc(
+            "generar_propuestas_conciliacion",
+            {
+
+              p_fecha_desde:
+                rango.inicio,
+
+              p_fecha_hasta:
+                fechaHasta
+
+            }
+          );
+
+
+      if (
+        errorPropuestas
+      ) {
+        throw errorPropuestas;
+      }
+
+
+      const clasificados =
+        resultadoReglas
+          ?.clasificados ??
+        0;
+
+
+      const conciliadosRegla =
+        resultadoReglas
+          ?.conciliados_por_regla ??
+        0;
+
+
+      const propuestas =
+        resultadoPropuestas
+          ?.propuestas_insertadas ??
+        0;
+
+
+      generalMessage.innerHTML = `
+
+        <div class="success-message">
+
+          <strong>
+            Análisis completado.
+          </strong>
+
+          <br><br>
+
+          Movimientos bancarios clasificados automáticamente:
+          <strong>
+            ${
+              clasificados
+            }
+          </strong>
+
+          <br>
+
+          Conciliados directamente por regla bancaria:
+          <strong>
+            ${
+              conciliadosRegla
+            }
+          </strong>
+
+          <br>
+
+          Nuevas propuestas Banco ↔ Tesorería:
+          <strong>
+            ${
+              propuestas
+            }
+          </strong>
+
+        </div>
+
+      `;
+
+
+      await cargarMovimientos();
+
+
+    } catch (error) {
+
+      console.error(
+        error
+      );
+
+
+      generalMessage.innerHTML = `
+
+        <div class="error-message">
+
+          Error procesando la conciliación:
+
+          ${
+            error.message ||
+            error
+          }
+
+        </div>
+
+      `;
+
+
+    } finally {
+
+      button.disabled =
+        false;
+
+    }
+
+  }
+
+
+  async function confirmarPropuesta(
+    conciliacionId
+  ) {
+
+    const confirmar =
+      confirm(
+        "¿Confirmas que el movimiento bancario corresponde a este movimiento de Tesorería?"
+      );
+
+
+    if (
+      !confirmar
+    ) {
+      return;
+    }
+
+
+    try {
+
+      const {
+        error
+      } =
+        await supabaseClient
+          .rpc(
+            "confirmar_conciliacion",
+            {
+              p_conciliacion_id:
+                conciliacionId
+            }
+          );
+
+
+      if (
+        error
+      ) {
+        throw error;
+      }
+
+
+      generalMessage.innerHTML = `
+
+        <div class="success-message">
+
+          Conciliación confirmada correctamente.
+
+        </div>
+
+      `;
+
+
+      await cargarMovimientos();
+
+
+    } catch (error) {
+
+      console.error(
+        error
+      );
+
+
+      alert(
+        "No fue posible confirmar la conciliación: "
+        +
+        (
+          error.message ||
+          error
+        )
+      );
+
+    }
+
+  }
+
+
+  async function rechazarPropuesta(
+    conciliacionId
+  ) {
+
+    const confirmar =
+      confirm(
+        "¿Confirmas que esta propuesta NO corresponde al movimiento bancario?"
+      );
+
+
+    if (
+      !confirmar
+    ) {
+      return;
+    }
+
+
+    try {
+
+      const {
+        error
+      } =
+        await supabaseClient
+          .rpc(
+            "rechazar_conciliacion",
+            {
+              p_conciliacion_id:
+                conciliacionId
+            }
+          );
+
+
+      if (
+        error
+      ) {
+        throw error;
+      }
+
+
+      await cargarMovimientos();
+
+
+    } catch (error) {
+
+      console.error(
+        error
+      );
+
+
+      alert(
+        "No fue posible rechazar la propuesta: "
+        +
+        (
+          error.message ||
+          error
+        )
+      );
+
+    }
+
+  }
+
+
+  document
+    .getElementById(
+      "applyFiltersButton"
+    )
+    .addEventListener(
+      "click",
+      cargarMovimientos
+    );
+
+
+  document
+    .getElementById(
+      "generateProposalsButton"
+    )
+    .addEventListener(
+      "click",
+      generarPropuestas
+    );
+
+
+  document
+    .getElementById(
+      "logoutButton"
+    )
+    .addEventListener(
+      "click",
+      logout
+    );
+
+
+  document
+    .getElementById(
+      "closeExplainModalButton"
+    )
+    .addEventListener(
+      "click",
+      cerrarModalExplicacion
+    );
+
+
+  document
+    .getElementById(
+      "cancelExplainButton"
+    )
+    .addEventListener(
+      "click",
+      cerrarModalExplicacion
+    );
+
+
+  document
+    .getElementById(
+      "openNewBeneficiaryButton"
+    )
+    .addEventListener(
+      "click",
+      abrirNuevoBeneficiario
+    );
+
+
+  document
+    .getElementById(
+      "closeNewBeneficiaryButton"
+    )
+    .addEventListener(
+      "click",
+      cerrarNuevoBeneficiario
+    );
+
+
+  document
+    .getElementById(
+      "cancelNewBeneficiaryButton"
+    )
+    .addEventListener(
+      "click",
+      cerrarNuevoBeneficiario
+    );
+
+
+  explainModalOverlay
+    .addEventListener(
+      "click",
+      event => {
+
+        if (
+          event.target ===
+          explainModalOverlay
+        ) {
+
+          cerrarModalExplicacion();
+
+        }
+
+      }
+    );
+
+
+  newBeneficiaryModalOverlay
+    .addEventListener(
+      "click",
+      event => {
+
+        if (
+          event.target ===
+          newBeneficiaryModalOverlay
+        ) {
+
+          cerrarNuevoBeneficiario();
+
+        }
+
+      }
+    );
+
+
+  explainMovementForm
+    .addEventListener(
+      "submit",
+      guardarExplicacion
+    );
+
+
+  document
+    .getElementById(
+      "newBeneficiaryForm"
+    )
+    .addEventListener(
+      "submit",
+      guardarNuevoBeneficiario
+    );
+
+
+  inicializarPagina();
+
+</script>
+
+</body>
+</html>

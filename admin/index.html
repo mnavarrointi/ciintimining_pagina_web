@@ -3,11 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
   <title>Panel Administrativo | CI Inti Mining</title>
 
   <link rel="stylesheet" href="../styles.css" />
 
   <style>
+
     body {
       margin: 0;
       min-height: 100vh;
@@ -15,141 +17,457 @@
       font-family: Arial, sans-serif;
     }
 
+
     .admin-header {
       background: white;
       padding: 18px 28px;
+
       display: flex;
       justify-content: space-between;
       align-items: center;
+
       border-bottom: 1px solid #ddd;
     }
 
+
     .admin-main {
-      max-width: 1100px;
+      max-width: 1150px;
       margin: 40px auto;
       padding: 0 24px;
     }
 
+
     .admin-card {
       background: white;
+
       padding: 28px;
+
       border-radius: 12px;
+
       margin-bottom: 20px;
-      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.06);
+
+      box-shadow:
+        0 8px 25px
+        rgba(0, 0, 0, 0.06);
     }
 
-    .module-link {
-      display: inline-block;
-      margin-top: 15px;
-      text-decoration: none;
-      font-weight: 600;
+
+    .module-grid {
+      display: grid;
+
+      grid-template-columns:
+        repeat(
+          2,
+          minmax(0, 1fr)
+        );
+
+      gap: 14px;
+
+      margin-top: 22px;
     }
+
+
+    .module-link {
+      display: block;
+
+      padding: 18px;
+
+      background: #f7f7f7;
+
+      border: 1px solid #e1e1e1;
+      border-radius: 10px;
+
+      text-decoration: none;
+      color: #222;
+
+      transition:
+        transform 0.15s ease,
+        box-shadow 0.15s ease,
+        background 0.15s ease;
+    }
+
+
+    .module-link:hover {
+      background: white;
+
+      transform:
+        translateY(-2px);
+
+      box-shadow:
+        0 7px 18px
+        rgba(0, 0, 0, 0.08);
+    }
+
+
+    .module-title {
+      display: block;
+
+      font-size: 16px;
+      font-weight: 700;
+
+      margin-bottom: 6px;
+    }
+
+
+    .module-description {
+      display: block;
+
+      color: #666;
+
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
 
     .logout-button {
       cursor: pointer;
+
       border: none;
+
       padding: 10px 16px;
+
       border-radius: 6px;
     }
+
 
     #adminContent {
       display: none;
     }
 
+
     #loadingState {
       padding: 40px;
+
       text-align: center;
     }
+
+
+    @media (
+      max-width: 700px
+    ) {
+
+      .module-grid {
+        grid-template-columns:
+          1fr;
+      }
+
+
+      .admin-header {
+        align-items:
+          flex-start;
+
+        gap: 15px;
+
+        flex-direction:
+          column;
+      }
+
+    }
+
   </style>
 </head>
 
+
 <body>
 
+
   <div id="loadingState">
+
     Verificando acceso...
+
   </div>
+
 
   <div id="adminContent">
 
+
     <header class="admin-header">
+
       <div>
-        <strong>CI Inti Mining</strong>
+
+        <strong>
+          CI Inti Mining
+        </strong>
+
         <div id="userInfo"></div>
+
       </div>
 
-      <button id="logoutButton" class="logout-button">
+
+      <button
+        id="logoutButton"
+        class="logout-button"
+      >
+
         Cerrar sesión
+
       </button>
+
     </header>
+
 
     <main class="admin-main">
 
-      <h1>Panel Administrativo</h1>
+
+      <h1>
+        Panel Administrativo
+      </h1>
+
 
       <div class="admin-card">
-        <h2>Tesorería</h2>
+
+
+        <h2>
+          Tesorería
+        </h2>
+
 
         <p>
-          Gestión de pagos fijos y movimientos de tesorería.
+          Gestión de programación de pagos,
+          movimientos bancarios y conciliación.
         </p>
 
-        <a
-          href="tesoreria/pagos-fijos.html"
-          class="module-link"
-        >
-          Ir a Tesorería →
-        </a>
-        <a
-        href="tesoreria/solicitudes.html"
-        class="module-link"
-        >
-        Solicitudes de Pago →
-        </a>
-        <a
-        href="tesoreria/movimientos.html"
-        class="module-link"
-        >
-        Movimientos del Mes →
-        </a>
+
+        <div class="module-grid">
+
+
+          <a
+            href="tesoreria/pagos-fijos.html"
+            class="module-link"
+          >
+
+            <span class="module-title">
+
+              Pagos Fijos
+
+            </span>
+
+            <span class="module-description">
+
+              Parametrización y administración
+              de los pagos recurrentes.
+
+            </span>
+
+          </a>
+
+
+          <a
+            href="tesoreria/solicitudes.html"
+            class="module-link"
+          >
+
+            <span class="module-title">
+
+              Solicitudes de Pago
+
+            </span>
+
+            <span class="module-description">
+
+              Crear, revisar y aprobar
+              solicitudes de pagos fijos
+              y extraordinarios.
+
+            </span>
+
+          </a>
+
+
+          <a
+            href="tesoreria/movimientos.html"
+            class="module-link"
+          >
+
+            <span class="module-title">
+
+              Movimientos del Mes
+
+            </span>
+
+            <span class="module-description">
+
+              Consulta de movimientos
+              efectivamente ejecutados
+              en Tesorería.
+
+            </span>
+
+          </a>
+
+
+          <a
+            href="tesoreria/conciliacion.html"
+            class="module-link"
+          >
+
+            <span class="module-title">
+
+              Conciliación Bancaria
+
+            </span>
+
+            <span class="module-description">
+
+              Cargar movimientos
+              descargados de los bancos.
+
+            </span>
+
+          </a>
+
+
+          <a
+            href="tesoreria/bandeja-conciliacion.html"
+            class="module-link"
+          >
+
+            <span class="module-title">
+
+              Bandeja de Conciliación
+
+            </span>
+
+            <span class="module-description">
+
+              Relacionar todos los movimientos
+              bancarios con su explicación
+              correspondiente.
+
+            </span>
+
+          </a>
+
+
+          <a
+            href="tesoreria/movimientos-diarios.html"
+            class="module-link"
+          >
+
+            <span class="module-title">
+
+              Nacional / Internacional
+
+            </span>
+
+            <span class="module-description">
+
+              Visualización diaria de saldos,
+              egresos e ingresos por cuenta
+              bancaria.
+
+            </span>
+
+          </a>
+
+
+        </div>
+
+
       </div>
+
 
     </main>
 
+
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-  <script src="../js/supabase-config.js"></script>
-  <script src="../js/auth.js"></script>
+  <script
+    src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+  ></script>
+
+
+  <script
+    src="../js/supabase-config.js"
+  ></script>
+
+
+  <script
+    src="../js/auth.js"
+  ></script>
+
 
   <script>
-    async function initializeAdmin() {
-      try {
-        const authorizedUser = await getAuthorizedUser();
 
-        if (!authorizedUser) {
-          window.location.href = "../login.html";
+    async function initializeAdmin() {
+
+      try {
+
+        const authorizedUser =
+          await getAuthorizedUser();
+
+
+        if (
+          !authorizedUser
+        ) {
+
+          window.location.href =
+            "../login.html";
+
           return;
+
         }
 
-        document.getElementById("userInfo").textContent =
-          `${authorizedUser.nombre || authorizedUser.email} · ${authorizedUser.rol}`;
 
-        document.getElementById("loadingState").style.display = "none";
-        document.getElementById("adminContent").style.display = "block";
+        document
+          .getElementById(
+            "userInfo"
+          )
+          .textContent =
+          `${
+            authorizedUser.nombre ||
+            authorizedUser.email
+          } · ${
+            authorizedUser.rol
+          }`;
+
+
+        document
+          .getElementById(
+            "loadingState"
+          )
+          .style.display =
+          "none";
+
+
+        document
+          .getElementById(
+            "adminContent"
+          )
+          .style.display =
+          "block";
+
 
       } catch (error) {
-        console.error(error);
-        window.location.href = "../login.html";
+
+        console.error(
+          error
+        );
+
+
+        window.location.href =
+          "../login.html";
+
       }
+
     }
 
+
     document
-      .getElementById("logoutButton")
-      .addEventListener("click", logout);
+      .getElementById(
+        "logoutButton"
+      )
+      .addEventListener(
+        "click",
+        logout
+      );
+
 
     initializeAdmin();
+
   </script>
+
 
 </body>
 </html>
