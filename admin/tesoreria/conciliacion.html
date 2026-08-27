@@ -43,6 +43,9 @@
     <div class="upload-box">
       <strong>Selecciona el archivo descargado directamente del banco</strong>
       <input type="file" id="bankFile" accept=".xlsx,.xls,.csv,.pdf">
+      <div class="preview-note">
+        Fondo Casa de Bolsa: usa preferiblemente el archivo Excel. El PDF queda disponible únicamente como formato de respaldo.
+      </div>
     </div>
 
     <div id="detectionContainer" class="detection-card" style="display:none;">
@@ -89,6 +92,7 @@
   pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
 
   let usuarioActual=null,cuentas=[],archivoSeleccionado=null,cuentaDetectada=null,bancoDetectado=null,movimientosDetectados=[],fechaDesdeDetectada=null,fechaHastaDetectada=null,advertenciasDeteccion=[];
+  let resultadoPreAnalisis=null,archivoYaProcesado=false;
   const periodFilter=document.getElementById("periodFilter"),groupFilter=document.getElementById("groupFilter"),processFileButton=document.getElementById("processFileButton"),detectionMessage=document.getElementById("detectionMessage"),manualAccountContainer=document.getElementById("manualAccountContainer"),manualAccountSelect=document.getElementById("manualAccountSelect");
 
   function normalizarTexto(texto){return String(texto??"").toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim()}
@@ -124,17 +128,59 @@
   function cuentaPorBancoMoneda(banco,moneda){const cand=cuentasActivas().filter(c=>normalizarTexto(c.banco)===normalizarTexto(banco)&&c.moneda===moneda);return cand.length===1?cand[0]:null}
   function cuentaDaviviendaPorNombre(name){const n=normalizarTexto(name),cand=cuentasActivas().filter(c=>normalizarTexto(c.banco)==="DAVIVIENDA");if(n.includes("CORRIENTE"))return cand.find(c=>normalizarTexto(c.tipo_cuenta)==="CORRIENTE")||null;if(n.includes("AHORROS"))return cand.find(c=>normalizarTexto(c.tipo_cuenta)==="AHORROS")||null;return cand.length===1?cand[0]:null}
 
-  function detectarBancoPorNombre(name){const n=normalizarTexto(name);if(n.includes("DAVIVIENDA"))return"Davivienda";if(n.includes("BANCOLOMBIA"))return"Bancolombia";if(n.includes("BANBIF"))return"Banbif";if(n.includes("CITY NATIONAL"))return"City National";if(n.includes("SYNOVUS"))return"Synovus";if(n.includes("CASA DE BOLSA")||n.includes("SALDO"))return"Fondo Casa de Bolsa";return null}
+  function detectarBancoPorNombre(name){const n=normalizarTexto(name);if(n.includes("DAVIVIENDA"))return"Davivienda";if(n.includes("BANCOLOMBIA"))return"Bancolombia";if(n.includes("BANBIF"))return"Banbif";if(n.includes("CITY NATIONAL"))return"City National";if(n.includes("SYNOVUS"))return"Synovus";if(n.includes("CASA DE BOLSA")||n.includes("VALOR PLUS")||n.includes("FONDO")||n.includes("ENCARGO"))return"Fondo Casa de Bolsa";return null}
 
   async function leerWorkbook(file){const buffer=await file.arrayBuffer();return XLSX.read(buffer,{type:"array",cellDates:true})}
   function sheetRows(workbook,header=1){const sheet=workbook.Sheets[workbook.SheetNames[0]];return XLSX.utils.sheet_to_json(sheet,{header,defval:null,raw:true})}
 
+  function pareceCasaBolsaRows(rows){
+    const primeras=rows.slice(0,15).map(r=>(r||[]).map(normalizarTexto));
+    const plano=primeras.flat().join(" | ");
+    const tieneEncargo=plano.includes("ENCARGO");
+    const tieneSaldoInicial=plano.includes("SALDO INICIAL");
+    const tieneRendimientos=plano.includes("RENDIMIENTOS");
+    const tieneSaldoFinal=plano.includes("SALDO FINAL");
+    const tieneMarca=plano.includes("CASA DE BOLSA")||plano.includes("VALOR PLUS")||plano.includes("CI INTI MINING")||plano.includes("250670009229");
+    return tieneEncargo&&tieneSaldoInicial&&tieneRendimientos&&tieneSaldoFinal&&tieneMarca;
+  }
+
   async function detectarBancoPorContenido(file){
-    if(file.name.toLowerCase().endsWith(".pdf")){try{const text=await extraerTextoPDF(file);if(normalizarTexto(text).includes("CUENTA OMNIBUS VALOR PLUS")||normalizarTexto(text).includes("ASSET MANAGEMENT"))return"Fondo Casa de Bolsa"}catch(e){}return null}
-    const raw=await file.arrayBuffer();const first=Array.from(new Uint8Array(raw.slice(0,8))).map(b=>b.toString(16).padStart(2,"0")).join("");
-    if(file.name.toLowerCase().endsWith(".csv")&&!first.startsWith("d0cf11e0")){const text=new TextDecoder("utf-8").decode(raw.slice(0,1000));if(/^\s*\d{3}-\d{6}-\d{2}\s*,/m.test(text))return"Bancolombia"}
-    try{const wb=XLSX.read(raw,{type:"array",cellDates:true});const rows=sheetRows(wb,1);const firstRow=(rows[0]||[]).map(normalizarTexto);if(firstRow.includes("FECHA DE SISTEMA")&&firstRow.includes("TRANSACCION"))return"Davivienda";if(firstRow.includes("DESCRIPCION")&&firstRow.includes("MONTO")&&firstRow.includes("SALDO"))return"Banbif";if(firstRow.includes("ACCOUNT NUMBER")&&firstRow.includes("POST DATE")){const all=JSON.stringify(rows.slice(0,5));if(all.includes("01017446202")||all.includes("1017446202"))return"Synovus";if(all.includes("30000803170"))return"City National";return"US_BANK"}}
-    catch(e){}
+    if(file.name.toLowerCase().endsWith(".pdf")){
+      try{
+        const text=await extraerTextoPDF(file);
+        const norm=normalizarTexto(text);
+        if(norm.includes("CUENTA OMNIBUS VALOR PLUS")||norm.includes("ASSET MANAGEMENT")||norm.includes("250670009229"))return"Fondo Casa de Bolsa";
+      }catch(e){}
+      return null;
+    }
+
+    const raw=await file.arrayBuffer();
+    const first=Array.from(new Uint8Array(raw.slice(0,8))).map(b=>b.toString(16).padStart(2,"0")).join("");
+
+    if(file.name.toLowerCase().endsWith(".csv")&&!first.startsWith("d0cf11e0")){
+      const text=new TextDecoder("utf-8").decode(raw.slice(0,1500));
+      if(/^\s*\d{3}-\d{6}-\d{2}\s*,/m.test(text))return"Bancolombia";
+    }
+
+    try{
+      const wb=XLSX.read(raw,{type:"array",cellDates:true});
+      const rows=sheetRows(wb,1);
+
+      if(pareceCasaBolsaRows(rows))return"Fondo Casa de Bolsa";
+
+      const firstRow=(rows[0]||[]).map(normalizarTexto);
+
+      if(firstRow.includes("FECHA DE SISTEMA")&&firstRow.includes("TRANSACCION"))return"Davivienda";
+      if(firstRow.includes("DESCRIPCION")&&firstRow.includes("MONTO")&&firstRow.includes("SALDO"))return"Banbif";
+
+      if(firstRow.includes("ACCOUNT NUMBER")&&firstRow.includes("POST DATE")){
+        const all=JSON.stringify(rows.slice(0,5));
+        if(all.includes("01017446202")||all.includes("1017446202"))return"Synovus";
+        if(all.includes("30000803170"))return"City National";
+        return"US_BANK";
+      }
+    }catch(e){}
+
     return null;
   }
 
@@ -172,27 +218,421 @@
   }
 
   async function extraerTextoPDF(file){const data=new Uint8Array(await file.arrayBuffer()),pdf=await pdfjsLib.getDocument({data}).promise;let text="";for(let p=1;p<=pdf.numPages;p++){const page=await pdf.getPage(p),content=await page.getTextContent();text+=content.items.map(i=>i.str).join(" ")+"\n"}return text}
-  function parseSpanishMonthDate(text){const months={enero:1,febrero:2,marzo:3,abril:4,mayo:5,junio:6,julio:7,agosto:8,septiembre:9,setiembre:9,octubre:10,noviembre:11,diciembre:12};const m=normalizarTexto(text).toLowerCase().match(/(\d{1,2})\s+de\s+([a-z]+)\s+de\s+(\d{4})/);if(!m)return null;const mon=months[m[2]];return mon?`${m[3]}-${String(mon).padStart(2,"0")}-${m[1].padStart(2,"0")}`:null}
-  function parseMoneyTokensFromCasa(text){
-    // Captura importes en orden de la fila: saldo inicial, rendimientos, adiciones, retiros, retefuente, GMF, canje, saldo final.
-    const values=[];const re=/\$\s*([\d\.]+,\d{2})/g;let m;while((m=re.exec(text))!==null)values.push(moneyCOPTextToNumber(m[1]));return values;
+  function parseSpanishMonthDate(text){
+    const months={enero:1,febrero:2,marzo:3,abril:4,mayo:5,junio:6,julio:7,agosto:8,septiembre:9,setiembre:9,octubre:10,noviembre:11,diciembre:12};
+    const original=String(text??"").trim();
+    const sinAcentos=original.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
+    const m=sinAcentos.match(/(\d{1,2})\s+de\s+([a-z]+)\s+de\s+(\d{4})/);
+    if(!m)return null;
+    const mon=months[m[2]];
+    return mon?`${m[3]}-${String(mon).padStart(2,"0")}-${m[1].padStart(2,"0")}`:null;
   }
-  async function parseCasaBolsa(file){
-    const text=await extraerTextoPDF(file),norm=normalizarTexto(text);if(!norm.includes("CUENTA OMNIBUS VALOR PLUS"))throw new Error("El PDF no corresponde al formato esperado de Fondo Casa de Bolsa.");
-    const accountMatch=text.match(/250670009229/);cuentaDetectada=cuentaPorNumero("Fondo Casa de Bolsa",accountMatch?.[0]||"250670009229");if(!cuentaDetectada)throw new Error("La cuenta Fondo Casa de Bolsa 250670009229 no está registrada o habilitada.");
-    let fecha=parseSpanishMonthDate(text);if(!fecha){const fm=file.name.match(/(20\d{2})-(\d{2})-(\d{2})/);if(fm){advertenciasDeteccion.push("La fecha se obtuvo del nombre del archivo porque no pudo leerse del contenido del PDF.");fecha=`${fm[1]}-${fm[2]}-${fm[3]}`}}
-    if(!fecha)throw new Error("No fue posible determinar la fecha del informe diario de Fondo Casa de Bolsa.");
-    const vals=parseMoneyTokensFromCasa(text);if(vals.length<8)throw new Error("No fue posible leer la fila de saldos del PDF de Fondo Casa de Bolsa.");
-    const [saldoInicial,rendimientos,adiciones,retiros,retefuente,gmf,canje,saldoFinal]=vals.slice(-8);const components=[{name:"RENDIMIENTOS",value:rendimientos,nature:"CREDITO"},{name:"ADICIONES",value:adiciones,nature:"CREDITO"},{name:"RETIROS",value:retiros,nature:"DEBITO"},{name:"RETEFUENTE",value:retefuente,nature:"DEBITO"},{name:"GMF",value:gmf,nature:"DEBITO"}];
-    if(canje&&Math.abs(canje)>0)advertenciasDeteccion.push(`El PDF reporta CANJE por ${canje}. Este concepto no se importó automáticamente y requiere revisión manual.`);
-    const out=[];for(const c of components){if(!(Math.abs(c.value)>0))continue;const base=[cuentaDetectada.id,fecha,c.name,Math.abs(c.value).toFixed(2),saldoInicial.toFixed(2),saldoFinal.toFixed(2)].join("|");out.push({fecha_movimiento:fecha,fecha_valor:null,descripcion_original:c.name,referencia:`Informe diario ${fecha}`,naturaleza:c.nature,valor:Math.abs(c.value),moneda:"COP",saldo:saldoFinal,fingerprint:await sha256(base),estado_conciliacion:"PENDIENTE",raw_data:{saldo_inicial:saldoInicial,rendimientos,adiciones,retiros,retefuente,gmf,canje,saldo_final:saldoFinal,fecha}})}
-    if(!out.length){advertenciasDeteccion.push("El informe no contiene rendimientos, adiciones, retiros, retefuente ni GMF distintos de cero. Se registrará la carga con 0 movimientos nuevos.")}
+
+  function parseMoneyTokensFromCasa(text){
+    const values=[];
+    const re=/\$\s*([\d\.]+,\d{2})/g;
+    let m;
+    while((m=re.exec(text))!==null)values.push(moneyCOPTextToNumber(m[1]));
+    return values;
+  }
+
+  function indiceHeaderCasa(headers,nombres){
+    const normalized=headers.map(normalizarTexto);
+    for(const nombre of nombres){
+      const idx=normalized.indexOf(normalizarTexto(nombre));
+      if(idx>=0)return idx;
+    }
+    return -1;
+  }
+
+  function valorCasa(row,idx){
+    if(idx<0)return 0;
+    const n=numeroFlexible(row[idx]);
+    return n===null?0:n;
+  }
+
+  function detectarFechaCasaExcel(rows,file){
+    // Los archivos de Casa de Bolsa incluyen la fecha YYYY-MM-DD en el nombre.
+    // Esta es la fuente principal porque algunas celdas numéricas del reporte
+    // pueden ser interpretadas por XLSX como fechas seriales de 1900.
+    const fm=file.name.match(/(20\d{2})[-_ ](\d{2})[-_ ](\d{2})/);
+    if(fm)return `${fm[1]}-${fm[2]}-${fm[3]}`;
+
+    // Respaldo: buscar únicamente fechas explícitas en texto o celdas Date reales.
+    for(const row of rows.slice(0,12)){
+      for(const cell of (row||[])){
+        if(cell instanceof Date&&!isNaN(cell)){
+          const y=cell.getFullYear();
+          if(y>=2020&&y<=2100)return fechaISO(cell);
+        }
+
+        if(typeof cell==="string"){
+          const t=cell.trim();
+          const esp=parseSpanishMonthDate(t);
+          if(esp)return esp;
+
+          const isoMatch=t.match(/^(20\d{2})-(\d{2})-(\d{2})$/);
+          if(isoMatch)return `${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}`;
+
+          const slash=t.match(/^(\d{1,2})\/(\d{1,2})\/(20\d{2})$/);
+          if(slash)return `${slash[3]}-${slash[2].padStart(2,"0")}-${slash[1].padStart(2,"0")}`;
+        }
+      }
+    }
+
+    return null;
+  }
+
+  function detectarEncargoCasa(rows){
+    for(let i=0;i<Math.min(rows.length,15);i++){
+      const row=rows[i]||[];
+      for(let j=0;j<row.length;j++){
+        const val=soloDigitos(row[j]);
+        if(val==="250670009229")return val;
+      }
+    }
+    return "250670009229";
+  }
+
+  async function construirMovimientosCasa({fecha,saldoInicial,rendimientos,adiciones,retiros,retefuente,gmf,canje,saldoFinal,rawData,fuente}){
+    const out=[];
+    const tolerance=0.05;
+
+    const esperadoSinCanje=
+      Number(saldoInicial||0)
+      +Number(rendimientos||0)
+      +Number(adiciones||0)
+      -Number(retiros||0)
+      -Number(retefuente||0)
+      -Number(gmf||0);
+
+    const diferenciaCanje=
+      Number(saldoFinal||0)
+      -esperadoSinCanje;
+
+    let naturalezaCanje=null;
+
+    if(Math.abs(Number(canje||0))>tolerance){
+      if(Math.abs(diferenciaCanje-Number(canje))<=tolerance){
+        naturalezaCanje="CREDITO";
+      }else if(Math.abs(diferenciaCanje+Number(canje))<=tolerance){
+        naturalezaCanje="DEBITO";
+      }else{
+        advertenciasDeteccion.push(
+          `El archivo reporta CANJE por ${Number(canje).toLocaleString("es-CO")}, pero no fue posible inferir con seguridad si es ingreso o salida. CANJE no se importará automáticamente.`
+        );
+      }
+    }
+
+    const saldoCalculado=
+      esperadoSinCanje
+      +(naturalezaCanje==="CREDITO"?Math.abs(Number(canje||0)):0)
+      -(naturalezaCanje==="DEBITO"?Math.abs(Number(canje||0)):0);
+
+    if(Math.abs(saldoCalculado-Number(saldoFinal||0))>tolerance){
+      advertenciasDeteccion.push(
+        `Control de saldo: el saldo final informado (${Number(saldoFinal||0).toLocaleString("es-CO")}) difiere del saldo calculado (${saldoCalculado.toLocaleString("es-CO")}). Revisa el archivo antes de procesarlo.`
+      );
+    }
+
+    const components=[
+      {name:"RENDIMIENTOS",value:rendimientos,nature:"CREDITO",categoria:"RENDIMIENTOS",explicacion:"Rendimiento financiero identificado desde el archivo de Fondo Casa de Bolsa."},
+      {name:"ADICIONES",value:adiciones,nature:"CREDITO",categoria:null,explicacion:null},
+      {name:"RETIROS",value:retiros,nature:"DEBITO",categoria:null,explicacion:null},
+      {name:"RETEFUENTE",value:retefuente,nature:"DEBITO",categoria:null,explicacion:null},
+      {name:"GMF",value:gmf,nature:"DEBITO",categoria:"GMF",explicacion:"GMF identificado desde el archivo de Fondo Casa de Bolsa."}
+    ];
+
+    if(naturalezaCanje){
+      components.push({name:"CANJE",value:Math.abs(Number(canje||0)),nature:naturalezaCanje,categoria:null,explicacion:null});
+    }
+
+    for(const c of components){
+      const valor=Math.abs(Number(c.value||0));
+      if(!(valor>tolerance))continue;
+
+      const base=[
+        cuentaDetectada.id,
+        fecha,
+        c.name,
+        c.nature,
+        valor.toFixed(2)
+      ].join("|");
+
+      out.push({
+        fecha_movimiento:fecha,
+        fecha_valor:null,
+        descripcion_original:c.name,
+        referencia:`Fondo Casa de Bolsa ${fecha}`,
+        naturaleza:c.nature,
+        valor,
+        moneda:"COP",
+        saldo:Number(saldoFinal||0),
+        fingerprint:await sha256(base),
+        estado_conciliacion:"PENDIENTE",
+        categoria_bancaria:c.categoria,
+        explicacion_automatica:c.explicacion,
+        raw_data:{
+          ...rawData,
+          fuente_importacion:fuente,
+          fecha,
+          saldo_inicial:Number(saldoInicial||0),
+          rendimientos:Number(rendimientos||0),
+          adiciones:Number(adiciones||0),
+          retiros:Number(retiros||0),
+          retefuente:Number(retefuente||0),
+          gmf:Number(gmf||0),
+          canje:Number(canje||0),
+          saldo_final:Number(saldoFinal||0)
+        }
+      });
+    }
+
+    if(!out.length){
+      advertenciasDeteccion.push("El archivo no contiene movimientos distintos de cero. La carga podrá registrarse con 0 movimientos.");
+    }
+
     return out;
   }
 
-  function resetDeteccion(){archivoSeleccionado=null;cuentaDetectada=null;bancoDetectado=null;movimientosDetectados=[];fechaDesdeDetectada=null;fechaHastaDetectada=null;advertenciasDeteccion=[];processFileButton.disabled=true;manualAccountContainer.style.display="none";["detectedBank","detectedAccount","detectedCompany","detectedCurrency","detectedGroup","detectedDateFrom","detectedDateTo","detectedMovementCount"].forEach(id=>document.getElementById(id).textContent="—");detectionMessage.innerHTML=""}
+  async function parseCasaBolsaExcel(file){
+    const wb=await leerWorkbook(file);
+    const rows=sheetRows(wb,1);
+
+    if(!rows.length)throw new Error("El archivo de Fondo Casa de Bolsa está vacío.");
+
+    let headerIndex=-1;
+
+    for(let i=0;i<Math.min(rows.length,20);i++){
+      const normalized=(rows[i]||[]).map(normalizarTexto);
+      if(
+        normalized.includes("SALDO INICIAL")
+        &&normalized.includes("RENDIMIENTOS")
+        &&normalized.includes("ADICIONES")
+        &&normalized.includes("RETIROS")
+        &&normalized.includes("SALDO FINAL")
+      ){
+        headerIndex=i;
+        break;
+      }
+    }
+
+    if(headerIndex<0){
+      throw new Error("No se encontró la fila de encabezados esperada de Fondo Casa de Bolsa (Saldo Inicial, Rendimientos, Adiciones, Retiros, Saldo Final).");
+    }
+
+    const headers=rows[headerIndex]||[];
+    const idxFondo=indiceHeaderCasa(headers,["FONDO"]);
+    const idxEncargo=indiceHeaderCasa(headers,["ENCARGO"]);
+    const idxSaldoInicial=indiceHeaderCasa(headers,["SALDO INICIAL"]);
+    const idxRendimientos=indiceHeaderCasa(headers,["RENDIMIENTOS"]);
+    const idxAdiciones=indiceHeaderCasa(headers,["ADICIONES"]);
+    const idxRetiros=indiceHeaderCasa(headers,["RETIROS"]);
+    const idxRetefuente=indiceHeaderCasa(headers,["RETEFUENTE","RETE FUENTE","RETENCION EN LA FUENTE"]);
+    const idxGmf=indiceHeaderCasa(headers,["GMF"]);
+    const idxCanje=indiceHeaderCasa(headers,["CANJE"]);
+    const idxSaldoFinal=indiceHeaderCasa(headers,["SALDO FINAL"]);
+
+    if(idxSaldoInicial<0||idxRendimientos<0||idxAdiciones<0||idxRetiros<0||idxSaldoFinal<0){
+      throw new Error("El archivo de Fondo Casa de Bolsa no contiene todas las columnas obligatorias.");
+    }
+
+    let dataRow=null;
+
+    for(let i=headerIndex+1;i<rows.length;i++){
+      const row=rows[i]||[];
+      const encargo=idxEncargo>=0?soloDigitos(row[idxEncargo]):"";
+      const saldoInicial=valorCasa(row,idxSaldoInicial);
+      const saldoFinal=valorCasa(row,idxSaldoFinal);
+
+      if(encargo==="250670009229"||saldoInicial!==0||saldoFinal!==0){
+        dataRow=row;
+        break;
+      }
+    }
+
+    if(!dataRow){
+      throw new Error("No se encontró la fila de datos del encargo de Fondo Casa de Bolsa.");
+    }
+
+    const encargo=idxEncargo>=0?soloDigitos(dataRow[idxEncargo]):detectarEncargoCasa(rows);
+    cuentaDetectada=cuentaPorNumero("Fondo Casa de Bolsa",encargo||"250670009229");
+
+    if(!cuentaDetectada){
+      throw new Error(`La cuenta Fondo Casa de Bolsa ${encargo||"250670009229"} no está registrada o habilitada.`);
+    }
+
+    const fecha=detectarFechaCasaExcel(rows,file);
+
+    if(!fecha){
+      throw new Error("No fue posible determinar la fecha del archivo Excel de Fondo Casa de Bolsa.");
+    }
+
+    const saldoInicial=valorCasa(dataRow,idxSaldoInicial);
+    const rendimientos=valorCasa(dataRow,idxRendimientos);
+    const adiciones=valorCasa(dataRow,idxAdiciones);
+    const retiros=valorCasa(dataRow,idxRetiros);
+    const retefuente=valorCasa(dataRow,idxRetefuente);
+    const gmf=valorCasa(dataRow,idxGmf);
+    const canje=valorCasa(dataRow,idxCanje);
+    const saldoFinal=valorCasa(dataRow,idxSaldoFinal);
+
+    return await construirMovimientosCasa({
+      fecha,
+      saldoInicial,
+      rendimientos,
+      adiciones,
+      retiros,
+      retefuente,
+      gmf,
+      canje,
+      saldoFinal,
+      fuente:"EXCEL",
+      rawData:{
+        fondo:idxFondo>=0?dataRow[idxFondo]:null,
+        encargo:encargo||"250670009229",
+        fila_encabezado:headerIndex+1
+      }
+    });
+  }
+
+  async function parseCasaBolsaPDF(file){
+    const text=await extraerTextoPDF(file);
+    const norm=normalizarTexto(text);
+
+    if(!norm.includes("CUENTA OMNIBUS VALOR PLUS")&&!norm.includes("250670009229")){
+      throw new Error("El PDF no corresponde al formato esperado de Fondo Casa de Bolsa.");
+    }
+
+    const accountMatch=text.match(/250670009229/);
+    cuentaDetectada=cuentaPorNumero("Fondo Casa de Bolsa",accountMatch?.[0]||"250670009229");
+
+    if(!cuentaDetectada){
+      throw new Error("La cuenta Fondo Casa de Bolsa 250670009229 no está registrada o habilitada.");
+    }
+
+    let fecha=parseSpanishMonthDate(text);
+
+    if(!fecha){
+      const fm=file.name.match(/(20\d{2})-(\d{2})-(\d{2})/);
+      if(fm){
+        advertenciasDeteccion.push("La fecha se obtuvo del nombre del archivo porque no pudo leerse del contenido del PDF.");
+        fecha=`${fm[1]}-${fm[2]}-${fm[3]}`;
+      }
+    }
+
+    if(!fecha){
+      throw new Error("No fue posible determinar la fecha del informe diario de Fondo Casa de Bolsa.");
+    }
+
+    const vals=parseMoneyTokensFromCasa(text);
+
+    if(vals.length<8){
+      throw new Error("No fue posible leer la fila de saldos del PDF de Fondo Casa de Bolsa.");
+    }
+
+    const [saldoInicial,rendimientos,adiciones,retiros,retefuente,gmf,canje,saldoFinal]=vals.slice(-8);
+
+    return await construirMovimientosCasa({
+      fecha,
+      saldoInicial,
+      rendimientos,
+      adiciones,
+      retiros,
+      retefuente,
+      gmf,
+      canje,
+      saldoFinal,
+      fuente:"PDF",
+      rawData:{texto_origen:"PDF Fondo Casa de Bolsa"}
+    });
+  }
+
+  async function parseCasaBolsa(file){
+    if(file.name.toLowerCase().endsWith(".pdf")){
+      advertenciasDeteccion.push("Se está usando el adaptador PDF de respaldo. Para nuevas cargas se recomienda el archivo Excel de Fondo Casa de Bolsa.");
+      return await parseCasaBolsaPDF(file);
+    }
+
+    return await parseCasaBolsaExcel(file);
+  }
+
+  function resetDeteccion(){archivoSeleccionado=null;cuentaDetectada=null;bancoDetectado=null;movimientosDetectados=[];fechaDesdeDetectada=null;fechaHastaDetectada=null;advertenciasDeteccion=[];resultadoPreAnalisis=null;archivoYaProcesado=false;processFileButton.disabled=true;processFileButton.textContent="Procesar archivo";manualAccountContainer.style.display="none";["detectedBank","detectedAccount","detectedCompany","detectedCurrency","detectedGroup","detectedDateFrom","detectedDateTo","detectedMovementCount"].forEach(id=>document.getElementById(id).textContent="—");detectionMessage.innerHTML=""}
   function mostrarDeteccion(){document.getElementById("detectedBank").textContent=bancoDetectado||"—";document.getElementById("detectedAccount").textContent=cuentaDetectada?`${cuentaDetectada.nombre_cuenta||""} · ${cuentaDetectada.numero_mask||"Sin número"}`:"—";document.getElementById("detectedCompany").textContent=cuentaDetectada?.empresas?.nombre_corto||"—";document.getElementById("detectedCurrency").textContent=cuentaDetectada?.moneda||"—";document.getElementById("detectedGroup").textContent=cuentaDetectada?.grupo_conciliacion||"—";document.getElementById("detectedFormat").textContent=formatoArchivo(archivoSeleccionado);document.getElementById("detectedDateFrom").textContent=fechaDesdeDetectada||"—";document.getElementById("detectedDateTo").textContent=fechaHastaDetectada||"—";document.getElementById("detectedMovementCount").textContent=String(movimientosDetectados.length)}
   function fechasDeMovimientos(movs){const f=movs.map(m=>m.fecha_movimiento).filter(Boolean).sort();if(f.length){fechaDesdeDetectada=f[0];fechaHastaDetectada=f[f.length-1]}else{fechaDesdeDetectada=fechaHastaDetectada=null}}
+
+  async function prepararPreAnalisis(){
+    if(!archivoSeleccionado||!cuentaDetectada){
+      resultadoPreAnalisis=null;
+      archivoYaProcesado=false;
+      processFileButton.disabled=true;
+      return;
+    }
+
+    if(!fechaDesdeDetectada||!fechaHastaDetectada){
+      resultadoPreAnalisis=null;
+      archivoYaProcesado=false;
+      processFileButton.disabled=true;
+      return;
+    }
+
+    detectionMessage.innerHTML="Verificando movimientos existentes...";
+
+    const fileHash=await hashFile(archivoSeleccionado);
+
+    const{data:existing,error:hashError}=await supabaseClient
+      .from("cargas_bancarias")
+      .select("id,estado,registros_total,registros_nuevos,registros_duplicados,created_at,nombre_archivo")
+      .eq("cuenta_bancaria_id",cuentaDetectada.id)
+      .eq("hash_archivo",fileHash)
+      .maybeSingle();
+
+    if(hashError)throw hashError;
+
+    if(existing){
+      archivoYaProcesado=true;
+      resultadoPreAnalisis={
+        total:Number(existing.registros_total||movimientosDetectados.length||0),
+        nuevos:Number(existing.registros_nuevos||0),
+        duplicados:Number(existing.registros_duplicados||0),
+        existente:existing
+      };
+
+      processFileButton.disabled=true;
+      processFileButton.textContent="Archivo ya procesado";
+
+      let html=`<div class="warning"><strong>Este archivo ya fue procesado anteriormente.</strong><br><br>No se realizará ninguna escritura adicional.<br><br>Total encontrados: ${resultadoPreAnalisis.total}<br>Nuevos guardados en esa carga: ${resultadoPreAnalisis.nuevos}<br>Duplicados detectados: ${resultadoPreAnalisis.duplicados}</div>`;
+
+      if(advertenciasDeteccion.length){
+        html+=`<div class="warning"><strong>Advertencias del análisis:</strong><br>${advertenciasDeteccion.map(x=>`• ${x}`).join("<br>")}</div>`;
+      }
+
+      detectionMessage.innerHTML=html;
+      return;
+    }
+
+    archivoYaProcesado=false;
+
+    const resultado=await separarNuevosYDuplicados(movimientosDetectados);
+
+    resultadoPreAnalisis={
+      total:movimientosDetectados.length,
+      nuevos:resultado.nuevos.length,
+      duplicados:resultado.duplicados,
+      nuevosMovimientos:resultado.nuevos,
+      fileHash
+    };
+
+    let html=`<div class="success"><strong>ARCHIVO ANALIZADO — AÚN NO PROCESADO</strong><br><br>Total encontrados: ${resultadoPreAnalisis.total}<br>Duplicados existentes: ${resultadoPreAnalisis.duplicados}<br><strong>Movimientos nuevos por importar: ${resultadoPreAnalisis.nuevos}</strong><br><br>No se ha escrito ningún movimiento en la base de datos.</div>`;
+
+    if(advertenciasDeteccion.length){
+      html+=`<div class="warning"><strong>Advertencias:</strong><br>${advertenciasDeteccion.map(x=>`• ${x}`).join("<br>")}</div>`;
+    }
+
+    detectionMessage.innerHTML=html;
+    processFileButton.disabled=false;
+    processFileButton.textContent=resultadoPreAnalisis.nuevos>0?`Procesar ${resultadoPreAnalisis.nuevos} movimiento(s) nuevo(s)`:"Registrar carga (0 nuevos)";
+  }
 
   async function analizarArchivo(file){
     resetDeteccion();archivoSeleccionado=file;document.getElementById("detectionContainer").style.display="block";document.getElementById("detectedFormat").textContent=formatoArchivo(file);detectionMessage.innerHTML="Analizando archivo...";
@@ -200,27 +640,244 @@
       bancoDetectado=detectarBancoPorNombre(file.name)||await detectarBancoPorContenido(file);if(bancoDetectado==="US_BANK")throw new Error("Se detectó un archivo bancario de EE. UU., pero no fue posible distinguir City National de Synovus.");if(!bancoDetectado)throw new Error("No fue posible identificar el banco por el nombre ni por la estructura del archivo.");
       switch(bancoDetectado){case"Davivienda":movimientosDetectados=await parseDavivienda(file);break;case"Bancolombia":movimientosDetectados=await parseBancolombia(file);break;case"Banbif":movimientosDetectados=await parseBanbif(file);break;case"City National":movimientosDetectados=await parseUSBank(file,"City National");break;case"Synovus":movimientosDetectados=await parseUSBank(file,"Synovus");break;case"Fondo Casa de Bolsa":movimientosDetectados=await parseCasaBolsa(file);break;default:throw new Error(`No existe adaptador para ${bancoDetectado}.`)}
       if(!cuentaDetectada)throw new Error("El banco fue identificado, pero no fue posible asociar la cuenta.");
-      if(movimientosDetectados.length)fechasDeMovimientos(movimientosDetectados);else if(bancoDetectado==="Fondo Casa de Bolsa"){const text=await extraerTextoPDF(file);const d=parseSpanishMonthDate(text);fechaDesdeDetectada=fechaHastaDetectada=d}
-      mostrarDeteccion();let html=`<div class="success"><strong>Archivo leído correctamente.</strong><br><br>${movimientosDetectados.length} movimiento(s) detectado(s). Puedes procesarlo cuando la información mostrada sea correcta.</div>`;if(advertenciasDeteccion.length)html+=`<div class="warning"><strong>Advertencias:</strong><br>${advertenciasDeteccion.map(x=>`• ${x}`).join("<br>")}</div>`;detectionMessage.innerHTML=html;processFileButton.disabled=false;
+      if(movimientosDetectados.length){
+        fechasDeMovimientos(movimientosDetectados);
+      }else if(bancoDetectado==="Fondo Casa de Bolsa"){
+        if(file.name.toLowerCase().endsWith(".pdf")){
+          const text=await extraerTextoPDF(file);
+          const d=parseSpanishMonthDate(text);
+          fechaDesdeDetectada=fechaHastaDetectada=d;
+        }else{
+          const wb=await leerWorkbook(file);
+          const rows=sheetRows(wb,1);
+          const d=detectarFechaCasaExcel(rows,file);
+          fechaDesdeDetectada=fechaHastaDetectada=d;
+        }
+      }
+      mostrarDeteccion();
+      await prepararPreAnalisis();
     }catch(error){console.error(error);mostrarDeteccion();detectionMessage.innerHTML=`<div class="error">${error.message||error}</div>`;const candidatas=cuentasActivas().filter(c=>!bancoDetectado||normalizarTexto(c.banco)===normalizarTexto(bancoDetectado));if(candidatas.length>1){llenarSelectorManual(candidatas);manualAccountContainer.style.display="block"}processFileButton.disabled=true}
   }
 
   document.getElementById("bankFile").addEventListener("change",()=>{const file=document.getElementById("bankFile").files[0];if(file)analizarArchivo(file)});
-  manualAccountSelect.addEventListener("change",e=>{const c=cuentas.find(x=>x.id===e.target.value);if(c){cuentaDetectada=c;mostrarDeteccion()}});
+  manualAccountSelect.addEventListener("change",async e=>{const c=cuentas.find(x=>x.id===e.target.value);if(c){cuentaDetectada=c;mostrarDeteccion();try{await prepararPreAnalisis()}catch(error){console.error(error);detectionMessage.innerHTML=`<div class="error">${error.message||error}</div>`;processFileButton.disabled=true}}});
 
-  async function fingerprintsExistentes(items){const result=new Set();for(let i=0;i<items.length;i+=200){const chunk=items.slice(i,i+200);const{data,error}=await supabaseClient.from("movimientos_bancarios").select("fingerprint").eq("cuenta_bancaria_id",cuentaDetectada.id).in("fingerprint",chunk);if(error)throw error;(data||[]).forEach(x=>result.add(x.fingerprint))}return result}
+  async function fingerprintsExistentes(items){
+    const result=new Set();
+    for(let i=0;i<items.length;i+=200){
+      const chunk=items.slice(i,i+200);
+      const{data,error}=await supabaseClient
+        .from("movimientos_bancarios")
+        .select("fingerprint")
+        .eq("cuenta_bancaria_id",cuentaDetectada.id)
+        .in("fingerprint",chunk);
+      if(error)throw error;
+      (data||[]).forEach(x=>result.add(x.fingerprint));
+    }
+    return result;
+  }
+
+  function claveSemanticaMovimiento(m){
+    /*
+     * Identidad bancaria estable:
+     * cuenta + fecha + naturaleza + valor + descripción + referencia.
+     *
+     * No usamos raw_data, saldo ni representación interna de fechas porque
+     * esos campos pueden cambiar entre dos descargas del mismo banco.
+     */
+    return [
+      m.fecha_movimiento||"",
+      m.naturaleza||"",
+      Number(m.valor||0).toFixed(2),
+      normalizarTexto(m.descripcion_original||""),
+      normalizarTexto(m.referencia||"")
+    ].join("|");
+  }
+
+  async function conteosSemanticosExistentes(movimientos){
+    const counts=new Map();
+    if(!movimientos.length)return counts;
+
+    const fechas=movimientos
+      .map(m=>m.fecha_movimiento)
+      .filter(Boolean)
+      .sort();
+
+    if(!fechas.length)return counts;
+
+    const desde=fechas[0];
+    const hasta=fechas[fechas.length-1];
+
+    const{data,error}=await supabaseClient
+      .from("movimientos_bancarios")
+      .select("fecha_movimiento,naturaleza,valor,descripcion_original,referencia")
+      .eq("cuenta_bancaria_id",cuentaDetectada.id)
+      .gte("fecha_movimiento",desde)
+      .lte("fecha_movimiento",hasta);
+
+    if(error)throw error;
+
+    (data||[]).forEach(m=>{
+      const key=claveSemanticaMovimiento(m);
+      counts.set(key,(counts.get(key)||0)+1);
+    });
+
+    return counts;
+  }
+
+  async function separarNuevosYDuplicados(movimientos){
+    /*
+     * La deduplicación se hace por multiplicidad, no por simple existencia.
+     *
+     * Ejemplo:
+     * - BD contiene dos cargos reales idénticos de $7.140.
+     * - Archivo nuevo contiene esos mismos dos cargos.
+     * => los dos son duplicados.
+     *
+     * Si el archivo contiene tres, solo el tercero será nuevo.
+     *
+     * Esto evita borrar movimientos legítimos repetidos.
+     */
+    const existentes=await conteosSemanticosExistentes(movimientos);
+    const vistosArchivo=new Map();
+    const nuevos=[];
+    let duplicados=0;
+
+    for(const m of movimientos){
+      const key=claveSemanticaMovimiento(m);
+      const ocurrencia=(vistosArchivo.get(key)||0)+1;
+      vistosArchivo.set(key,ocurrencia);
+
+      const cantidadExistente=existentes.get(key)||0;
+
+      if(ocurrencia<=cantidadExistente){
+        duplicados++;
+      }else{
+        nuevos.push(m);
+      }
+    }
+
+    return{nuevos,duplicados};
+  }
 
   async function guardarCargaBancaria(){
     if(!archivoSeleccionado||!cuentaDetectada)throw new Error("No existe un archivo/cuenta listo para procesar.");
     if(!fechaDesdeDetectada||!fechaHastaDetectada)throw new Error("No fue posible determinar el rango de fechas de la carga.");
-    const fileHash=await hashFile(archivoSeleccionado);const{data:existing,error:ee}=await supabaseClient.from("cargas_bancarias").select("id").eq("cuenta_bancaria_id",cuentaDetectada.id).eq("hash_archivo",fileHash).maybeSingle();if(ee)throw ee;if(existing)throw new Error("Este archivo exacto ya fue cargado anteriormente.");
-    const fps=movimientosDetectados.map(m=>m.fingerprint),existentes=fps.length?await fingerprintsExistentes(fps):new Set(),nuevos=movimientosDetectados.filter(m=>!existentes.has(m.fingerprint)),duplicados=movimientosDetectados.length-nuevos.length,periodo=`${fechaHastaDetectada.substring(0,7)}-01`;
-    const uid=getUserId();const{data:carga,error:ce}=await supabaseClient.from("cargas_bancarias").insert({cuenta_bancaria_id:cuentaDetectada.id,periodo,fecha_desde:fechaDesdeDetectada,fecha_hasta:fechaHastaDetectada,tipo_fuente:bancoDetectado==="Fondo Casa de Bolsa"?"EXTRACTO":"MOVIMIENTOS",nombre_archivo:archivoSeleccionado.name,hash_archivo:fileHash,estado:"PROCESANDO",registros_total:movimientosDetectados.length,registros_nuevos:nuevos.length,registros_duplicados:duplicados,comentario:advertenciasDeteccion.length?advertenciasDeteccion.join(" | "):null,uploaded_by:uid}).select("id").single();if(ce)throw ce;
-    try{if(nuevos.length){for(let i=0;i<nuevos.length;i+=300){const rows=nuevos.slice(i,i+300).map(m=>({...m,carga_id:carga.id,cuenta_bancaria_id:cuentaDetectada.id}));const{error}=await supabaseClient.from("movimientos_bancarios").insert(rows);if(error)throw error}}const{error:ue}=await supabaseClient.from("cargas_bancarias").update({estado:"PROCESADA",updated_at:new Date().toISOString()}).eq("id",carga.id);if(ue)throw ue;return{total:movimientosDetectados.length,nuevos:nuevos.length,duplicados}}
-    catch(error){await supabaseClient.from("cargas_bancarias").update({estado:"ERROR",comentario:`${advertenciasDeteccion.join(" | ")} | ERROR: ${error.message||error}`,updated_at:new Date().toISOString()}).eq("id",carga.id);throw error}
+    if(archivoYaProcesado)throw new Error("Este archivo ya fue procesado. Selecciona un archivo diferente para continuar.");
+
+    /*
+     * Revalidamos justo antes de escribir para protegernos contra una carga
+     * hecha desde otra pestaña/usuario después del preanálisis.
+     */
+    const fileHash=await hashFile(archivoSeleccionado);
+    const{data:existing,error:ee}=await supabaseClient
+      .from("cargas_bancarias")
+      .select("id")
+      .eq("cuenta_bancaria_id",cuentaDetectada.id)
+      .eq("hash_archivo",fileHash)
+      .maybeSingle();
+
+    if(ee)throw ee;
+    if(existing)throw new Error("Este archivo ya fue procesado en otra sesión o pestaña.");
+
+    const resultadoDeduplicacion=await separarNuevosYDuplicados(movimientosDetectados);
+    const nuevos=resultadoDeduplicacion.nuevos;
+    const duplicados=resultadoDeduplicacion.duplicados;
+    const periodo=`${fechaHastaDetectada.substring(0,7)}-01`;
+    const uid=getUserId();
+
+    const{data:carga,error:ce}=await supabaseClient
+      .from("cargas_bancarias")
+      .insert({
+        cuenta_bancaria_id:cuentaDetectada.id,
+        periodo,
+        fecha_desde:fechaDesdeDetectada,
+        fecha_hasta:fechaHastaDetectada,
+        tipo_fuente:bancoDetectado==="Fondo Casa de Bolsa"?"EXTRACTO":"MOVIMIENTOS",
+        nombre_archivo:archivoSeleccionado.name,
+        hash_archivo:fileHash,
+        estado:"PROCESANDO",
+        registros_total:movimientosDetectados.length,
+        registros_nuevos:nuevos.length,
+        registros_duplicados:duplicados,
+        comentario:advertenciasDeteccion.length?advertenciasDeteccion.join(" | "):null,
+        uploaded_by:uid
+      })
+      .select("id")
+      .single();
+
+    if(ce)throw ce;
+
+    try{
+      if(nuevos.length){
+        for(let i=0;i<nuevos.length;i+=300){
+          const rows=nuevos.slice(i,i+300).map(m=>({...m,carga_id:carga.id,cuenta_bancaria_id:cuentaDetectada.id}));
+          const{error}=await supabaseClient.from("movimientos_bancarios").insert(rows);
+          if(error)throw error;
+        }
+      }
+
+      const{error:ue}=await supabaseClient
+        .from("cargas_bancarias")
+        .update({estado:"PROCESADA",updated_at:new Date().toISOString()})
+        .eq("id",carga.id);
+
+      if(ue)throw ue;
+
+      archivoYaProcesado=true;
+      resultadoPreAnalisis={
+        total:movimientosDetectados.length,
+        nuevos:nuevos.length,
+        duplicados
+      };
+
+      return{
+        total:movimientosDetectados.length,
+        nuevos:nuevos.length,
+        duplicados
+      };
+    }catch(error){
+      await supabaseClient
+        .from("cargas_bancarias")
+        .update({
+          estado:"ERROR",
+          comentario:`${advertenciasDeteccion.join(" | ")} | ERROR: ${error.message||error}`,
+          updated_at:new Date().toISOString()
+        })
+        .eq("id",carga.id);
+      throw error;
+    }
   }
 
-  processFileButton.addEventListener("click",async()=>{processFileButton.disabled=true;try{detectionMessage.innerHTML="Guardando movimientos...";const r=await guardarCargaBancaria();detectionMessage.innerHTML=`<div class="success"><strong>Archivo procesado correctamente.</strong><br><br>Total encontrados: ${r.total}<br>Nuevos: ${r.nuevos}<br>Duplicados: ${r.duplicados}</div>`;await actualizarPagina()}catch(error){console.error(error);detectionMessage.innerHTML=`<div class="error">${error.message||error}</div>`}finally{processFileButton.disabled=false}});
+  processFileButton.addEventListener("click",async()=>{
+    if(processFileButton.disabled)return;
+
+    processFileButton.disabled=true;
+    processFileButton.textContent="Procesando...";
+
+    try{
+      detectionMessage.innerHTML="Guardando movimientos...";
+      const r=await guardarCargaBancaria();
+
+      detectionMessage.innerHTML=`<div class="success"><strong>✓ ARCHIVO PROCESADO CORRECTAMENTE</strong><br><br>Total encontrados: ${r.total}<br>Nuevos guardados: ${r.nuevos}<br>Duplicados omitidos: ${r.duplicados}<br><br><strong>Para realizar otra carga, selecciona un archivo nuevo.</strong></div>`;
+
+      processFileButton.disabled=true;
+      processFileButton.textContent="Archivo procesado";
+
+      await actualizarPagina();
+    }catch(error){
+      console.error(error);
+      detectionMessage.innerHTML=`<div class="error">${error.message||error}</div>`;
+
+      if(archivoYaProcesado){
+        processFileButton.disabled=true;
+        processFileButton.textContent="Archivo ya procesado";
+      }else{
+        processFileButton.disabled=false;
+        processFileButton.textContent="Reintentar procesamiento";
+      }
+    }
+  });
 
   function obtenerRangoMes(){if(!periodFilter.value)return null;const[y,m]=periodFilter.value.split("-"),inicio=`${y}-${m}-01`,next=new Date(Number(y),Number(m),1),fin=`${next.getFullYear()}-${String(next.getMonth()+1).padStart(2,"0")}-01`;return{inicio,fin}}
   async function cargarResumen(){const rango=obtenerRangoMes(),ids=cuentasFiltradas().map(c=>c.id);document.getElementById("enabledAccountsCount").textContent=ids.length;if(!ids.length){document.getElementById("bankMovementsCount").textContent="0";document.getElementById("pendingCount").textContent="0";return}const{count:total,error:e1}=await supabaseClient.from("movimientos_bancarios").select("id",{count:"exact",head:true}).in("cuenta_bancaria_id",ids).gte("fecha_movimiento",rango.inicio).lt("fecha_movimiento",rango.fin);if(e1)throw e1;const{count:pend,error:e2}=await supabaseClient.from("movimientos_bancarios").select("id",{count:"exact",head:true}).in("cuenta_bancaria_id",ids).gte("fecha_movimiento",rango.inicio).lt("fecha_movimiento",rango.fin).eq("estado_conciliacion","PENDIENTE");if(e2)throw e2;document.getElementById("bankMovementsCount").textContent=total||0;document.getElementById("pendingCount").textContent=pend||0}
