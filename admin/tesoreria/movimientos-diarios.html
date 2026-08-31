@@ -1,114 +1,2603 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Movimientos Diarios | CI Inti Mining</title>
-<link rel="stylesheet" href="../../styles.css">
-<style>
-*{box-sizing:border-box}body{margin:0;background:#f4f5f7;font-family:Arial,sans-serif;color:#202124}
-header{background:#fff;border-bottom:1px solid #ddd;padding:16px 26px;display:flex;justify-content:space-between;align-items:center}
-main{max-width:1750px;margin:28px auto;padding:0 22px 50px}.card{background:#fff;border-radius:12px;padding:22px;margin-bottom:20px;box-shadow:0 5px 20px rgba(0,0,0,.05)}
-.toolbar{display:flex;gap:18px;justify-content:space-between;align-items:center;flex-wrap:wrap}.toolbar h1{margin:0 0 5px}.muted{color:#666}
-.filters,.tabs,.day-nav{display:flex;align-items:end;gap:10px;flex-wrap:wrap}label{display:block;font-size:12px;font-weight:700;margin-bottom:5px}
-input{padding:9px;border:1px solid #ccc;border-radius:7px}button{border:0;border-radius:7px;padding:10px 14px;cursor:pointer}.primary,.tab.active,.day-btn.active{background:#222;color:#fff}.secondary,.tab,.day-btn{background:#eee}
-.tabs{margin-top:18px}.day-nav{margin-top:10px}.section-heading{display:flex;justify-content:space-between;gap:15px;align-items:center;flex-wrap:wrap;margin-bottom:15px}.section-heading h2{margin:0}
-.status-ok,.status-warn{padding:9px 12px;border-radius:8px;font-size:13px;font-weight:600}.status-ok{background:#e9f7ec}.status-warn{background:#fff5d6}
-.table-wrap{width:100%;overflow-x:auto}table{width:100%;border-collapse:collapse}th,td{border:1px solid #d7d7d7;padding:9px 10px;font-size:12px}th{background:#ececec;text-align:center}td{text-align:right}
-.saldo-table{min-width:900px}.saldo-table th:first-child,.saldo-table td:first-child{text-align:left;min-width:260px}.company-separator td{background:#f7f7f7!important;text-align:left!important;font-weight:700}
-.account-name{font-weight:700}.account-detail{display:block;color:#777;font-size:11px;margin-top:3px}.total-row td{background:#f1f1f1!important;font-weight:700}.positive{color:#176b2c}.negative{color:#a21c1c}
-.matrix-card{padding:0;overflow:hidden}.matrix-title{background:#222;color:#fff;font-size:17px;font-weight:700;padding:11px 16px}.matrix-content{padding:18px}
-.matrix-table{min-width:1100px;table-layout:fixed}.matrix-table th:first-child,.matrix-table td:first-child{position:sticky;left:0;z-index:2;text-align:left;min-width:310px;width:310px;background:#fff}
-.matrix-table th:first-child{background:#ececec;z-index:3}.matrix-table th:not(:first-child){min-width:185px}.column-company{display:block;font-size:10px;color:#666;margin-bottom:4px}.column-account{display:block;font-size:11px;line-height:1.3}
-.concept-main{font-weight:600;line-height:1.35}.concept-meta{font-size:10px;color:#777;margin-top:3px}.pending-row td:first-child{border-left:4px solid #d49b00}
-@media(max-width:800px){header,.toolbar{align-items:flex-start;flex-direction:column}}
-</style>
+
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>
+    Movimientos Diarios | CI Inti Mining
+  </title>
+
+  <link
+    rel="stylesheet"
+    href="../../styles.css"
+  >
+
+  <style>
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: #f4f5f7;
+      font-family: Arial, sans-serif;
+      color: #202124;
+    }
+
+    header {
+      background: #fff;
+      border-bottom: 1px solid #ddd;
+      padding: 16px 26px;
+
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    main {
+      max-width: 1750px;
+      margin: 28px auto;
+      padding: 0 22px 50px;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 22px;
+      margin-bottom: 20px;
+
+      box-shadow:
+        0 5px 20px
+        rgba(0, 0, 0, 0.05);
+    }
+
+    .toolbar {
+      display: flex;
+      gap: 18px;
+
+      justify-content: space-between;
+      align-items: center;
+
+      flex-wrap: wrap;
+    }
+
+    .toolbar h1 {
+      margin: 0 0 5px;
+    }
+
+    .muted {
+      color: #666;
+    }
+
+    .filters,
+    .tabs,
+    .day-nav {
+      display: flex;
+      align-items: end;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    label {
+      display: block;
+      font-size: 12px;
+      font-weight: 700;
+      margin-bottom: 5px;
+    }
+
+    input {
+      padding: 9px;
+      border: 1px solid #ccc;
+      border-radius: 7px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 7px;
+      padding: 10px 14px;
+      cursor: pointer;
+    }
+
+    .primary,
+    .tab.active,
+    .day-btn.active {
+      background: #222;
+      color: #fff;
+    }
+
+    .secondary,
+    .tab,
+    .day-btn {
+      background: #eee;
+    }
+
+    .tabs {
+      margin-top: 18px;
+    }
+
+    .day-nav {
+      margin-top: 10px;
+    }
+
+    .section-heading {
+      display: flex;
+
+      justify-content: space-between;
+      gap: 15px;
+
+      align-items: center;
+
+      flex-wrap: wrap;
+
+      margin-bottom: 15px;
+    }
+
+    .section-heading h2 {
+      margin: 0;
+    }
+
+    .status-ok,
+    .status-warn {
+      padding: 9px 12px;
+      border-radius: 8px;
+
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .status-ok {
+      background: #e9f7ec;
+    }
+
+    .status-warn {
+      background: #fff5d6;
+    }
+
+    .table-wrap {
+      width: 100%;
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th,
+    td {
+      border: 1px solid #d7d7d7;
+      padding: 9px 10px;
+      font-size: 12px;
+    }
+
+    th {
+      background: #ececec;
+      text-align: center;
+    }
+
+    td {
+      text-align: right;
+    }
+
+    .saldo-table {
+      min-width: 900px;
+    }
+
+    .saldo-table th:first-child,
+    .saldo-table td:first-child {
+      text-align: left;
+      min-width: 260px;
+    }
+
+    .company-separator td {
+      background: #f7f7f7 !important;
+      text-align: left !important;
+      font-weight: 700;
+    }
+
+    .account-name {
+      font-weight: 700;
+    }
+
+    .account-detail {
+      display: block;
+      color: #777;
+
+      font-size: 11px;
+
+      margin-top: 3px;
+    }
+
+    .total-row td {
+      background: #f1f1f1 !important;
+      font-weight: 700;
+    }
+
+    .positive {
+      color: #176b2c;
+    }
+
+    .negative {
+      color: #a21c1c;
+    }
+
+    .matrix-card {
+      padding: 0;
+      overflow: hidden;
+    }
+
+    .matrix-title {
+      background: #222;
+      color: #fff;
+
+      font-size: 17px;
+      font-weight: 700;
+
+      padding: 11px 16px;
+    }
+
+    .matrix-content {
+      padding: 18px;
+    }
+
+    .matrix-table {
+      min-width: 1100px;
+      table-layout: fixed;
+    }
+
+    .matrix-table th:first-child,
+    .matrix-table td:first-child {
+      position: sticky;
+      left: 0;
+
+      z-index: 2;
+
+      text-align: left;
+
+      min-width: 310px;
+      width: 310px;
+
+      background: #fff;
+    }
+
+    .matrix-table th:first-child {
+      background: #ececec;
+      z-index: 3;
+    }
+
+    .matrix-table th:not(:first-child) {
+      min-width: 185px;
+    }
+
+    .column-company {
+      display: block;
+
+      font-size: 10px;
+      color: #666;
+
+      margin-bottom: 4px;
+    }
+
+    .column-account {
+      display: block;
+
+      font-size: 11px;
+      line-height: 1.3;
+    }
+
+    .concept-main {
+      font-weight: 600;
+      line-height: 1.35;
+    }
+
+    .concept-meta {
+      font-size: 10px;
+      color: #777;
+      margin-top: 3px;
+    }
+
+    .pending-row td:first-child {
+      border-left: 4px solid #d49b00;
+    }
+
+    @media (max-width: 800px) {
+
+      header,
+      .toolbar {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+    }
+
+  </style>
+
 </head>
+
+
 <body>
-<header><div><a href="bandeja-conciliacion.html">← Conciliación</a><strong style="margin-left:18px">CI Inti Mining · Tesorería</strong></div><button id="logoutButton">Cerrar sesión</button></header>
+
+
+<header>
+
+  <div>
+
+    <a href="bandeja-conciliacion.html">
+      ← Conciliación
+    </a>
+
+    <strong style="margin-left:18px;">
+      CI Inti Mining · Tesorería
+    </strong>
+
+  </div>
+
+
+  <button id="logoutButton">
+    Cerrar sesión
+  </button>
+
+</header>
+
+
 <main>
-<div class="card">
-<div class="toolbar"><div><h1 id="pageTitle">NACIONAL AGOSTO 2026</h1><div class="muted">Control diario por cuenta bancaria y concepto</div></div>
-<div class="filters"><div><label>Mes</label><input id="periodFilter" type="month" value="2026-08"></div><button id="refreshButton" class="secondary">Actualizar</button></div></div>
-<div class="tabs"><button class="tab active" data-group="NACIONAL">Nacional</button><button class="tab" data-group="INTERNACIONAL">Internacional</button></div>
-</div>
-<div class="card"><strong>Fecha</strong><div id="dayNav" class="day-nav"></div></div>
-<div id="content"></div>
+
+
+  <div class="card">
+
+
+    <div class="toolbar">
+
+
+      <div>
+
+        <h1 id="pageTitle">
+          NACIONAL AGOSTO 2026
+        </h1>
+
+        <div class="muted">
+          Control diario por cuenta bancaria y concepto
+        </div>
+
+      </div>
+
+
+      <div class="filters">
+
+        <div>
+
+          <label>
+            Mes
+          </label>
+
+          <input
+            id="periodFilter"
+            type="month"
+            value="2026-08"
+          >
+
+        </div>
+
+
+        <button
+          id="refreshButton"
+          class="secondary"
+        >
+          Actualizar
+        </button>
+
+      </div>
+
+
+    </div>
+
+
+    <div class="tabs">
+
+      <button
+        class="tab active"
+        data-group="NACIONAL"
+      >
+        Nacional
+      </button>
+
+      <button
+        class="tab"
+        data-group="INTERNACIONAL"
+      >
+        Internacional
+      </button>
+
+    </div>
+
+
+  </div>
+
+
+  <div class="card">
+
+    <strong>
+      Fecha
+    </strong>
+
+    <div
+      id="dayNav"
+      class="day-nav"
+    ></div>
+
+  </div>
+
+
+  <div id="content"></div>
+
+
 </main>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="../../js/supabase-config.js"></script><script src="../../js/auth.js"></script>
+
+
+<script
+  src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+></script>
+
+<script
+  src="../../js/supabase-config.js"
+></script>
+
+<script
+  src="../../js/auth.js"
+></script>
+
+
 <script>
-let grupo="NACIONAL",movimientos=[],saldosIniciales=[],cuentas=[],fechaSeleccionada=null;
-const meses=["ENERO","FEBRERO","MARZO","ABRIL","MAYO","JUNIO","JULIO","AGOSTO","SEPTIEMBRE","OCTUBRE","NOVIEMBRE","DICIEMBRE"];
-const $=id=>document.getElementById(id);
-function esc(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]))}
-function fmt(v,m){return new Intl.NumberFormat("es-CO",{minimumFractionDigits:2,maximumFractionDigits:2}).format(Number(v||0))+" "+m}
-function fmtCell(v){return Number(v||0)===0?"":new Intl.NumberFormat("es-CO",{minimumFractionDigits:2,maximumFractionDigits:2}).format(Number(v))}
-function fdate(f){let[y,m,d]=f.split("-");return `${d}/${m}/${y}`}
-function periodo(){let[y,m]=$("periodFilter").value.split("-"),n=new Date(+y,+m,1);return{inicio:`${y}-${m}-01`,fin:`${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,"0")}-01`,year:+y,month:+m}}
-function nombreCuenta(c){return `${c.banco} ${c.nombre_cuenta||""}${c.numero_mask?" "+c.numero_mask:""}`.replace(/\s+/g," ").trim()}
-function saldoInicial(id){let s=saldosIniciales.find(x=>x.cuenta_bancaria_id===id);return s?Number(s.saldo_inicial):null}
-function neto(lista){return lista.reduce((a,m)=>a+(m.naturaleza==="CREDITO"?Number(m.valor):-Number(m.valor)),0)}
-function conc(m){return (m.conciliaciones||[]).find(x=>x.estado==="CONFIRMADA")}
-function concepto(m){
- const c=conc(m),mt=c?.movimientos_tesoreria;
- if(c?.criterio?.tipo_resolucion==="TRANSFERENCIA_INTERNA") return m.naturaleza==="DEBITO"?"TRASLADO A CUENTA PROPIA":"TRASLADO DESDE CUENTA PROPIA";
- if(m.categoria_bancaria==="GMF") return "GMF";
- if(m.categoria_bancaria==="COSTOS_BANCARIOS") return "GASTOS BANCARIOS - "+(m.descripcion_original||"MOVIMIENTO BANCARIO");
- if(m.categoria_bancaria==="RENDIMIENTOS") return "RENDIMIENTOS - "+(m.cuentas_bancarias.banco||"");
- const b=mt?.beneficiarios?.nombre,co=mt?.concepto;
- return b&&co?`${b} - ${co}`:(co||m.descripcion_original||"MOVIMIENTO SIN DESCRIPCIÓN");
-}
-function meta(m){if(m.estado_conciliacion!=="CONCILIADO")return"PENDIENTE DE CONCILIACIÓN";let cl=conc(m)?.movimientos_tesoreria?.clasificacion_operativa;return cl==="TRANSFERENCIA_NO_OPERATIVA"?"TRANSFERENCIA NO OPERATIVA":""}
-async function init(){
- let u=await getAuthorizedUser();if(!u){location.href="../../login.html";return}
- $("logoutButton").onclick=logout;$("refreshButton").onclick=cargar;$("periodFilter").onchange=()=>{fechaSeleccionada=null;cargar()}
- document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>{grupo=b.dataset.group;fechaSeleccionada=null;document.querySelectorAll(".tab").forEach(x=>x.classList.toggle("active",x===b));cargar()});
- await cargar()
-}
-async function cargar(){
- const p=periodo();$("pageTitle").textContent=`${grupo} ${meses[p.month-1]} ${p.year}`;$("content").innerHTML='<div class="card">Cargando panel...</div>';
- const [mr,sr,cr]=await Promise.all([
-  supabaseClient.from("movimientos_bancarios").select(`id,fecha_movimiento,descripcion_original,referencia,naturaleza,valor,moneda,saldo,estado_conciliacion,categoria_bancaria,cuentas_bancarias!inner(id,empresa_id,banco,nombre_cuenta,numero_mask,moneda,grupo_conciliacion,empresas(id,nombre_corto)),conciliaciones(id,estado,criterio,comentario,movimientos_tesoreria(id,concepto,clasificacion_operativa,impacto_operativo,beneficiarios(nombre)))`).gte("fecha_movimiento",p.inicio).lt("fecha_movimiento",p.fin).eq("cuentas_bancarias.grupo_conciliacion",grupo).order("fecha_movimiento"),
-  supabaseClient.from("saldos_iniciales_mensuales").select("cuenta_bancaria_id,saldo_inicial,moneda").eq("periodo",p.inicio),
-  supabaseClient.from("cuentas_bancarias").select(`id,empresa_id,banco,nombre_cuenta,numero_mask,moneda,grupo_conciliacion,empresas(id,nombre_corto)`).eq("grupo_conciliacion",grupo).eq("activo",true)
- ]);
- if(mr.error)throw mr.error;if(sr.error)throw sr.error;if(cr.error)throw cr.error;
- movimientos=mr.data||[];saldosIniciales=sr.data||[];cuentas=(cr.data||[]).sort((a,b)=>(a.empresas?.nombre_corto||"").localeCompare(b.empresas?.nombre_corto||"")||nombreCuenta(a).localeCompare(nombreCuenta(b)));
- const dias=[...new Set(movimientos.map(x=>x.fecha_movimiento))].sort();if(!fechaSeleccionada||!dias.includes(fechaSeleccionada))fechaSeleccionada=dias[0]||p.inicio;renderDias(dias);render()
-}
-function renderDias(dias){
- let nav=$("dayNav");nav.innerHTML="";if(!dias.length){nav.innerHTML='<span class="muted">No hay movimientos cargados.</span>';return}
- dias.forEach(f=>{let b=document.createElement("button");b.className="day-btn"+(f===fechaSeleccionada?" active":"");b.textContent=fdate(f);b.onclick=()=>{fechaSeleccionada=f;renderDias(dias);render()};nav.appendChild(b)})
-}
-function calcCuenta(c,diaMov){
- let si=saldoInicial(c.id),antMov=movimientos.filter(m=>m.cuentas_bancarias.id===c.id&&m.fecha_movimiento<fechaSeleccionada);
- let ant=si===null?null:si+neto(antMov),delDia=diaMov.filter(m=>m.cuentas_bancarias.id===c.id),ing=delDia.filter(m=>m.naturaleza==="CREDITO").reduce((a,m)=>a+Number(m.valor),0),egr=delDia.filter(m=>m.naturaleza==="DEBITO").reduce((a,m)=>a+Number(m.valor),0);
- return{ant,ing,egr,fin:ant===null?null:ant+ing-egr}
-}
-function panelSuperior(diaMov){
- let rows="",empPrev=null,tot={};
- cuentas.forEach(c=>{
-  let emp=c.empresas?.nombre_corto||"SIN EMPRESA";if(emp!==empPrev){rows+=`<tr class="company-separator"><td colspan="5">${esc(emp)}</td></tr>`;empPrev=emp}
-  let v=calcCuenta(c,diaMov);if(!tot[c.moneda])tot[c.moneda]={ant:0,ing:0,egr:0,fin:0,tiene:false};
-  if(v.ant!==null){tot[c.moneda].ant+=v.ant;tot[c.moneda].fin+=v.fin;tot[c.moneda].tiene=true}tot[c.moneda].ing+=v.ing;tot[c.moneda].egr+=v.egr;
-  rows+=`<tr><td><span class="account-name">${esc(c.banco)}</span><span class="account-detail">${esc(c.nombre_cuenta||"")}${c.numero_mask?" · "+esc(c.numero_mask):""} · ${esc(c.moneda)}</span></td><td>${v.ant===null?"PENDIENTE":fmt(v.ant,c.moneda)}</td><td class="positive">${fmt(v.ing,c.moneda)}</td><td class="negative">${fmt(v.egr,c.moneda)}</td><td>${v.fin===null?"PENDIENTE":fmt(v.fin,c.moneda)}</td></tr>`
- });
- Object.entries(tot).forEach(([m,t])=>rows+=`<tr class="total-row"><td>TOTAL EN BANCOS · ${m}</td><td>${t.tiene?fmt(t.ant,m):"PENDIENTE"}</td><td class="positive">${fmt(t.ing,m)}</td><td class="negative">${fmt(t.egr,m)}</td><td>${t.tiene?fmt(t.fin,m):"PENDIENTE"}</td></tr>`);
- return `<div class="card"><div class="section-heading"><div><h2>SALDOS POR CUENTA</h2><div><strong>FECHA ${fdate(fechaSeleccionada)}</strong></div></div></div><div class="table-wrap"><table class="saldo-table"><thead><tr><th>CUENTA</th><th>SALDO ANTERIOR</th><th>INGRESOS</th><th>EGRESOS</th><th>SALDO FINAL</th></tr></thead><tbody>${rows}</tbody></table></div></div>`
-}
-function matriz(titulo,nat,diaMov){
- const lista=diaMov.filter(m=>m.naturaleza===nat),tot={};cuentas.forEach(c=>tot[c.id]=0);
- const heads=cuentas.map(c=>`<th><span class="column-company">${esc(c.empresas?.nombre_corto||"")}</span><span class="column-account">${esc(nombreCuenta(c))}<br>${esc(c.moneda)}</span></th>`).join("");
- let rows="";
- if(!lista.length)rows=`<tr><td>SIN MOVIMIENTOS</td>${cuentas.map(()=>"<td></td>").join("")}</tr>`;
- lista.forEach(m=>{let id=m.cuentas_bancarias.id,v=Number(m.valor);tot[id]+=v;let cells=cuentas.map(c=>c.id===id?`<td>${fmtCell(v)}</td>`:"<td></td>").join("");let md=meta(m);rows+=`<tr class="${m.estado_conciliacion!=="CONCILIADO"?"pending-row":""}"><td><div class="concept-main">${esc(concepto(m))}</div>${md?`<div class="concept-meta">${esc(md)}</div>`:""}</td>${cells}</tr>`});
- let totals=cuentas.map(c=>`<td>${fmtCell(tot[c.id])}</td>`).join("");
- return `<div class="card matrix-card"><div class="matrix-title">${titulo}</div><div class="matrix-content"><div class="table-wrap"><table class="matrix-table"><thead><tr><th>${titulo}</th>${heads}</tr></thead><tbody>${rows}<tr class="total-row"><td>TOTALES</td>${totals}</tr></tbody></table></div></div></div>`
-}
-function render(){
- const diaMov=movimientos.filter(m=>m.fecha_movimiento===fechaSeleccionada),pend=diaMov.filter(m=>m.estado_conciliacion!=="CONCILIADO").length;
- $("content").innerHTML=`<div class="card"><div class="section-heading"><div><h2>${grupo} · ${fdate(fechaSeleccionada)}</h2><div class="muted">Saldo final = saldo anterior + ingresos − egresos</div></div><div class="${pend?"status-warn":"status-ok"}">${pend?`⚠ ${pend} movimiento(s) pendiente(s) de conciliación`:"✓ Todos los movimientos del día están conciliados"}</div></div></div>${panelSuperior(diaMov)}${matriz("EGRESOS","DEBITO",diaMov)}${matriz("INGRESOS","CREDITO",diaMov)}`
-}
-init().catch(e=>{$("content").innerHTML=`<div class="card">Error: ${esc(e.message||e)}</div>`;console.error(e)})
+
+  let grupo =
+    "NACIONAL";
+
+
+  let movimientos =
+    [];
+
+
+  let saldosIniciales =
+    [];
+
+
+  let cuentas =
+    [];
+
+
+  let fechaSeleccionada =
+    null;
+
+
+  const meses = [
+    "ENERO",
+    "FEBRERO",
+    "MARZO",
+    "ABRIL",
+    "MAYO",
+    "JUNIO",
+    "JULIO",
+    "AGOSTO",
+    "SEPTIEMBRE",
+    "OCTUBRE",
+    "NOVIEMBRE",
+    "DICIEMBRE"
+  ];
+
+
+  const $ =
+    id =>
+      document.getElementById(
+        id
+      );
+
+
+  function esc(
+    value
+  ) {
+
+    return String(
+      value ??
+      ""
+    )
+    .replace(
+      /[&<>"']/g,
+      character =>
+        ({
+          "&": "&amp;",
+          "<": "&lt;",
+          ">": "&gt;",
+          '"': "&quot;",
+          "'": "&#039;"
+        })[
+          character
+        ]
+    );
+
+  }
+
+
+  function normalizarTexto(
+    value
+  ) {
+
+    return String(
+      value ??
+      ""
+    )
+    .normalize(
+      "NFD"
+    )
+    .replace(
+      /[\u0300-\u036f]/g,
+      ""
+    )
+    .toUpperCase()
+    .replace(
+      /\s+/g,
+      " "
+    )
+    .trim();
+
+  }
+
+
+  function fmt(
+    valor,
+    moneda
+  ) {
+
+    return (
+      new Intl.NumberFormat(
+        "es-CO",
+        {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2
+        }
+      )
+      .format(
+        Number(
+          valor ||
+          0
+        )
+      )
+      +
+      " "
+      +
+      moneda
+    );
+
+  }
+
+
+  function fmtCell(
+    valor
+  ) {
+
+    if (
+      Number(
+        valor ||
+        0
+      ) ===
+      0
+    ) {
+
+      return "";
+
+    }
+
+
+    return (
+      new Intl.NumberFormat(
+        "es-CO",
+        {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2
+        }
+      )
+      .format(
+        Number(
+          valor
+        )
+      )
+    );
+
+  }
+
+
+  function fdate(
+    fecha
+  ) {
+
+    const [
+      year,
+      month,
+      day
+    ] =
+      fecha.split("-");
+
+
+    return (
+      `${day}/${month}/${year}`
+    );
+
+  }
+
+
+  function periodo() {
+
+    const [
+      year,
+      month
+    ] =
+      $("periodFilter")
+        .value
+        .split("-");
+
+
+    const next =
+      new Date(
+        Number(
+          year
+        ),
+        Number(
+          month
+        ),
+        1
+      );
+
+
+    return {
+
+      inicio:
+        `${year}-${month}-01`,
+
+      fin:
+        `${
+          next.getFullYear()
+        }-${
+          String(
+            next.getMonth() + 1
+          )
+          .padStart(
+            2,
+            "0"
+          )
+        }-01`,
+
+      year:
+        Number(
+          year
+        ),
+
+      month:
+        Number(
+          month
+        )
+
+    };
+
+  }
+
+
+  function nombreCuenta(
+    cuenta
+  ) {
+
+    return (
+      `${
+        cuenta.banco
+      } ${
+        cuenta.nombre_cuenta ||
+        ""
+      }${
+        cuenta.numero_mask
+        ?
+        " " +
+        cuenta.numero_mask
+        :
+        ""
+      }`
+    )
+    .replace(
+      /\s+/g,
+      " "
+    )
+    .trim();
+
+  }
+
+
+  function saldoInicial(
+    cuentaId
+  ) {
+
+    const registro =
+      saldosIniciales.find(
+        item =>
+          item
+            .cuenta_bancaria_id ===
+          cuentaId
+      );
+
+
+    return registro
+      ?
+      Number(
+        registro
+          .saldo_inicial
+      )
+      :
+      null;
+
+  }
+
+
+  function neto(
+    lista
+  ) {
+
+    return lista.reduce(
+      (
+        acumulado,
+        movimiento
+      ) =>
+        acumulado
+        +
+        (
+          movimiento
+            .naturaleza ===
+          "CREDITO"
+          ?
+          Number(
+            movimiento.valor
+          )
+          :
+          -Number(
+            movimiento.valor
+          )
+        ),
+      0
+    );
+
+  }
+
+
+  function conciliacionConfirmada(
+    movimiento
+  ) {
+
+    return (
+      movimiento
+        .conciliaciones ||
+      []
+    )
+    .find(
+      item =>
+        item.estado ===
+        "CONFIRMADA"
+    );
+
+  }
+
+
+  /*
+   * ========================================================
+   * NORMALIZACIÓN DE CONCEPTOS PARA VISUALIZACIÓN
+   * ========================================================
+   *
+   * IMPORTANTE:
+   * Esto NO modifica los movimientos originales en Supabase.
+   *
+   * Únicamente determina bajo qué rubro se mostrarán
+   * y consolidarán en Movimientos Diarios.
+   */
+
+  function rubroVisual(
+    movimiento
+  ) {
+
+    const descripcion =
+      normalizarTexto(
+        movimiento
+          .descripcion_original
+      );
+
+
+    const banco =
+      normalizarTexto(
+        movimiento
+          .cuentas_bancarias
+          ?.banco
+      );
+
+
+    /*
+     * 1. Todos los costos bancarios previamente clasificados
+     *    se consolidan bajo un único rubro.
+     */
+
+    if (
+      movimiento
+        .categoria_bancaria ===
+      "COSTOS_BANCARIOS"
+    ) {
+
+      return "COSTOS BANCARIOS";
+
+    }
+
+
+    /*
+     * 2. GMF / 4x1000.
+     */
+
+    if (
+      movimiento
+        .categoria_bancaria ===
+      "GMF"
+    ) {
+
+      return "GMF";
+
+    }
+
+
+    /*
+     * 3. Rendimientos.
+     */
+
+    if (
+      movimiento
+        .categoria_bancaria ===
+      "RENDIMIENTOS"
+    ) {
+
+      return "RENDIMIENTOS";
+
+    }
+
+
+    /*
+     * 4. Wire Fees internacionales.
+     */
+
+    if (
+      descripcion.includes(
+        "WIRE FEE"
+      )
+      ||
+      descripcion.includes(
+        "WIRE TRANSFER FEE"
+      )
+    ) {
+
+      return "WIRE FEE";
+
+    }
+
+
+    /*
+     * 5. BanBif COMS / ITF.
+     */
+
+    if (
+      banco.includes(
+        "BANBIF"
+      )
+      &&
+      (
+        descripcion ===
+        "COMS"
+        ||
+        descripcion.includes(
+          "COMS."
+        )
+        ||
+        descripcion ===
+        "ITF"
+        ||
+        descripcion.includes(
+          " ITF"
+        )
+      )
+    ) {
+
+      return "COMISIONES / ITF BANBIF";
+
+    }
+
+
+    /*
+     * 6. Transferencias internas.
+     */
+
+    const conciliacion =
+      conciliacionConfirmada(
+        movimiento
+      );
+
+
+    if (
+      conciliacion
+        ?.criterio
+        ?.tipo_resolucion ===
+      "TRANSFERENCIA_INTERNA"
+    ) {
+
+      return (
+        movimiento
+          .naturaleza ===
+        "DEBITO"
+        ?
+        "TRASLADO A CUENTA PROPIA"
+        :
+        "TRASLADO DESDE CUENTA PROPIA"
+      );
+
+    }
+
+
+    /*
+     * 7. Resto de movimientos: beneficiario + concepto.
+     */
+
+    const tesoreria =
+      conciliacion
+        ?.movimientos_tesoreria;
+
+
+    const beneficiario =
+      tesoreria
+        ?.beneficiarios
+        ?.nombre;
+
+
+    const concepto =
+      tesoreria
+        ?.concepto;
+
+
+    if (
+      beneficiario &&
+      concepto
+    ) {
+
+      return (
+        `${beneficiario} - ${concepto}`
+      );
+
+    }
+
+
+    if (
+      concepto
+    ) {
+
+      return concepto;
+
+    }
+
+
+    return (
+      movimiento
+        .descripcion_original
+      ||
+      "MOVIMIENTO SIN DESCRIPCIÓN"
+    );
+
+  }
+
+
+  function metaMovimiento(
+    movimiento
+  ) {
+
+    if (
+      movimiento
+        .estado_conciliacion !==
+      "CONCILIADO"
+    ) {
+
+      return (
+        "PENDIENTE DE CONCILIACIÓN"
+      );
+
+    }
+
+
+    const clasificacion =
+      conciliacionConfirmada(
+        movimiento
+      )
+      ?.movimientos_tesoreria
+      ?.clasificacion_operativa;
+
+
+    if (
+      clasificacion ===
+      "TRANSFERENCIA_NO_OPERATIVA"
+    ) {
+
+      return (
+        "TRANSFERENCIA NO OPERATIVA"
+      );
+
+    }
+
+
+    if (
+      clasificacion ===
+      "AJUSTE_SALDO_INICIAL"
+      ||
+      movimiento
+        .categoria_bancaria ===
+      "AJUSTE_SALDO_INICIAL"
+    ) {
+
+      return (
+        "AJUSTE DE SALDO INICIAL"
+      );
+
+    }
+
+
+    return "";
+
+  }
+
+
+  /*
+   * Agrupa únicamente para visualización.
+   *
+   * Clave:
+   *
+   * FECHA
+   * + NATURALEZA
+   * + CUENTA
+   * + RUBRO VISUAL
+   */
+
+  function agruparMovimientosVisuales(
+    lista
+  ) {
+
+    const grupos =
+      new Map();
+
+
+    lista.forEach(
+      movimiento => {
+
+        const cuentaId =
+          movimiento
+            .cuentas_bancarias
+            .id;
+
+
+        const rubro =
+          rubroVisual(
+            movimiento
+          );
+
+
+        const key =
+          [
+            movimiento
+              .fecha_movimiento,
+            movimiento
+              .naturaleza,
+            cuentaId,
+            rubro
+          ]
+          .join(
+            "|"
+          );
+
+
+        if (
+          !grupos.has(
+            key
+          )
+        ) {
+
+          grupos.set(
+            key,
+            {
+              rubro,
+              cuentaId,
+              naturaleza:
+                movimiento
+                  .naturaleza,
+              moneda:
+                movimiento
+                  .moneda,
+              valor:
+                0,
+              movimientos:
+                [],
+              tienePendientes:
+                false
+            }
+          );
+
+        }
+
+
+        const grupoActual =
+          grupos.get(
+            key
+          );
+
+
+        grupoActual.valor +=
+          Number(
+            movimiento.valor
+          );
+
+
+        grupoActual
+          .movimientos
+          .push(
+            movimiento
+          );
+
+
+        if (
+          movimiento
+            .estado_conciliacion !==
+          "CONCILIADO"
+        ) {
+
+          grupoActual
+            .tienePendientes =
+            true;
+
+        }
+
+      }
+    );
+
+
+    return (
+      Array.from(
+        grupos.values()
+      )
+    );
+
+  }
+
+
+  async function init() {
+
+    const usuario =
+      await getAuthorizedUser();
+
+
+    if (
+      !usuario
+    ) {
+
+      location.href =
+        "../../login.html";
+
+      return;
+
+    }
+
+
+    $("logoutButton")
+      .onclick =
+      logout;
+
+
+    $("refreshButton")
+      .onclick =
+      cargar;
+
+
+    $("periodFilter")
+      .onchange =
+      () => {
+
+        fechaSeleccionada =
+          null;
+
+        cargar();
+
+      };
+
+
+    document
+      .querySelectorAll(
+        ".tab"
+      )
+      .forEach(
+        button => {
+
+          button.onclick =
+            () => {
+
+              grupo =
+                button
+                  .dataset
+                  .group;
+
+
+              fechaSeleccionada =
+                null;
+
+
+              document
+                .querySelectorAll(
+                  ".tab"
+                )
+                .forEach(
+                  item =>
+                    item
+                      .classList
+                      .toggle(
+                        "active",
+                        item ===
+                        button
+                      )
+                );
+
+
+              cargar();
+
+            };
+
+        }
+      );
+
+
+    await cargar();
+
+  }
+
+
+  async function cargar() {
+
+    const p =
+      periodo();
+
+
+    $("pageTitle")
+      .textContent =
+      `${
+        grupo
+      } ${
+        meses[
+          p.month - 1
+        ]
+      } ${
+        p.year
+      }`;
+
+
+    $("content")
+      .innerHTML =
+      '<div class="card">Cargando panel...</div>';
+
+
+    const [
+      movimientosResponse,
+      saldosResponse,
+      cuentasResponse
+    ] =
+      await Promise.all([
+
+        supabaseClient
+          .from(
+            "movimientos_bancarios"
+          )
+          .select(`
+            id,
+            fecha_movimiento,
+            descripcion_original,
+            referencia,
+            naturaleza,
+            valor,
+            moneda,
+            saldo,
+            estado_conciliacion,
+            categoria_bancaria,
+
+            cuentas_bancarias!inner (
+              id,
+              empresa_id,
+              banco,
+              nombre_cuenta,
+              numero_mask,
+              moneda,
+              grupo_conciliacion,
+
+              empresas (
+                id,
+                nombre_corto
+              )
+            ),
+
+            conciliaciones (
+              id,
+              estado,
+              criterio,
+              comentario,
+
+              movimientos_tesoreria (
+                id,
+                concepto,
+                clasificacion_operativa,
+                impacto_operativo,
+
+                beneficiarios (
+                  nombre
+                )
+              )
+            )
+          `)
+          .gte(
+            "fecha_movimiento",
+            p.inicio
+          )
+          .lt(
+            "fecha_movimiento",
+            p.fin
+          )
+          .eq(
+            "cuentas_bancarias.grupo_conciliacion",
+            grupo
+          )
+          .order(
+            "fecha_movimiento"
+          ),
+
+        supabaseClient
+          .from(
+            "saldos_iniciales_mensuales"
+          )
+          .select(
+            "cuenta_bancaria_id, saldo_inicial, moneda"
+          )
+          .eq(
+            "periodo",
+            p.inicio
+          ),
+
+        supabaseClient
+          .from(
+            "cuentas_bancarias"
+          )
+          .select(`
+            id,
+            empresa_id,
+            banco,
+            nombre_cuenta,
+            numero_mask,
+            moneda,
+            grupo_conciliacion,
+
+            empresas (
+              id,
+              nombre_corto
+            )
+          `)
+          .eq(
+            "grupo_conciliacion",
+            grupo
+          )
+          .eq(
+            "activo",
+            true
+          )
+
+      ]);
+
+
+    if (
+      movimientosResponse.error
+    ) {
+      throw movimientosResponse.error;
+    }
+
+
+    if (
+      saldosResponse.error
+    ) {
+      throw saldosResponse.error;
+    }
+
+
+    if (
+      cuentasResponse.error
+    ) {
+      throw cuentasResponse.error;
+    }
+
+
+    movimientos =
+      movimientosResponse.data ||
+      [];
+
+
+    saldosIniciales =
+      saldosResponse.data ||
+      [];
+
+
+    cuentas =
+      (
+        cuentasResponse.data ||
+        []
+      )
+      .sort(
+        (
+          a,
+          b
+        ) =>
+          (
+            a.empresas
+              ?.nombre_corto ||
+            ""
+          )
+          .localeCompare(
+            b.empresas
+              ?.nombre_corto ||
+            ""
+          )
+          ||
+          nombreCuenta(
+            a
+          )
+          .localeCompare(
+            nombreCuenta(
+              b
+            )
+          )
+      );
+
+
+    const dias =
+      [
+        ...new Set(
+          movimientos.map(
+            movimiento =>
+              movimiento
+                .fecha_movimiento
+          )
+        )
+      ]
+      .sort();
+
+
+    if (
+      !fechaSeleccionada
+      ||
+      !dias.includes(
+        fechaSeleccionada
+      )
+    ) {
+
+      fechaSeleccionada =
+        dias[0]
+        ||
+        p.inicio;
+
+    }
+
+
+    renderDias(
+      dias
+    );
+
+
+    render();
+
+  }
+
+
+  function renderDias(
+    dias
+  ) {
+
+    const nav =
+      $("dayNav");
+
+
+    nav.innerHTML =
+      "";
+
+
+    if (
+      !dias.length
+    ) {
+
+      nav.innerHTML =
+        '<span class="muted">No hay movimientos cargados.</span>';
+
+      return;
+
+    }
+
+
+    dias.forEach(
+      fecha => {
+
+        const button =
+          document.createElement(
+            "button"
+          );
+
+
+        button.className =
+          (
+            "day-btn"
+            +
+            (
+              fecha ===
+              fechaSeleccionada
+              ?
+              " active"
+              :
+              ""
+            )
+          );
+
+
+        button.textContent =
+          fdate(
+            fecha
+          );
+
+
+        button.onclick =
+          () => {
+
+            fechaSeleccionada =
+              fecha;
+
+
+            renderDias(
+              dias
+            );
+
+
+            render();
+
+          };
+
+
+        nav.appendChild(
+          button
+        );
+
+      }
+    );
+
+  }
+
+
+  function calcCuenta(
+    cuenta,
+    movimientosDia
+  ) {
+
+    const inicial =
+      saldoInicial(
+        cuenta.id
+      );
+
+
+    const movimientosAnteriores =
+      movimientos.filter(
+        movimiento =>
+          movimiento
+            .cuentas_bancarias
+            .id ===
+          cuenta.id
+          &&
+          movimiento
+            .fecha_movimiento <
+          fechaSeleccionada
+      );
+
+
+    const anterior =
+      inicial ===
+      null
+      ?
+      null
+      :
+      inicial
+      +
+      neto(
+        movimientosAnteriores
+      );
+
+
+    const delDia =
+      movimientosDia.filter(
+        movimiento =>
+          movimiento
+            .cuentas_bancarias
+            .id ===
+          cuenta.id
+      );
+
+
+    const ingresos =
+      delDia
+        .filter(
+          movimiento =>
+            movimiento
+              .naturaleza ===
+            "CREDITO"
+        )
+        .reduce(
+          (
+            total,
+            movimiento
+          ) =>
+            total
+            +
+            Number(
+              movimiento.valor
+            ),
+          0
+        );
+
+
+    const egresos =
+      delDia
+        .filter(
+          movimiento =>
+            movimiento
+              .naturaleza ===
+            "DEBITO"
+        )
+        .reduce(
+          (
+            total,
+            movimiento
+          ) =>
+            total
+            +
+            Number(
+              movimiento.valor
+            ),
+          0
+        );
+
+
+    return {
+
+      ant:
+        anterior,
+
+      ing:
+        ingresos,
+
+      egr:
+        egresos,
+
+      fin:
+        anterior ===
+        null
+        ?
+        null
+        :
+        anterior
+        +
+        ingresos
+        -
+        egresos
+
+    };
+
+  }
+
+
+  function panelSuperior(
+    movimientosDia
+  ) {
+
+    let rows =
+      "";
+
+
+    let empresaAnterior =
+      null;
+
+
+    const totales =
+      {};
+
+
+    cuentas.forEach(
+      cuenta => {
+
+        const empresa =
+          cuenta
+            .empresas
+            ?.nombre_corto
+          ||
+          "SIN EMPRESA";
+
+
+        if (
+          empresa !==
+          empresaAnterior
+        ) {
+
+          rows += `
+
+            <tr class="company-separator">
+
+              <td colspan="5">
+
+                ${
+                  esc(
+                    empresa
+                  )
+                }
+
+              </td>
+
+            </tr>
+
+          `;
+
+
+          empresaAnterior =
+            empresa;
+
+        }
+
+
+        const valores =
+          calcCuenta(
+            cuenta,
+            movimientosDia
+          );
+
+
+        if (
+          !totales[
+            cuenta.moneda
+          ]
+        ) {
+
+          totales[
+            cuenta.moneda
+          ] = {
+
+            ant:
+              0,
+
+            ing:
+              0,
+
+            egr:
+              0,
+
+            fin:
+              0,
+
+            tiene:
+              false
+
+          };
+
+        }
+
+
+        if (
+          valores.ant !==
+          null
+        ) {
+
+          totales[
+            cuenta.moneda
+          ]
+          .ant +=
+          valores.ant;
+
+
+          totales[
+            cuenta.moneda
+          ]
+          .fin +=
+          valores.fin;
+
+
+          totales[
+            cuenta.moneda
+          ]
+          .tiene =
+          true;
+
+        }
+
+
+        totales[
+          cuenta.moneda
+        ]
+        .ing +=
+        valores.ing;
+
+
+        totales[
+          cuenta.moneda
+        ]
+        .egr +=
+        valores.egr;
+
+
+        rows += `
+
+          <tr>
+
+            <td>
+
+              <span class="account-name">
+
+                ${
+                  esc(
+                    cuenta.banco
+                  )
+                }
+
+              </span>
+
+              <span class="account-detail">
+
+                ${
+                  esc(
+                    cuenta.nombre_cuenta ||
+                    ""
+                  )
+                }
+
+                ${
+                  cuenta.numero_mask
+                  ?
+                  " · "
+                  +
+                  esc(
+                    cuenta.numero_mask
+                  )
+                  :
+                  ""
+                }
+
+                ·
+
+                ${
+                  esc(
+                    cuenta.moneda
+                  )
+                }
+
+              </span>
+
+            </td>
+
+
+            <td>
+
+              ${
+                valores.ant ===
+                null
+                ?
+                "PENDIENTE"
+                :
+                fmt(
+                  valores.ant,
+                  cuenta.moneda
+                )
+              }
+
+            </td>
+
+
+            <td class="positive">
+
+              ${
+                fmt(
+                  valores.ing,
+                  cuenta.moneda
+                )
+              }
+
+            </td>
+
+
+            <td class="negative">
+
+              ${
+                fmt(
+                  valores.egr,
+                  cuenta.moneda
+                )
+              }
+
+            </td>
+
+
+            <td>
+
+              ${
+                valores.fin ===
+                null
+                ?
+                "PENDIENTE"
+                :
+                fmt(
+                  valores.fin,
+                  cuenta.moneda
+                )
+              }
+
+            </td>
+
+          </tr>
+
+        `;
+
+      }
+    );
+
+
+    Object.entries(
+      totales
+    )
+    .forEach(
+      ([
+        moneda,
+        total
+      ]) => {
+
+        rows += `
+
+          <tr class="total-row">
+
+            <td>
+              TOTAL EN BANCOS · ${
+                moneda
+              }
+            </td>
+
+            <td>
+              ${
+                total.tiene
+                ?
+                fmt(
+                  total.ant,
+                  moneda
+                )
+                :
+                "PENDIENTE"
+              }
+            </td>
+
+            <td class="positive">
+              ${
+                fmt(
+                  total.ing,
+                  moneda
+                )
+              }
+            </td>
+
+            <td class="negative">
+              ${
+                fmt(
+                  total.egr,
+                  moneda
+                )
+              }
+            </td>
+
+            <td>
+              ${
+                total.tiene
+                ?
+                fmt(
+                  total.fin,
+                  moneda
+                )
+                :
+                "PENDIENTE"
+              }
+            </td>
+
+          </tr>
+
+        `;
+
+      }
+    );
+
+
+    return `
+
+      <div class="card">
+
+        <div class="section-heading">
+
+          <div>
+
+            <h2>
+              SALDOS POR CUENTA
+            </h2>
+
+            <div>
+
+              <strong>
+                FECHA ${
+                  fdate(
+                    fechaSeleccionada
+                  )
+                }
+              </strong>
+
+            </div>
+
+          </div>
+
+        </div>
+
+
+        <div class="table-wrap">
+
+          <table class="saldo-table">
+
+            <thead>
+
+              <tr>
+
+                <th>
+                  CUENTA
+                </th>
+
+                <th>
+                  SALDO ANTERIOR
+                </th>
+
+                <th>
+                  INGRESOS
+                </th>
+
+                <th>
+                  EGRESOS
+                </th>
+
+                <th>
+                  SALDO FINAL
+                </th>
+
+              </tr>
+
+            </thead>
+
+
+            <tbody>
+
+              ${rows}
+
+            </tbody>
+
+          </table>
+
+        </div>
+
+      </div>
+
+    `;
+
+  }
+
+
+  function matriz(
+    titulo,
+    naturaleza,
+    movimientosDia
+  ) {
+
+    const originales =
+      movimientosDia.filter(
+        movimiento =>
+          movimiento
+            .naturaleza ===
+          naturaleza
+      );
+
+
+    /*
+     * Aquí ocurre la consolidación visual.
+     */
+
+    const lista =
+      agruparMovimientosVisuales(
+        originales
+      );
+
+
+    const totalPorCuenta =
+      {};
+
+
+    cuentas.forEach(
+      cuenta => {
+
+        totalPorCuenta[
+          cuenta.id
+        ] =
+        0;
+
+      }
+    );
+
+
+    const headers =
+      cuentas.map(
+        cuenta => `
+
+          <th>
+
+            <span class="column-company">
+
+              ${
+                esc(
+                  cuenta
+                    .empresas
+                    ?.nombre_corto ||
+                  ""
+                )
+              }
+
+            </span>
+
+            <span class="column-account">
+
+              ${
+                esc(
+                  nombreCuenta(
+                    cuenta
+                  )
+                )
+              }
+
+              <br>
+
+              ${
+                esc(
+                  cuenta.moneda
+                )
+              }
+
+            </span>
+
+          </th>
+
+        `
+      )
+      .join(
+        ""
+      );
+
+
+    let rows =
+      "";
+
+
+    if (
+      !lista.length
+    ) {
+
+      rows = `
+
+        <tr>
+
+          <td>
+            SIN MOVIMIENTOS
+          </td>
+
+          ${
+            cuentas
+              .map(
+                () =>
+                  "<td></td>"
+              )
+              .join(
+                ""
+              )
+          }
+
+        </tr>
+
+      `;
+
+    }
+
+
+    lista.forEach(
+      grupoMovimiento => {
+
+        const cuentaId =
+          grupoMovimiento
+            .cuentaId;
+
+
+        const valor =
+          Number(
+            grupoMovimiento
+              .valor
+          );
+
+
+        totalPorCuenta[
+          cuentaId
+        ] +=
+        valor;
+
+
+        const cells =
+          cuentas.map(
+            cuenta =>
+              cuenta.id ===
+              cuentaId
+              ?
+              `<td>${
+                fmtCell(
+                  valor
+                )
+              }</td>`
+              :
+              "<td></td>"
+          )
+          .join(
+            ""
+          );
+
+
+        let meta =
+          "";
+
+
+        if (
+          grupoMovimiento
+            .tienePendientes
+        ) {
+
+          meta =
+            "PENDIENTE DE CONCILIACIÓN";
+
+        }
+
+        else if (
+          grupoMovimiento
+            .movimientos
+            .length >
+          1
+        ) {
+
+          meta =
+            `${
+              grupoMovimiento
+                .movimientos
+                .length
+            } movimientos consolidados`;
+
+        }
+
+        else {
+
+          meta =
+            metaMovimiento(
+              grupoMovimiento
+                .movimientos[0]
+            );
+
+        }
+
+
+        rows += `
+
+          <tr class="${
+            grupoMovimiento
+              .tienePendientes
+            ?
+            "pending-row"
+            :
+            ""
+          }">
+
+            <td>
+
+              <div class="concept-main">
+
+                ${
+                  esc(
+                    grupoMovimiento
+                      .rubro
+                  )
+                }
+
+              </div>
+
+              ${
+                meta
+                ?
+                `
+
+                  <div class="concept-meta">
+
+                    ${
+                      esc(
+                        meta
+                      )
+                    }
+
+                  </div>
+
+                `
+                :
+                ""
+              }
+
+            </td>
+
+
+            ${cells}
+
+          </tr>
+
+        `;
+
+      }
+    );
+
+
+    const totals =
+      cuentas.map(
+        cuenta => `
+
+          <td>
+
+            ${
+              fmtCell(
+                totalPorCuenta[
+                  cuenta.id
+                ]
+              )
+            }
+
+          </td>
+
+        `
+      )
+      .join(
+        ""
+      );
+
+
+    return `
+
+      <div class="card matrix-card">
+
+        <div class="matrix-title">
+
+          ${titulo}
+
+        </div>
+
+
+        <div class="matrix-content">
+
+          <div class="table-wrap">
+
+            <table class="matrix-table">
+
+              <thead>
+
+                <tr>
+
+                  <th>
+                    ${titulo}
+                  </th>
+
+                  ${headers}
+
+                </tr>
+
+              </thead>
+
+
+              <tbody>
+
+                ${rows}
+
+
+                <tr class="total-row">
+
+                  <td>
+                    TOTALES
+                  </td>
+
+                  ${totals}
+
+                </tr>
+
+              </tbody>
+
+            </table>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    `;
+
+  }
+
+
+  function render() {
+
+    const movimientosDia =
+      movimientos.filter(
+        movimiento =>
+          movimiento
+            .fecha_movimiento ===
+          fechaSeleccionada
+      );
+
+
+    const pendientes =
+      movimientosDia.filter(
+        movimiento =>
+          movimiento
+            .estado_conciliacion !==
+          "CONCILIADO"
+      )
+      .length;
+
+
+    $("content")
+      .innerHTML = `
+
+        <div class="card">
+
+          <div class="section-heading">
+
+            <div>
+
+              <h2>
+
+                ${
+                  grupo
+                }
+
+                ·
+
+                ${
+                  fdate(
+                    fechaSeleccionada
+                  )
+                }
+
+              </h2>
+
+              <div class="muted">
+
+                Saldo final =
+                saldo anterior
+                + ingresos
+                − egresos
+
+              </div>
+
+            </div>
+
+
+            <div class="${
+              pendientes
+              ?
+              "status-warn"
+              :
+              "status-ok"
+            }">
+
+              ${
+                pendientes
+                ?
+                `⚠ ${
+                  pendientes
+                } movimiento(s) pendiente(s) de conciliación`
+                :
+                "✓ Todos los movimientos del día están conciliados"
+              }
+
+            </div>
+
+          </div>
+
+        </div>
+
+
+        ${
+          panelSuperior(
+            movimientosDia
+          )
+        }
+
+
+        ${
+          matriz(
+            "EGRESOS",
+            "DEBITO",
+            movimientosDia
+          )
+        }
+
+
+        ${
+          matriz(
+            "INGRESOS",
+            "CREDITO",
+            movimientosDia
+          )
+        }
+
+      `;
+
+  }
+
+
+  init()
+    .catch(
+      error => {
+
+        console.error(
+          error
+        );
+
+
+        $("content")
+          .innerHTML = `
+
+            <div class="card">
+
+              Error:
+
+              ${
+                esc(
+                  error.message ||
+                  error
+                )
+              }
+
+            </div>
+
+          `;
+
+      }
+    );
+
 </script>
+
+
 </body>
+
 </html>
