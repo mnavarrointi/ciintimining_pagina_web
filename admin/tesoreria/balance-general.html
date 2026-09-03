@@ -1,0 +1,2238 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>
+    Balance General | CI Inti Mining
+  </title>
+
+  <link
+    rel="stylesheet"
+    href="../../styles.css"
+  >
+
+  <style>
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: #f4f5f7;
+      font-family: Arial, sans-serif;
+      color: #202124;
+    }
+
+    header {
+      background: white;
+      border-bottom: 1px solid #ddd;
+      padding: 16px 26px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    main {
+      max-width: 1550px;
+      margin: 28px auto;
+      padding: 0 22px 60px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 7px;
+      padding: 10px 14px;
+      cursor: pointer;
+    }
+
+    select,
+    input {
+      padding: 9px 10px;
+      border: 1px solid #ccc;
+      border-radius: 7px;
+      background: white;
+    }
+
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 22px;
+      margin-bottom: 18px;
+      box-shadow: 0 5px 20px rgba(0,0,0,0.05);
+    }
+
+    .toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+
+    .toolbar h1 {
+      margin: 0 0 6px;
+    }
+
+    .muted {
+      color: #666;
+    }
+
+    .filters {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: end;
+    }
+
+    label {
+      display: block;
+      font-size: 12px;
+      font-weight: 700;
+      margin-bottom: 5px;
+    }
+
+    .primary {
+      background: #222;
+      color: white;
+    }
+
+    .secondary {
+      background: #eee;
+      color: #222;
+    }
+
+    /* =========================
+       RESUMEN
+       ========================= */
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0,1fr));
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    .summary-card {
+      background: white;
+      border-radius: 12px;
+      padding: 22px;
+      box-shadow: 0 5px 20px rgba(0,0,0,0.05);
+    }
+
+    .summary-label {
+      font-size: 12px;
+      color: #666;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .4px;
+    }
+
+    .summary-value {
+      font-size: 28px;
+      font-weight: 700;
+      margin-top: 8px;
+    }
+
+    .summary-detail {
+      margin-top: 6px;
+      font-size: 12px;
+      color: #777;
+    }
+
+    /* =========================
+       ESTADO ACTUALIZACION
+       ========================= */
+
+    .status-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0,1fr));
+      gap: 12px;
+    }
+
+    .status-item {
+      border: 1px solid #e1e1e1;
+      border-radius: 8px;
+      padding: 13px;
+    }
+
+    .status-title {
+      font-weight: 700;
+      margin-bottom: 5px;
+    }
+
+    .status-ok {
+      color: #176b2c;
+    }
+
+    .status-warning {
+      color: #986b00;
+    }
+
+    /* =========================
+       BALANCE
+       ========================= */
+
+    .side-title {
+      padding: 15px 18px;
+      border-radius: 10px;
+      margin-bottom: 12px;
+      font-size: 19px;
+      font-weight: 700;
+      background: #222;
+      color: white;
+    }
+
+    .category {
+      background: white;
+      border-radius: 11px;
+      margin-bottom: 13px;
+      overflow: hidden;
+      box-shadow: 0 3px 15px rgba(0,0,0,0.04);
+    }
+
+    .category-header {
+      padding: 15px 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      background: #fafafa;
+      border-bottom: 1px solid #eee;
+    }
+
+    .category-header:hover {
+      background: #f4f4f4;
+    }
+
+    .category-name {
+      font-weight: 700;
+    }
+
+    .category-total {
+      font-weight: 700;
+      font-size: 16px;
+    }
+
+    .category-body {
+      display: block;
+    }
+
+    .category.closed .category-body {
+      display: none;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 950px;
+    }
+
+    th,
+    td {
+      padding: 10px 12px;
+      border-bottom: 1px solid #eee;
+      font-size: 12px;
+    }
+
+    th {
+      background: #f6f6f6;
+      text-align: left;
+      color: #555;
+    }
+
+    td.number,
+    th.number {
+      text-align: right;
+    }
+
+    .position-name {
+      font-weight: 600;
+    }
+
+    .position-sub {
+      display: block;
+      margin-top: 3px;
+      color: #777;
+      font-size: 10px;
+    }
+
+    .source {
+      display: inline-block;
+      padding: 4px 7px;
+      border-radius: 5px;
+      font-size: 10px;
+      font-weight: 700;
+    }
+
+    .source-bank {
+      background: #eaf3ff;
+      color: #19568c;
+    }
+
+    .source-manual {
+      background: #fff2d2;
+      color: #876000;
+    }
+
+    .source-calculated {
+      background: #e8f7ec;
+      color: #176b2c;
+    }
+
+    .outdated {
+      color: #9a6500;
+      font-weight: 600;
+    }
+
+    .edit-button {
+      background: #eee;
+      padding: 7px 10px;
+      font-size: 11px;
+    }
+
+    .group-row td {
+      background: #fafafa;
+      font-weight: 700;
+    }
+
+    .child-position {
+      padding-left: 24px;
+    }
+
+    /* =========================
+       MODAL
+       ========================= */
+
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.45);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      z-index: 1000;
+    }
+
+    .modal {
+      background: white;
+      width: min(540px,100%);
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: 0 20px 60px rgba(0,0,0,.25);
+    }
+
+    .modal h2 {
+      margin-top: 0;
+    }
+
+    .modal-field {
+      margin-bottom: 15px;
+    }
+
+    .modal-field input {
+      width: 100%;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      margin-top: 20px;
+    }
+
+    .message {
+      margin-top: 13px;
+      padding: 11px;
+      border-radius: 7px;
+      display: none;
+    }
+
+    .message.error {
+      display: block;
+      background: #ffeaea;
+    }
+
+    .message.success {
+      display: block;
+      background: #eaf7ed;
+    }
+
+    @media(max-width: 900px) {
+
+      .summary-grid,
+      .status-grid {
+        grid-template-columns: 1fr;
+      }
+
+    }
+
+  </style>
+
+</head>
+
+
+<body>
+
+
+<header>
+
+  <div>
+
+    <a href="../index.html">
+      ← Panel
+    </a>
+
+    <strong style="margin-left:18px;">
+      CI Inti Mining · Finanzas
+    </strong>
+
+  </div>
+
+  <button id="logoutButton">
+    Cerrar sesión
+  </button>
+
+</header>
+
+
+<main>
+
+
+  <div class="card">
+
+    <div class="toolbar">
+
+      <div>
+
+        <h1>
+          Balance General
+        </h1>
+
+        <div class="muted">
+          Estado diario de Activos,
+          Pasivos y Patrimonio
+        </div>
+
+      </div>
+
+
+      <div class="filters">
+
+        <div>
+
+          <label>
+            Fecha
+          </label>
+
+          <input
+            type="date"
+            id="balanceDate"
+            value="2026-08-03"
+          >
+
+        </div>
+
+
+        <div>
+
+          <label>
+            Moneda de visualización
+          </label>
+
+          <select id="displayCurrency">
+
+            <option value="USD">
+              USD
+            </option>
+
+            <option value="COP">
+              COP
+            </option>
+
+            <option value="PEN">
+              PEN / SOL
+            </option>
+
+          </select>
+
+        </div>
+
+
+        <button
+          id="refreshButton"
+          class="primary"
+        >
+          Actualizar
+        </button>
+
+      </div>
+
+    </div>
+
+  </div>
+
+
+  <div
+    id="summary"
+    class="summary-grid"
+  ></div>
+
+
+  <div
+    id="statusPanel"
+    class="card"
+  ></div>
+
+
+  <div id="balanceContent">
+
+    <div class="card">
+      Cargando Balance...
+    </div>
+
+  </div>
+
+
+</main>
+
+
+<div
+  id="editModal"
+  class="modal-overlay"
+>
+
+  <div class="modal">
+
+    <h2>
+      Actualizar posición
+    </h2>
+
+
+    <div
+      id="editPositionName"
+      style="
+        font-weight:700;
+        margin-bottom:18px;
+      "
+    ></div>
+
+
+    <div class="modal-field">
+
+      <label>
+        Fecha efectiva
+      </label>
+
+      <input
+        id="editDate"
+        type="date"
+      >
+
+    </div>
+
+
+    <div class="modal-field">
+
+      <label id="editValueLabel">
+        Nuevo valor
+      </label>
+
+      <input
+        id="editValue"
+        type="number"
+        step="0.01"
+        min="0"
+      >
+
+    </div>
+
+
+    <div class="modal-field">
+
+      <label>
+        Comentario
+      </label>
+
+      <input
+        id="editComment"
+        type="text"
+        placeholder="Motivo del cambio"
+      >
+
+    </div>
+
+
+    <div
+      id="editMessage"
+      class="message"
+    ></div>
+
+
+    <div class="modal-actions">
+
+      <button
+        id="cancelEdit"
+        class="secondary"
+      >
+        Cancelar
+      </button>
+
+      <button
+        id="saveEdit"
+        class="primary"
+      >
+        Guardar
+      </button>
+
+    </div>
+
+  </div>
+
+</div>
+
+
+<script
+  src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+></script>
+
+<script
+  src="../../js/supabase-config.js"
+></script>
+
+<script
+  src="../../js/auth.js"
+></script>
+
+
+<script>
+
+  let balanceRows = [];
+
+  let positionsMetadata =
+    new Map();
+
+  let rates = {};
+
+  let selectedPosition =
+    null;
+
+  let currentUser =
+    null;
+
+
+  const $ =
+    id =>
+      document.getElementById(id);
+
+
+  function escapeHtml(value) {
+
+    return String(value ?? "")
+      .replace(
+        /[&<>"']/g,
+        c =>
+          ({
+            "&":"&amp;",
+            "<":"&lt;",
+            ">":"&gt;",
+            '"':"&quot;",
+            "'":"&#039;"
+          })[c]
+      );
+
+  }
+
+
+  function formatNumber(value) {
+
+    return (
+      new Intl.NumberFormat(
+        "es-CO",
+        {
+          minimumFractionDigits:2,
+          maximumFractionDigits:2
+        }
+      )
+      .format(
+        Number(value || 0)
+      )
+    );
+
+  }
+
+
+  function formatMoney(
+    value,
+    currency
+  ) {
+
+    const symbols = {
+      USD:"US$",
+      COP:"$",
+      PEN:"S/"
+    };
+
+
+    return (
+      `${
+        symbols[currency] ||
+        currency
+      } ${
+        formatNumber(value)
+      }`
+    );
+
+  }
+
+
+  function formatDate(value) {
+
+    if(!value) {
+      return "—";
+    }
+
+
+    const [
+      y,
+      m,
+      d
+    ] =
+      value.split("-");
+
+
+    return `${d}/${m}/${y}`;
+
+  }
+
+
+  function rateToUsd(currency) {
+
+    if(currency === "USD") {
+      return 1;
+    }
+
+
+    return Number(
+      rates[currency]?.rate ||
+      0
+    );
+
+  }
+
+
+  function usdToDisplay(usdValue) {
+
+    const currency =
+      $("displayCurrency")
+        .value;
+
+
+    if(currency === "USD") {
+
+      return Number(
+        usdValue || 0
+      );
+
+    }
+
+
+    const rate =
+      rateToUsd(currency);
+
+
+    return (
+      Number(
+        usdValue || 0
+      )
+      *
+      rate
+    );
+
+  }
+
+
+  function sourceChip(source) {
+
+    if(source === "BANCO") {
+
+      return `
+        <span class="
+          source
+          source-bank
+        ">
+          AUTOMÁTICO
+        </span>
+      `;
+
+    }
+
+
+    if(source === "CALCULADA") {
+
+      return `
+        <span class="
+          source
+          source-calculated
+        ">
+          CALCULADO
+        </span>
+      `;
+
+    }
+
+
+    return `
+      <span class="
+        source
+        source-manual
+      ">
+        MANUAL
+      </span>
+    `;
+
+  }
+
+
+  async function loadRates(date) {
+
+    const {
+      data,
+      error
+    } =
+      await supabaseClient
+        .from(
+          "tasas_cambio_diarias"
+        )
+        .select(
+          "fecha,moneda,unidades_por_usd,fuente"
+        )
+        .lte(
+          "fecha",
+          date
+        )
+        .order(
+          "fecha",
+          {
+            ascending:false
+          }
+        );
+
+
+    if(error) {
+      throw error;
+    }
+
+
+    rates = {
+
+      USD:{
+        rate:1,
+        date,
+        source:"USD"
+      }
+
+    };
+
+
+    (data || [])
+      .forEach(
+        row => {
+
+          if(!rates[row.moneda]) {
+
+            rates[row.moneda] = {
+
+              rate:
+                Number(
+                  row.unidades_por_usd
+                ),
+
+              date:
+                row.fecha,
+
+              source:
+                row.fuente
+
+            };
+
+          }
+
+        }
+      );
+
+  }
+
+
+  async function loadMetadata() {
+
+    const {
+      data,
+      error
+    } =
+      await supabaseClient
+        .from(
+          "balance_posiciones"
+        )
+        .select(
+          "id,codigo,metadata"
+        )
+        .eq(
+          "activo",
+          true
+        );
+
+
+    if(error) {
+      throw error;
+    }
+
+
+    positionsMetadata =
+      new Map();
+
+
+    (data || [])
+      .forEach(
+        row => {
+
+          positionsMetadata
+            .set(
+              row.id,
+              row
+            );
+
+        }
+      );
+
+  }
+
+
+  async function loadBalance() {
+
+    const date =
+      $("balanceDate")
+        .value;
+
+
+    if(!date) {
+      return;
+    }
+
+
+    $("balanceContent")
+      .innerHTML =
+      `
+        <div class="card">
+          Calculando Balance...
+        </div>
+      `;
+
+
+    await Promise.all([
+
+      loadRates(date),
+
+      loadMetadata()
+
+    ]);
+
+
+    const {
+      data,
+      error
+    } =
+      await supabaseClient
+        .rpc(
+          "obtener_balance_fecha",
+          {
+            p_fecha:date
+          }
+        );
+
+
+    if(error) {
+      throw error;
+    }
+
+
+    balanceRows =
+      (data || [])
+        .map(
+          row => {
+
+            const meta =
+              positionsMetadata
+                .get(
+                  row.posicion_id
+                );
+
+
+            return {
+
+              ...row,
+
+              metadata:
+                meta?.metadata ||
+                {}
+
+            };
+
+          }
+        );
+
+
+    render();
+
+  }
+
+
+  function calculateTotals() {
+
+    const assets =
+      balanceRows
+        .filter(
+          row =>
+            row.lado ===
+            "ACTIVO"
+        )
+        .reduce(
+          (total,row) =>
+            total +
+            Number(
+              row.valor_usd ||
+              0
+            ),
+          0
+        );
+
+
+    const liabilities =
+      balanceRows
+        .filter(
+          row =>
+            row.lado ===
+            "PASIVO"
+        )
+        .reduce(
+          (total,row) =>
+            total +
+            Number(
+              row.valor_usd ||
+              0
+            ),
+          0
+        );
+
+
+    return {
+
+      assets,
+
+      liabilities,
+
+      equity:
+        assets -
+        liabilities
+
+    };
+
+  }
+
+
+  function renderSummary() {
+
+    const currency =
+      $("displayCurrency")
+        .value;
+
+
+    const totals =
+      calculateTotals();
+
+
+    $("summary")
+      .innerHTML = `
+
+        <div class="summary-card">
+
+          <div class="summary-label">
+            Activos
+          </div>
+
+          <div class="summary-value">
+            ${
+              formatMoney(
+                usdToDisplay(
+                  totals.assets
+                ),
+                currency
+              )
+            }
+          </div>
+
+          <div class="summary-detail">
+            Total consolidado
+          </div>
+
+        </div>
+
+
+        <div class="summary-card">
+
+          <div class="summary-label">
+            Pasivos
+          </div>
+
+          <div class="summary-value">
+            ${
+              formatMoney(
+                usdToDisplay(
+                  totals.liabilities
+                ),
+                currency
+              )
+            }
+          </div>
+
+          <div class="summary-detail">
+            Obligaciones totales
+          </div>
+
+        </div>
+
+
+        <div class="summary-card">
+
+          <div class="summary-label">
+            Patrimonio
+          </div>
+
+          <div class="summary-value">
+            ${
+              formatMoney(
+                usdToDisplay(
+                  totals.equity
+                ),
+                currency
+              )
+            }
+          </div>
+
+          <div class="summary-detail">
+            Activos − Pasivos
+          </div>
+
+        </div>
+
+      `;
+
+  }
+
+
+  function renderStatus() {
+
+    const date =
+      $("balanceDate")
+        .value;
+
+
+    const manual =
+      balanceRows.filter(
+        r =>
+          r.fuente ===
+          "MANUAL"
+      );
+
+
+    const staleManual =
+      manual.filter(
+        r =>
+          r.fecha_valor &&
+          r.fecha_valor !==
+          date
+      );
+
+
+    const missing =
+      balanceRows.filter(
+        r =>
+          r.valor_original ===
+          null
+      );
+
+
+    $("statusPanel")
+      .innerHTML = `
+
+        <div
+          style="
+            font-weight:700;
+            margin-bottom:14px;
+          "
+        >
+          Estado de actualización
+        </div>
+
+
+        <div class="status-grid">
+
+
+          <div class="status-item">
+
+            <div class="status-title">
+              Tasas de cambio
+            </div>
+
+            <div>
+              COP/USD:
+              <strong>
+                ${
+                  rates.COP
+                  ?
+                  formatNumber(
+                    rates.COP.rate
+                  )
+                  :
+                  "SIN TASA"
+                }
+              </strong>
+            </div>
+
+            <div>
+              PEN/USD:
+              <strong>
+                ${
+                  rates.PEN
+                  ?
+                  formatNumber(
+                    rates.PEN.rate
+                  )
+                  :
+                  "SIN TASA"
+                }
+              </strong>
+            </div>
+
+            <div class="muted" style="margin-top:6px;">
+              Tasas aplicadas a toda la
+              conversión del Balance.
+            </div>
+
+          </div>
+
+
+          <div class="status-item">
+
+            <div class="status-title">
+              Bancos
+            </div>
+
+            <div class="status-ok">
+              ✓ Sincronizados con Tesorería
+            </div>
+
+            <div class="muted">
+              Los saldos bancarios no se editan aquí.
+            </div>
+
+          </div>
+
+
+          <div class="status-item">
+
+            <div class="status-title">
+              Posiciones manuales
+            </div>
+
+            <div>
+              ${
+                staleManual.length
+              }
+              posición(es) arrastradas
+              desde una fecha anterior.
+            </div>
+
+            <div>
+              ${
+                missing.length
+              }
+              posición(es) sin valor.
+            </div>
+
+          </div>
+
+
+        </div>
+
+      `;
+
+  }
+
+
+  function groupRows(rows) {
+
+    const groups =
+      new Map();
+
+
+    rows.forEach(
+      row => {
+
+        const visualGroup =
+          row.metadata
+            ?.grupo_visual;
+
+
+        const key =
+          visualGroup ||
+          row.posicion_id;
+
+
+        if(!groups.has(key)) {
+
+          groups.set(
+            key,
+            {
+              name:
+                visualGroup ||
+                row.nombre,
+
+              grouped:
+                Boolean(
+                  visualGroup
+                ),
+
+              rows:[]
+            }
+          );
+
+        }
+
+
+        groups
+          .get(key)
+          .rows
+          .push(row);
+
+      }
+    );
+
+
+    return Array.from(
+      groups.values()
+    );
+
+  }
+
+
+  function renderPositionRow(
+    row,
+    child = false
+  ) {
+
+    const currency =
+      $("displayCurrency")
+        .value;
+
+
+    const displayValue =
+      usdToDisplay(
+        row.valor_usd
+      );
+
+
+    const dateClass =
+      (
+        row.fuente ===
+        "MANUAL"
+        &&
+        row.fecha_valor !==
+        $("balanceDate")
+          .value
+      )
+      ?
+      "outdated"
+      :
+      "";
+
+
+    const canEdit =
+      currentUser &&
+      currentUser.rol !== "consulta" &&
+      row.fuente === "MANUAL";
+
+
+    const edit =
+      canEdit
+      ?
+      `
+        <button
+          class="edit-button"
+          onclick="
+            openEdit(
+              '${row.posicion_id}'
+            )
+          "
+        >
+          Editar
+        </button>
+      `
+      :
+      "—";
+
+
+    return `
+
+      <tr>
+
+        <td>
+
+          <span
+            class="
+              position-name
+              ${
+                child
+                ?
+                "child-position"
+                :
+                ""
+              }
+            "
+          >
+            ${
+              escapeHtml(
+                row.nombre
+              )
+            }
+          </span>
+
+          ${
+            row.empresa
+            ?
+            `
+              <span class="position-sub">
+                ${
+                  escapeHtml(
+                    row.empresa
+                  )
+                }
+              </span>
+            `
+            :
+            ""
+          }
+
+        </td>
+
+
+        <td>
+          ${
+            sourceChip(
+              row.fuente
+            )
+          }
+        </td>
+
+
+        <td>
+          ${
+            escapeHtml(
+              row.moneda
+            )
+          }
+        </td>
+
+
+        <td class="number">
+
+          ${
+            row.valor_original ===
+            null
+            ?
+            "SIN VALOR"
+            :
+            formatMoney(
+              row.valor_original,
+              row.moneda
+            )
+          }
+
+        </td>
+
+
+        <td class="number">
+
+          ${
+            row.valor_usd ===
+            null
+            ?
+            "—"
+            :
+            formatMoney(
+              displayValue,
+              currency
+            )
+          }
+
+        </td>
+
+
+        <td class="${dateClass}">
+
+          ${
+            formatDate(
+              row.fecha_valor
+            )
+          }
+
+        </td>
+
+
+        <td>
+          ${edit}
+        </td>
+
+      </tr>
+
+    `;
+
+  }
+
+
+  function renderCategory(
+    category,
+    rows
+  ) {
+
+    const currency =
+      $("displayCurrency")
+        .value;
+
+
+    const totalUsd =
+      rows.reduce(
+        (total,row) =>
+          total +
+          Number(
+            row.valor_usd ||
+            0
+          ),
+        0
+      );
+
+
+    const groups =
+      groupRows(rows);
+
+
+    let tableRows = "";
+
+
+    groups.forEach(
+      group => {
+
+        if(
+          group.grouped &&
+          group.rows.length > 1
+        ) {
+
+          const groupUsd =
+            group.rows
+              .reduce(
+                (total,row) =>
+                  total +
+                  Number(
+                    row.valor_usd ||
+                    0
+                  ),
+                0
+              );
+
+
+          tableRows += `
+
+            <tr class="group-row">
+
+              <td>
+
+                ${
+                  escapeHtml(
+                    group.name
+                  )
+                }
+
+              </td>
+
+              <td colspan="3">
+
+                ${
+                  group.rows.length
+                }
+                componentes monetarios
+
+              </td>
+
+              <td class="number">
+
+                ${
+                  formatMoney(
+                    usdToDisplay(
+                      groupUsd
+                    ),
+                    currency
+                  )
+                }
+
+              </td>
+
+              <td></td>
+
+              <td></td>
+
+            </tr>
+
+          `;
+
+
+          group.rows.forEach(
+            row => {
+
+              tableRows +=
+                renderPositionRow(
+                  row,
+                  true
+                );
+
+            }
+          );
+
+        }
+
+        else {
+
+          tableRows +=
+            renderPositionRow(
+              group.rows[0]
+            );
+
+        }
+
+      }
+    );
+
+
+    const id =
+      `cat-${
+        category
+          .replace(
+            /[^a-z0-9]/gi,
+            "-"
+          )
+      }`;
+
+
+    return `
+
+      <div
+        id="${id}"
+        class="category"
+      >
+
+
+        <div
+          class="category-header"
+          onclick="
+            document
+              .getElementById(
+                '${id}'
+              )
+              .classList
+              .toggle(
+                'closed'
+              )
+          "
+        >
+
+          <div class="category-name">
+
+            ${
+              escapeHtml(
+                category
+              )
+            }
+
+          </div>
+
+
+          <div class="category-total">
+
+            ${
+              formatMoney(
+                usdToDisplay(
+                  totalUsd
+                ),
+                currency
+              )
+            }
+
+          </div>
+
+        </div>
+
+
+        <div class="category-body">
+
+
+          <div class="table-wrap">
+
+            <table>
+
+
+              <thead>
+
+                <tr>
+
+                  <th>
+                    Posición
+                  </th>
+
+                  <th>
+                    Fuente
+                  </th>
+
+                  <th>
+                    Moneda
+                  </th>
+
+                  <th class="number">
+                    Valor original
+                  </th>
+
+                  <th class="number">
+                    Equivalente ${
+                      currency
+                    }
+                  </th>
+
+                  <th>
+                    Fecha valor
+                  </th>
+
+                  <th>
+                    Acción
+                  </th>
+
+                </tr>
+
+              </thead>
+
+
+              <tbody>
+
+                ${tableRows}
+
+              </tbody>
+
+
+            </table>
+
+          </div>
+
+
+        </div>
+
+
+      </div>
+
+    `;
+
+  }
+
+
+  function renderSide(side) {
+
+    const rows =
+      balanceRows.filter(
+        row =>
+          row.lado ===
+          side
+      );
+
+
+    const categoryMap =
+      new Map();
+
+
+    rows.forEach(
+      row => {
+
+        if(
+          !categoryMap.has(
+            row.categoria
+          )
+        ) {
+
+          categoryMap.set(
+            row.categoria,
+            []
+          );
+
+        }
+
+
+        categoryMap
+          .get(
+            row.categoria
+          )
+          .push(row);
+
+      }
+    );
+
+
+    let html =
+      `
+        <div class="side-title">
+
+          ${
+            side ===
+            "ACTIVO"
+            ?
+            "ACTIVOS"
+            :
+            "PASIVOS"
+          }
+
+        </div>
+      `;
+
+
+    categoryMap.forEach(
+      (
+        categoryRows,
+        category
+      ) => {
+
+        html +=
+          renderCategory(
+            category,
+            categoryRows
+          );
+
+      }
+    );
+
+
+    return html;
+
+  }
+
+
+  function render() {
+
+    renderSummary();
+
+    renderStatus();
+
+
+    $("balanceContent")
+      .innerHTML = `
+
+        ${
+          renderSide(
+            "ACTIVO"
+          )
+        }
+
+        ${
+          renderSide(
+            "PASIVO"
+          )
+        }
+
+      `;
+
+  }
+
+
+  function openEdit(positionId) {
+
+    if(
+      !currentUser ||
+      currentUser.rol === "consulta"
+    ) {
+      return;
+    }
+
+
+    const row =
+      balanceRows.find(
+        item =>
+          item.posicion_id ===
+          positionId
+      );
+
+
+    if(!row) {
+      return;
+    }
+
+
+    selectedPosition =
+      row;
+
+
+    $("editPositionName")
+      .textContent =
+      row.nombre;
+
+
+    $("editDate")
+      .value =
+      $("balanceDate")
+        .value;
+
+
+    $("editValue")
+      .value =
+      row.valor_original ??
+      0;
+
+
+    $("editValueLabel")
+      .textContent =
+      `Nuevo valor (${row.moneda})`;
+
+
+    $("editComment")
+      .value =
+      "";
+
+
+    $("editMessage")
+      .className =
+      "message";
+
+
+    $("editMessage")
+      .textContent =
+      "";
+
+
+    $("editModal")
+      .style
+      .display =
+      "flex";
+
+  }
+
+
+  function closeEdit() {
+
+    $("editModal")
+      .style
+      .display =
+      "none";
+
+
+    selectedPosition =
+      null;
+
+  }
+
+
+  async function saveEdit() {
+
+    if(
+      !currentUser ||
+      currentUser.rol === "consulta"
+    ) {
+      return;
+    }
+
+
+    if(!selectedPosition) {
+      return;
+    }
+
+
+    const date =
+      $("editDate")
+        .value;
+
+
+    const value =
+      Number(
+        $("editValue")
+          .value
+      );
+
+
+    const comment =
+      $("editComment")
+        .value
+        .trim();
+
+
+    if(
+      !date ||
+      Number.isNaN(value) ||
+      value < 0
+    ) {
+
+      $("editMessage")
+        .className =
+        "message error";
+
+
+      $("editMessage")
+        .textContent =
+        "Revisa la fecha y el valor.";
+
+      return;
+
+    }
+
+
+    $("saveEdit")
+      .disabled =
+      true;
+
+
+    $("saveEdit")
+      .textContent =
+      "Guardando...";
+
+
+    try {
+
+
+      const {
+        error
+      } =
+        await supabaseClient
+          .from(
+            "balance_valores"
+          )
+          .upsert(
+            {
+
+              posicion_id:
+                selectedPosition
+                  .posicion_id,
+
+              fecha_efectiva:
+                date,
+
+              valor:
+                value,
+
+              comentario:
+                comment ||
+                null,
+
+              fuente_referencia:
+                "Actualización manual desde Balance General"
+
+            },
+            {
+
+              onConflict:
+                "posicion_id,fecha_efectiva"
+
+            }
+          );
+
+
+      if(error) {
+        throw error;
+      }
+
+
+      $("editMessage")
+        .className =
+        "message success";
+
+
+      $("editMessage")
+        .textContent =
+        "Posición actualizada correctamente.";
+
+
+      setTimeout(
+        async () => {
+
+          closeEdit();
+
+          await loadBalance();
+
+        },
+        600
+      );
+
+
+    }
+
+    catch(error) {
+
+
+      console.error(error);
+
+
+      $("editMessage")
+        .className =
+        "message error";
+
+
+      $("editMessage")
+        .textContent =
+        error.message ||
+        error;
+
+
+    }
+
+    finally {
+
+
+      $("saveEdit")
+        .disabled =
+        false;
+
+
+      $("saveEdit")
+        .textContent =
+        "Guardar";
+
+    }
+
+  }
+
+
+  async function init() {
+
+    const user =
+      await getAuthorizedUser();
+
+
+    if(!user) {
+
+      location.href =
+        "../../login.html";
+
+      return;
+
+    }
+
+
+    currentUser =
+      user;
+
+
+    $("logoutButton")
+      .onclick =
+      logout;
+
+
+    $("refreshButton")
+      .onclick =
+      loadBalance;
+
+
+    $("displayCurrency")
+      .onchange =
+      render;
+
+
+    $("balanceDate")
+      .onchange =
+      loadBalance;
+
+
+    $("cancelEdit")
+      .onclick =
+      closeEdit;
+
+
+    $("saveEdit")
+      .onclick =
+      saveEdit;
+
+
+    $("editModal")
+      .onclick =
+      event => {
+
+        if(
+          event.target ===
+          $("editModal")
+        ) {
+
+          closeEdit();
+
+        }
+
+      };
+
+
+    await loadBalance();
+
+  }
+
+
+  init()
+    .catch(
+      error => {
+
+        console.error(error);
+
+
+        $("balanceContent")
+          .innerHTML = `
+
+            <div class="card">
+
+              <strong>
+                Error cargando Balance:
+              </strong>
+
+              ${
+                escapeHtml(
+                  error.message ||
+                  error
+                )
+              }
+
+            </div>
+
+          `;
+
+      }
+    );
+
+</script>
+
+
+</body>
+
+</html>
+</script>
+
+
+</body>
+
+</html>

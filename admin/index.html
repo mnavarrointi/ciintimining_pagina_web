@@ -4,19 +4,17 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <title>Panel Administrativo | CI Inti Mining</title>
+  <title>Panel | CI Inti Mining</title>
 
   <link rel="stylesheet" href="../styles.css" />
 
   <style>
-
     body {
       margin: 0;
       min-height: 100vh;
       background: #f5f5f5;
       font-family: Arial, sans-serif;
     }
-
 
     .admin-header {
       background: white;
@@ -29,28 +27,22 @@
       border-bottom: 1px solid #ddd;
     }
 
-
     .admin-main {
       max-width: 1150px;
       margin: 40px auto;
       padding: 0 24px;
     }
 
-
     .admin-card {
       background: white;
-
       padding: 28px;
-
       border-radius: 12px;
-
       margin-bottom: 20px;
 
       box-shadow:
         0 8px 25px
         rgba(0, 0, 0, 0.06);
     }
-
 
     .module-grid {
       display: grid;
@@ -62,10 +54,8 @@
         );
 
       gap: 14px;
-
       margin-top: 22px;
     }
-
 
     .module-link {
       display: block;
@@ -73,7 +63,6 @@
       padding: 18px;
 
       background: #f7f7f7;
-
       border: 1px solid #e1e1e1;
       border-radius: 10px;
 
@@ -86,7 +75,6 @@
         background 0.15s ease;
     }
 
-
     .module-link:hover {
       background: white;
 
@@ -98,297 +86,257 @@
         rgba(0, 0, 0, 0.08);
     }
 
-
     .module-title {
       display: block;
-
       font-size: 16px;
       font-weight: 700;
-
       margin-bottom: 6px;
     }
 
-
     .module-description {
       display: block;
-
       color: #666;
-
       font-size: 13px;
       line-height: 1.4;
     }
 
-
     .logout-button {
       cursor: pointer;
-
       border: none;
-
       padding: 10px 16px;
-
       border-radius: 6px;
     }
-
 
     #adminContent {
       display: none;
     }
 
-
     #loadingState {
       padding: 40px;
-
       text-align: center;
     }
 
+    .role-badge {
+      display: inline-block;
 
-    @media (
-      max-width: 700px
-    ) {
+      margin-top: 6px;
+      padding: 4px 8px;
 
-      .module-grid {
-        grid-template-columns:
-          1fr;
-      }
+      border-radius: 999px;
 
+      background: #f0f0f0;
 
-      .admin-header {
-        align-items:
-          flex-start;
-
-        gap: 15px;
-
-        flex-direction:
-          column;
-      }
-
+      color: #555;
+      font-size: 12px;
+      font-weight: 700;
     }
 
+    @media (max-width: 700px) {
+      .module-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .admin-header {
+        align-items: flex-start;
+        gap: 15px;
+        flex-direction: column;
+      }
+    }
   </style>
 </head>
 
-
 <body>
 
-
   <div id="loadingState">
-
     Verificando acceso...
-
   </div>
 
-
   <div id="adminContent">
-
 
     <header class="admin-header">
 
       <div>
-
         <strong>
           CI Inti Mining
         </strong>
 
         <div id="userInfo"></div>
 
+        <div
+          id="roleBadge"
+          class="role-badge"
+        ></div>
       </div>
-
 
       <button
         id="logoutButton"
         class="logout-button"
       >
-
         Cerrar sesión
-
       </button>
 
     </header>
 
-
     <main class="admin-main">
 
-
-      <h1>
+      <h1 id="panelTitle">
         Panel Administrativo
       </h1>
 
-
       <div class="admin-card">
 
-
-        <h2>
+        <h2 id="sectionTitle">
           Tesorería
         </h2>
 
-
-        <p>
+        <p id="sectionDescription">
           Gestión de programación de pagos,
           movimientos bancarios y conciliación.
         </p>
 
-
-        <div class="module-grid">
-
-
-          <a
-            href="tesoreria/pagos-fijos.html"
-            class="module-link"
-          >
-
-            <span class="module-title">
-
-              Pagos Fijos
-
-            </span>
-
-            <span class="module-description">
-
-              Parametrización y administración
-              de los pagos recurrentes.
-
-            </span>
-
-          </a>
-
-
-          <a
-            href="tesoreria/solicitudes.html"
-            class="module-link"
-          >
-
-            <span class="module-title">
-
-              Solicitudes de Pago
-
-            </span>
-
-            <span class="module-description">
-
-              Crear, revisar y aprobar
-              solicitudes de pagos fijos
-              y extraordinarios.
-
-            </span>
-
-          </a>
-
-
-          <a
-            href="tesoreria/movimientos.html"
-            class="module-link"
-          >
-
-            <span class="module-title">
-
-              Movimientos del Mes
-
-            </span>
-
-            <span class="module-description">
-
-              Consulta de movimientos
-              efectivamente ejecutados
-              en Tesorería.
-
-            </span>
-
-          </a>
-
-
-          <a
-            href="tesoreria/conciliacion.html"
-            class="module-link"
-          >
-
-            <span class="module-title">
-
-              Conciliación Bancaria
-
-            </span>
-
-            <span class="module-description">
-
-              Cargar movimientos
-              descargados de los bancos.
-
-            </span>
-
-          </a>
-
-
-          <a
-            href="tesoreria/bandeja-conciliacion.html"
-            class="module-link"
-          >
-
-            <span class="module-title">
-
-              Bandeja de Conciliación
-
-            </span>
-
-            <span class="module-description">
-
-              Relacionar todos los movimientos
-              bancarios con su explicación
-              correspondiente.
-
-            </span>
-
-          </a>
-
-
-          <a
-            href="tesoreria/movimientos-diarios.html"
-            class="module-link"
-          >
-
-            <span class="module-title">
-
-              Nacional / Internacional
-
-            </span>
-
-            <span class="module-description">
-
-              Visualización diaria de saldos,
-              egresos e ingresos por cuenta
-              bancaria.
-
-            </span>
-
-          </a>
-
-
-        </div>
-
+        <div
+          id="moduleGrid"
+          class="module-grid"
+        ></div>
 
       </div>
 
-
     </main>
 
-
   </div>
-
 
   <script
     src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
   ></script>
 
-
   <script
     src="../js/supabase-config.js"
   ></script>
-
 
   <script
     src="../js/auth.js"
   ></script>
 
-
   <script>
+
+    const ADMIN_MODULES = [
+      {
+        title: "Pagos Fijos",
+        description:
+          "Parametrización y administración de los pagos recurrentes.",
+        href:
+          "tesoreria/pagos-fijos.html"
+      },
+
+      {
+        title: "Solicitudes de Pago",
+        description:
+          "Crear, revisar y aprobar solicitudes de pagos fijos y extraordinarios.",
+        href:
+          "tesoreria/solicitudes.html"
+      },
+
+      {
+        title: "Movimientos del Mes",
+        description:
+          "Consulta de movimientos efectivamente ejecutados en Tesorería.",
+        href:
+          "tesoreria/movimientos.html"
+      },
+
+      {
+        title: "Conciliación Bancaria",
+        description:
+          "Cargar movimientos descargados de los bancos.",
+        href:
+          "tesoreria/conciliacion.html"
+      },
+
+      {
+        title: "Bandeja de Conciliación",
+        description:
+          "Relacionar todos los movimientos bancarios con su explicación correspondiente.",
+        href:
+          "tesoreria/bandeja-conciliacion.html"
+      },
+
+      {
+        title: "Movimientos Diarios",
+        description:
+          "Visualización diaria de saldos, egresos e ingresos por cuenta bancaria.",
+        href:
+          "tesoreria/movimientos-diarios.html"
+      },
+
+      {
+        title: "Balance General",
+        description:
+          "Consulta de activos, pasivos y patrimonio consolidado.",
+        href:
+          "tesoreria/balance-general.html"
+      }
+    ];
+
+
+    const CONSULTA_MODULES = [
+      {
+        title: "Movimientos Diarios",
+        description:
+          "Consulta diaria de saldos, ingresos y egresos por cuenta bancaria.",
+        href:
+          "tesoreria/movimientos-diarios.html"
+      },
+
+      {
+        title: "Balance General",
+        description:
+          "Consulta de activos, pasivos y patrimonio consolidado.",
+        href:
+          "tesoreria/balance-general.html"
+      }
+    ];
+
+
+    function renderModules(modules) {
+
+      const grid =
+        document.getElementById(
+          "moduleGrid"
+        );
+
+      grid.innerHTML = "";
+
+      modules.forEach(
+        function(module) {
+
+          const link =
+            document.createElement(
+              "a"
+            );
+
+          link.href =
+            module.href;
+
+          link.className =
+            "module-link";
+
+          link.innerHTML = `
+            <span class="module-title">
+              ${module.title}
+            </span>
+
+            <span class="module-description">
+              ${module.description}
+            </span>
+          `;
+
+          grid.appendChild(
+            link
+          );
+        }
+      );
+    }
+
 
     async function initializeAdmin() {
 
@@ -398,16 +346,18 @@
           await getAuthorizedUser();
 
 
-        if (
-          !authorizedUser
-        ) {
+        if (!authorizedUser) {
 
           window.location.href =
             "../login.html";
 
           return;
-
         }
+
+
+        const isConsulta =
+          authorizedUser.rol ===
+          "consulta";
 
 
         document
@@ -415,12 +365,56 @@
             "userInfo"
           )
           .textContent =
-          `${
-            authorizedUser.nombre ||
-            authorizedUser.email
-          } · ${
-            authorizedUser.rol
-          }`;
+          authorizedUser.nombre ||
+          authorizedUser.email;
+
+
+        document
+          .getElementById(
+            "roleBadge"
+          )
+          .textContent =
+          isConsulta
+            ? "Consulta"
+            : authorizedUser.rol;
+
+
+        if (isConsulta) {
+
+          document
+            .getElementById(
+              "panelTitle"
+            )
+            .textContent =
+            "Panel de Consulta";
+
+
+          document
+            .getElementById(
+              "sectionTitle"
+            )
+            .textContent =
+            "Información Financiera";
+
+
+          document
+            .getElementById(
+              "sectionDescription"
+            )
+            .textContent =
+            "Consulta de movimientos diarios y posición financiera de la compañía.";
+
+
+          renderModules(
+            CONSULTA_MODULES
+          );
+
+        } else {
+
+          renderModules(
+            ADMIN_MODULES
+          );
+        }
 
 
         document
@@ -445,12 +439,9 @@
           error
         );
 
-
         window.location.href =
           "../login.html";
-
       }
-
     }
 
 
@@ -467,7 +458,6 @@
     initializeAdmin();
 
   </script>
-
 
 </body>
 </html>
