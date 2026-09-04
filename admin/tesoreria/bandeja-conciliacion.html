@@ -711,7 +711,9 @@
             <option value="GMF">
               GMF
             </option>
-
+            <option value="IMPUESTOS">
+              Impuestos
+            </option>
             <option value="RENDIMIENTOS">
               Rendimientos
             </option>
@@ -1451,6 +1453,12 @@
       return "Rendimientos";
     }
 
+    if (
+      categoria ===
+      "IMPUESTOS"
+    ) {
+      return "Impuestos";
+    }
 
     return categoria || "";
 
@@ -3289,6 +3297,7 @@
           [
             "GASTO_BANCARIO",
             "GMF",
+            "IMPUESTOS",
             "RENDIMIENTOS"
           ]
           .includes(
@@ -4278,6 +4287,9 @@
 
         GMF:
           "GMF",
+
+        IMPUESTOS:
+          "IMPUESTOS",
 
         RENDIMIENTOS:
           "RENDIMIENTOS"
