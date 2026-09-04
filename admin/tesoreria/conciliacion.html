@@ -200,14 +200,621 @@
     return out;
   }
 
-  async function parseBanbif(file){
-    const n=normalizarTexto(file.name),moneda=(n.includes("SOL")||n.includes("PEN"))?"PEN":n.includes("USD")?"USD":null;if(!moneda)throw new Error("No fue posible determinar si el archivo BanBif corresponde a USD o SOL.");
-    cuentaDetectada=cuentaPorBancoMoneda("Banbif",moneda);if(!cuentaDetectada)throw new Error(`No existe una única cuenta BanBif ${moneda} habilitada.`);
-    const wb=await leerWorkbook(file),rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:null,raw:true});if(!rows.length)throw new Error("El archivo BanBif está vacío.");
-    const first=Object.keys(rows[0]).map(normalizarTexto);if(!first.includes("DESCRIPCION")||!first.includes("FECHA")||!first.includes("MONTO"))throw new Error("El archivo no tiene la estructura esperada de BanBif.");
-    const occurrences=new Map(),out=[];for(const r of rows){const fecha=fechaISO(r.FECHA),signed=numeroFlexible(r.MONTO);if(!fecha||signed===null||signed===0)continue;const desc=String(r.DESCRIPCION??"").trim(),ref=String(r["No. REFERENCIA"]??"").trim(),saldo=numeroFlexible(r.SALDO),naturaleza=signed<0?"DEBITO":"CREDITO",valor=Math.abs(signed);const baseKey=[cuentaDetectada.id,fecha,normalizarTexto(desc),ref,valor.toFixed(2),naturaleza,saldo??""].join("|");const occ=(occurrences.get(baseKey)||0)+1;occurrences.set(baseKey,occ);out.push({fecha_movimiento:fecha,fecha_valor:null,descripcion_original:desc,referencia:ref||null,naturaleza,valor,moneda:cuentaDetectada.moneda,saldo,fingerprint:await sha256(`${baseKey}|${occ}`),estado_conciliacion:"PENDIENTE",raw_data:r})}
-    return out;
+async function parseBanbif(file){
+
+  const n = normalizarTexto(file.name);
+
+  const moneda =
+    (n.includes("SOL") || n.includes("PEN"))
+      ? "PEN"
+      : n.includes("USD")
+        ? "USD"
+        : null;
+
+
+  if(!moneda){
+    throw new Error(
+      "No fue posible determinar si el archivo BanBif corresponde a USD o SOL."
+    );
   }
+
+
+  cuentaDetectada =
+    cuentaPorBancoMoneda(
+      "Banbif",
+      moneda
+    );
+
+
+  if(!cuentaDetectada){
+    throw new Error(
+      `No existe una única cuenta BanBif ${moneda} habilitada.`
+    );
+  }
+
+
+  /*
+   * BanBif descarga algunos archivos con extensión .csv,
+   * pero el contenido real es un libro Excel XLS.
+   *
+   * Por eso NO usamos file.text().
+   * Leemos directamente el ArrayBuffer con SheetJS.
+   */
+
+  const buffer =
+    await file.arrayBuffer();
+
+
+  let wb;
+
+  try {
+
+    wb =
+      XLSX.read(
+        buffer,
+        {
+          type: "array",
+          cellDates: true
+        }
+      );
+
+  } catch(error) {
+
+    console.error(error);
+
+    throw new Error(
+      "No fue posible leer el archivo BanBif. El archivo parece ser Excel aunque tenga extensión CSV."
+    );
+
+  }
+
+
+  if(
+    !wb.SheetNames ||
+    !wb.SheetNames.length
+  ){
+    throw new Error(
+      "El archivo BanBif no contiene hojas de Excel."
+    );
+  }
+
+
+  const sheet =
+    wb.Sheets[
+      wb.SheetNames[0]
+    ];
+
+
+  /*
+   * Primero leemos como matriz porque el archivo BanBif
+   * puede tener encabezados diferentes según la descarga.
+   */
+
+  const rawRows =
+    XLSX.utils.sheet_to_json(
+      sheet,
+      {
+        header: 1,
+        defval: null,
+        raw: true
+      }
+    );
+
+
+  if(!rawRows.length){
+    throw new Error(
+      "El archivo BanBif está vacío."
+    );
+  }
+
+
+  /*
+   * Buscamos la fila real de encabezados.
+   *
+   * Formato nuevo observado:
+   *
+   * DESCRIPCION
+   * FECHA
+   * N. REFERENCIA
+   * DEBITO
+   * CREDITO
+   *
+   * También dejamos compatibilidad con el formato anterior:
+   *
+   * DESCRIPCION
+   * FECHA
+   * MONTO
+   * SALDO
+   */
+
+  let headerIndex = -1;
+
+
+  for(
+    let i = 0;
+    i < Math.min(
+      rawRows.length,
+      20
+    );
+    i++
+  ){
+
+    const headers =
+      (rawRows[i] || [])
+        .map(normalizarTexto);
+
+
+    const tieneDescripcion =
+      headers.includes(
+        "DESCRIPCION"
+      );
+
+
+    const tieneFecha =
+      headers.includes(
+        "FECHA"
+      );
+
+
+    const formatoDebitoCredito =
+      headers.includes(
+        "DEBITO"
+      )
+      &&
+      headers.includes(
+        "CREDITO"
+      );
+
+
+    const formatoMonto =
+      headers.includes(
+        "MONTO"
+      );
+
+
+    if(
+      tieneDescripcion
+      &&
+      tieneFecha
+      &&
+      (
+        formatoDebitoCredito
+        ||
+        formatoMonto
+      )
+    ){
+
+      headerIndex = i;
+
+      break;
+
+    }
+
+  }
+
+
+  if(headerIndex < 0){
+
+    throw new Error(
+      "El archivo no tiene la estructura esperada de BanBif. No se encontraron las columnas DESCRIPCION, FECHA y DEBITO/CREDITO o MONTO."
+    );
+
+  }
+
+
+  const headerRow =
+    rawRows[
+      headerIndex
+    ];
+
+
+  /*
+   * Convertimos desde la fila encontrada a objetos.
+   */
+
+  const rows =
+    XLSX.utils.sheet_to_json(
+      sheet,
+      {
+        range:
+          headerIndex,
+
+        defval:
+          null,
+
+        raw:
+          true
+      }
+    );
+
+
+  if(!rows.length){
+
+    throw new Error(
+      "El archivo BanBif no contiene movimientos."
+    );
+
+  }
+
+
+  /*
+   * Encontramos los nombres reales de las columnas
+   * sin depender exactamente de puntos o abreviaturas.
+   */
+
+  const keys =
+    Object.keys(
+      rows[0]
+    );
+
+
+  function buscarColumna(...nombres){
+
+    return keys.find(
+      key => {
+
+        const nk =
+          normalizarTexto(key)
+            .replace(
+              /[^A-Z0-9]/g,
+              ""
+            );
+
+
+        return nombres.some(
+          nombre =>
+
+            nk ===
+            normalizarTexto(nombre)
+              .replace(
+                /[^A-Z0-9]/g,
+                ""
+              )
+
+        );
+
+      }
+    ) || null;
+
+  }
+
+
+  const colDescripcion =
+    buscarColumna(
+      "DESCRIPCION"
+    );
+
+
+  const colFecha =
+    buscarColumna(
+      "FECHA"
+    );
+
+
+  const colReferencia =
+    buscarColumna(
+      "N. REFERENCIA",
+      "NO. REFERENCIA",
+      "N REFERENCIA",
+      "NO REFERENCIA",
+      "REFERENCIA"
+    );
+
+
+  const colDebito =
+    buscarColumna(
+      "DEBITO"
+    );
+
+
+  const colCredito =
+    buscarColumna(
+      "CREDITO"
+    );
+
+
+  const colMonto =
+    buscarColumna(
+      "MONTO"
+    );
+
+
+  const colSaldo =
+    buscarColumna(
+      "SALDO"
+    );
+
+
+  if(
+    !colDescripcion ||
+    !colFecha
+  ){
+
+    throw new Error(
+      "El archivo BanBif no contiene las columnas obligatorias DESCRIPCION y FECHA."
+    );
+
+  }
+
+
+  if(
+    !(
+      (
+        colDebito &&
+        colCredito
+      )
+      ||
+      colMonto
+    )
+  ){
+
+    throw new Error(
+      "El archivo BanBif no contiene columnas DEBITO/CREDITO ni MONTO."
+    );
+
+  }
+
+
+  const occurrences =
+    new Map();
+
+
+  const out = [];
+
+
+  for(const r of rows){
+
+    const fecha =
+      fechaISO(
+        r[
+          colFecha
+        ]
+      );
+
+
+    if(!fecha){
+      continue;
+    }
+
+
+    let naturaleza = null;
+
+    let valor = null;
+
+
+    /*
+     * NUEVO FORMATO BANBIF:
+     * columnas separadas DEBITO / CREDITO
+     */
+
+    if(
+      colDebito &&
+      colCredito
+    ){
+
+      const debito =
+        numeroFlexible(
+          r[
+            colDebito
+          ]
+        );
+
+
+      const credito =
+        numeroFlexible(
+          r[
+            colCredito
+          ]
+        );
+
+
+      if(
+        debito !== null &&
+        Math.abs(debito) > 0
+      ){
+
+        naturaleza =
+          "DEBITO";
+
+        valor =
+          Math.abs(
+            debito
+          );
+
+      }
+
+      else if(
+        credito !== null &&
+        Math.abs(credito) > 0
+      ){
+
+        naturaleza =
+          "CREDITO";
+
+        valor =
+          Math.abs(
+            credito
+          );
+
+      }
+
+      else {
+
+        continue;
+
+      }
+
+    }
+
+    /*
+     * FORMATO BANBIF ANTERIOR:
+     * columna MONTO con signo
+     */
+
+    else {
+
+      const signed =
+        numeroFlexible(
+          r[
+            colMonto
+          ]
+        );
+
+
+      if(
+        signed === null ||
+        signed === 0
+      ){
+
+        continue;
+
+      }
+
+
+      naturaleza =
+        signed < 0
+          ? "DEBITO"
+          : "CREDITO";
+
+
+      valor =
+        Math.abs(
+          signed
+        );
+
+    }
+
+
+    const desc =
+      String(
+        r[
+          colDescripcion
+        ] ??
+        ""
+      )
+      .trim();
+
+
+    const ref =
+      colReferencia
+        ? String(
+            r[
+              colReferencia
+            ] ??
+            ""
+          )
+          .trim()
+        : "";
+
+
+    const saldo =
+      colSaldo
+        ? numeroFlexible(
+            r[
+              colSaldo
+            ]
+          )
+        : null;
+
+
+    const baseKey =
+      [
+
+        cuentaDetectada.id,
+
+        fecha,
+
+        normalizarTexto(
+          desc
+        ),
+
+        ref,
+
+        Number(
+          valor
+        )
+        .toFixed(
+          2
+        ),
+
+        naturaleza,
+
+        saldo ?? ""
+
+      ]
+      .join("|");
+
+
+    const occ =
+      (
+        occurrences.get(
+          baseKey
+        )
+        ||
+        0
+      )
+      +
+      1;
+
+
+    occurrences.set(
+      baseKey,
+      occ
+    );
+
+
+    out.push({
+
+      fecha_movimiento:
+        fecha,
+
+      fecha_valor:
+        null,
+
+      descripcion_original:
+        desc,
+
+      referencia:
+        ref ||
+        null,
+
+      naturaleza,
+
+      valor,
+
+      moneda:
+        cuentaDetectada.moneda,
+
+      saldo,
+
+      fingerprint:
+        await sha256(
+          `${baseKey}|${occ}`
+        ),
+
+      estado_conciliacion:
+        "PENDIENTE",
+
+      raw_data:
+        r
+
+    });
+
+  }
+
+
+  if(!out.length){
+
+    throw new Error(
+      "El archivo BanBif fue reconocido, pero no se encontraron movimientos válidos."
+    );
+
+  }
+
+
+  return out;
+
+}
 
   async function parseUSBank(file,banco){
     const wb=await leerWorkbook(file),rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:null,raw:true});if(!rows.length)throw new Error(`El archivo ${banco} está vacío.`);
