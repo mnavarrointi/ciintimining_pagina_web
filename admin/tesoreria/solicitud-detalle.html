@@ -75,6 +75,11 @@
       border-radius: 6px;
     }
 
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
     table {
       width: 100%;
       border-collapse: collapse;
@@ -86,6 +91,7 @@
       padding: 13px 14px;
       text-align: left;
       border-bottom: 1px solid #eee;
+      vertical-align: top;
     }
 
     th {
@@ -125,6 +131,32 @@
     .action-buttons {
       display: flex;
       gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .edit-approved {
+      background: #fff7e6;
+    }
+
+    .delete-approved {
+      background: #ffeaea;
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: #eee;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .warning-box {
+      background: #fff8e1;
+      border: 1px solid #f0d98c;
+      padding: 12px 14px;
+      border-radius: 8px;
+      margin-bottom: 16px;
     }
 
     @media (max-width: 800px) {
@@ -161,10 +193,7 @@
 
   </header>
 
-
   <main class="page-main">
-
-    <!-- DATOS DE LA SOLICITUD -->
 
     <div class="card">
 
@@ -202,20 +231,21 @@
             >
               + Agregar Pago Extraordinario
             </button>
+
             <button
-            id="approveRequestButton"
-            style="display: none;"
+              id="approveRequestButton"
+              style="display: none;"
             >
-            Aprobar Solicitud
+              Aprobar Solicitud
             </button>
+
             <button id="managementFormatButton">
-            Ver Formato Gerencia
+              Ver Formato Gerencia
             </button>
 
           </div>
 
         </div>
-
 
         <div class="request-summary">
 
@@ -230,7 +260,6 @@
             ></div>
           </div>
 
-
           <div>
             <div class="summary-label">
               Tipo
@@ -242,7 +271,6 @@
             ></div>
           </div>
 
-
           <div>
             <div class="summary-label">
               Quincena
@@ -253,7 +281,6 @@
               class="summary-value"
             ></div>
           </div>
-
 
           <div>
             <div class="summary-label">
@@ -277,9 +304,6 @@
 
     </div>
 
-
-    <!-- FORMULARIO DE PAGO -->
-
     <div
       id="paymentFormContainer"
       class="card"
@@ -289,6 +313,14 @@
       <h2 id="paymentFormTitle">
         Nuevo Pago Extraordinario
       </h2>
+
+      <div
+        id="approvedEditWarning"
+        class="warning-box"
+        style="display: none;"
+      >
+        Estás modificando un pago que ya fue aprobado. El cambio también actualizará el movimiento APROBADO correspondiente en Tesorería.
+      </div>
 
       <form id="paymentForm">
 
@@ -303,7 +335,6 @@
             ></select>
           </div>
 
-
           <div>
             <label>Beneficiario *</label>
 
@@ -313,13 +344,11 @@
             ></select>
           </div>
 
-
           <div>
             <label>Categoría</label>
 
             <select id="categoriaId"></select>
           </div>
-
 
           <div>
             <label>Concepto *</label>
@@ -330,7 +359,6 @@
               required
             />
           </div>
-
 
           <div>
             <label>Moneda *</label>
@@ -345,7 +373,6 @@
             </select>
           </div>
 
-
           <div>
             <label>Valor *</label>
 
@@ -357,7 +384,6 @@
               required
             />
           </div>
-
 
           <div>
             <label>
@@ -372,7 +398,6 @@
 
         </div>
 
-
         <div style="margin-top: 18px;">
 
           <label>Comentario</label>
@@ -383,7 +408,6 @@
           ></textarea>
 
         </div>
-
 
         <div style="margin-top: 20px;">
 
@@ -400,7 +424,6 @@
 
         </div>
 
-
         <div
           id="paymentMessage"
           class="message"
@@ -409,9 +432,6 @@
       </form>
 
     </div>
-
-
-    <!-- LISTA DE PAGOS -->
 
     <div class="card">
 
@@ -427,11 +447,9 @@
 
       </div>
 
-
       <div id="loadingItems">
         Cargando pagos...
       </div>
-
 
       <div
         id="emptyItems"
@@ -439,7 +457,6 @@
       >
         Esta solicitud todavía no tiene pagos.
       </div>
-
 
       <div
         id="itemsTableWrapper"
@@ -474,7 +491,6 @@
 
   </main>
 
-
   <script
     src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
   ></script>
@@ -482,14 +498,13 @@
   <script src="../../js/supabase-config.js"></script>
   <script src="../../js/auth.js"></script>
 
-
   <script>
 
     let solicitudActual = null;
     let usuarioActual = null;
     let itemsCargados = [];
     let editingItemId = null;
-
+    let editingApprovedItem = false;
 
     const urlParams =
       new URLSearchParams(
@@ -498,7 +513,6 @@
 
     const solicitudId =
       urlParams.get("id");
-
 
     const requestMessage =
       document.getElementById(
@@ -525,7 +539,6 @@
         "paymentMessage"
       );
 
-
     function formatearValor(
       value,
       currency
@@ -543,14 +556,12 @@
 
     }
 
-
     async function inicializarPagina() {
 
       try {
 
         usuarioActual =
           await getAuthorizedUser();
-
 
         if (!usuarioActual) {
 
@@ -561,7 +572,6 @@
 
         }
 
-
         if (!solicitudId) {
 
           throw new Error(
@@ -570,11 +580,8 @@
 
         }
 
-
         await cargarSolicitud();
-
         await cargarItems();
-
 
       } catch (error) {
 
@@ -582,7 +589,6 @@
           "Error inicializando solicitud:",
           error
         );
-
 
         document
           .getElementById(
@@ -598,7 +604,6 @@
       }
 
     }
-
 
     async function cargarSolicitud() {
 
@@ -620,14 +625,11 @@
           )
           .single();
 
-
       if (error) {
         throw error;
       }
 
-
       solicitudActual = data;
-
 
       document
         .getElementById(
@@ -638,14 +640,12 @@
           ? `Solicitud ${data.codigo_visible}`
           : "Solicitud de Pago";
 
-
       document
         .getElementById(
           "requestDate"
         )
         .textContent =
         data.fecha_solicitud;
-
 
       document
         .getElementById(
@@ -656,14 +656,12 @@
           ? "Pagos Fijos"
           : "Pagos Extraordinarios";
 
-
       document
         .getElementById(
           "requestFortnight"
         )
         .textContent =
         data.quincena || "No aplica";
-
 
       document
         .getElementById(
@@ -672,14 +670,12 @@
         .textContent =
         data.estado;
 
-
       document
         .getElementById(
           "requestObservations"
         )
         .textContent =
         data.observaciones || "";
-
 
       document
         .getElementById(
@@ -688,14 +684,12 @@
         .style.display =
         "none";
 
-
       document
         .getElementById(
           "requestContent"
         )
         .style.display =
         "block";
-
 
       document
         .getElementById(
@@ -704,62 +698,30 @@
         .style.display =
         "none";
 
-
       document
         .getElementById(
           "addExtraPaymentButton"
         )
         .style.display =
         "none";
-        document
+
+      document
         .getElementById(
-            "approveRequestButton"
+          "approveRequestButton"
         )
         .style.display =
         "none";
 
-
-     if (
+      if (
         data.estado === "BORRADOR"
-        ) {
+      ) {
 
         document
-            .getElementById(
+          .getElementById(
             "approveRequestButton"
-            )
-            .style.display =
-            "inline-block";
-
-
-        if (
-            data.tipo_solicitud === "FIJOS"
-        ) {
-
-            document
-            .getElementById(
-                "loadFixedPaymentsButton"
-            )
-            .style.display =
-            "inline-block";
-
-        }
-
-
-        if (
-            data.tipo_solicitud ===
-            "EXTRAORDINARIOS"
-        ) {
-
-            document
-            .getElementById(
-                "addExtraPaymentButton"
-            )
-            .style.display =
-            "inline-block";
-
-        }
-
-        }
+          )
+          .style.display =
+          "inline-block";
 
         if (
           data.tipo_solicitud === "FIJOS"
@@ -773,7 +735,6 @@
             "inline-block";
 
         }
-
 
         if (
           data.tipo_solicitud ===
@@ -791,8 +752,7 @@
 
       }
 
-    
-
+    }
 
     async function cargarItems() {
 
@@ -840,14 +800,11 @@
             }
           );
 
-
       if (error) {
         throw error;
       }
 
-
       itemsCargados = data || [];
-
 
       document
         .getElementById(
@@ -856,7 +813,6 @@
         .style.display =
         "none";
 
-
       document
         .getElementById(
           "emptyItems"
@@ -864,14 +820,12 @@
         .style.display =
         "none";
 
-
       document
         .getElementById(
           "itemsTableWrapper"
         )
         .style.display =
         "none";
-
 
       if (
         !data ||
@@ -889,9 +843,7 @@
 
       }
 
-
       itemsTableBody.innerHTML = "";
-
 
       data.forEach(
         (item) => {
@@ -901,30 +853,67 @@
               "tr"
             );
 
+          const esBorrador =
+            solicitudActual.estado ===
+            "BORRADOR";
 
-          const acciones =
-            solicitudActual.estado === "BORRADOR"
-              ? `
-                <div class="action-buttons">
+          const esAprobadaEditable =
+            solicitudActual.estado ===
+            "APROBADA" &&
+            item.estado ===
+            "APROBADO";
 
-                  <button
-                    class="edit-item-button"
-                    data-id="${item.id}"
-                  >
-                    Editar
-                  </button>
+          let acciones = "—";
 
-                  <button
-                    class="remove-item-button"
-                    data-id="${item.id}"
-                  >
-                    Quitar
-                  </button>
+          if (esBorrador) {
 
-                </div>
-              `
-              : "—";
+            acciones = `
+              <div class="action-buttons">
 
+                <button
+                  class="edit-item-button"
+                  data-id="${item.id}"
+                >
+                  Editar
+                </button>
+
+                <button
+                  class="remove-item-button"
+                  data-id="${item.id}"
+                >
+                  Quitar
+                </button>
+
+              </div>
+            `;
+
+          }
+
+          else if (
+            esAprobadaEditable
+          ) {
+
+            acciones = `
+              <div class="action-buttons">
+
+                <button
+                  class="edit-approved-button edit-approved"
+                  data-id="${item.id}"
+                >
+                  Editar
+                </button>
+
+                <button
+                  class="delete-approved-button delete-approved"
+                  data-id="${item.id}"
+                >
+                  Eliminar
+                </button>
+
+              </div>
+            `;
+
+          }
 
           row.innerHTML = `
 
@@ -977,7 +966,9 @@
             </td>
 
             <td>
-              ${item.estado}
+              <span class="status-badge">
+                ${item.estado}
+              </span>
             </td>
 
             <td>
@@ -986,13 +977,11 @@
 
           `;
 
-
           itemsTableBody
             .appendChild(row);
 
         }
       );
-
 
       document
         .getElementById(
@@ -1000,7 +989,6 @@
         )
         .style.display =
         "block";
-
 
       document
         .querySelectorAll(
@@ -1014,7 +1002,8 @@
               () => {
 
                 editarItem(
-                  button.dataset.id
+                  button.dataset.id,
+                  false
                 );
 
               }
@@ -1022,7 +1011,6 @@
 
           }
         );
-
 
       document
         .querySelectorAll(
@@ -1035,7 +1023,50 @@
               "click",
               () => {
 
-                quitarItem(
+                quitarItemBorrador(
+                  button.dataset.id
+                );
+
+              }
+            );
+
+          }
+        );
+
+      document
+        .querySelectorAll(
+          ".edit-approved-button"
+        )
+        .forEach(
+          (button) => {
+
+            button.addEventListener(
+              "click",
+              () => {
+
+                editarItem(
+                  button.dataset.id,
+                  true
+                );
+
+              }
+            );
+
+          }
+        );
+
+      document
+        .querySelectorAll(
+          ".delete-approved-button"
+        )
+        .forEach(
+          (button) => {
+
+            button.addEventListener(
+              "click",
+              () => {
+
+                eliminarItemAprobado(
                   button.dataset.id
                 );
 
@@ -1046,7 +1077,6 @@
         );
 
     }
-
 
     async function obtenerSiguienteOrden() {
 
@@ -1068,11 +1098,9 @@
           )
           .limit(1);
 
-
       if (error) {
         throw error;
       }
-
 
       if (
         !data ||
@@ -1081,13 +1109,11 @@
         return 1;
       }
 
-
       return Number(
         data[0].orden
       ) + 1;
 
     }
-
 
     async function cargarPagosFijos() {
 
@@ -1098,14 +1124,10 @@
         solicitudActual.estado
           !== "BORRADOR"
       ) {
-
         return;
-
       }
 
-
       requestMessage.textContent = "";
-
 
       try {
 
@@ -1129,11 +1151,9 @@
               "FIJO"
             );
 
-
         if (existingError) {
           throw existingError;
         }
-
 
         const idsYaCargados =
           new Set(
@@ -1144,7 +1164,6 @@
               )
               .filter(Boolean)
           );
-
 
         const {
           data: pagosFijos,
@@ -1177,11 +1196,9 @@
               }
             );
 
-
         if (error) {
           throw error;
         }
-
 
         const pagosPendientes =
           (pagosFijos || [])
@@ -1191,7 +1208,6 @@
                   pago.id
                 )
             );
-
 
         if (
           pagosPendientes.length === 0
@@ -1204,10 +1220,8 @@
 
         }
 
-
         const siguienteOrden =
           await obtenerSiguienteOrden();
-
 
         const items =
           pagosPendientes.map(
@@ -1258,7 +1272,6 @@
             })
           );
 
-
         const {
           error: insertError
         } =
@@ -1268,18 +1281,14 @@
             )
             .insert(items);
 
-
         if (insertError) {
           throw insertError;
         }
 
-
         requestMessage.textContent =
           `${items.length} pagos fijos cargados correctamente.`;
 
-
         await cargarItems();
-
 
       } catch (error) {
 
@@ -1287,7 +1296,6 @@
           "Error cargando pagos fijos:",
           error
         );
-
 
         requestMessage.textContent =
           "Error: " +
@@ -1299,7 +1307,6 @@
       }
 
     }
-
 
     async function cargarCatalogos() {
 
@@ -1336,7 +1343,6 @@
 
         ]);
 
-
       if (empresasResult.error) {
         throw empresasResult.error;
       }
@@ -1349,7 +1355,6 @@
         throw categoriasResult.error;
       }
 
-
       llenarSelect(
         "empresaId",
         empresasResult.data,
@@ -1357,14 +1362,12 @@
         "Seleccionar empresa"
       );
 
-
       llenarSelect(
         "beneficiarioId",
         beneficiariosResult.data,
         "nombre",
         "Seleccionar beneficiario"
       );
-
 
       llenarSelect(
         "categoriaId",
@@ -1374,7 +1377,6 @@
       );
 
     }
-
 
     function llenarSelect(
       elementId,
@@ -1388,25 +1390,20 @@
           elementId
         );
 
-
       select.innerHTML = "";
-
 
       const emptyOption =
         document.createElement(
           "option"
         );
 
-
       emptyOption.value = "";
       emptyOption.textContent =
         placeholder;
 
-
       select.appendChild(
         emptyOption
       );
-
 
       records.forEach(
         (record) => {
@@ -1416,13 +1413,11 @@
               "option"
             );
 
-
           option.value =
             record.id;
 
           option.textContent =
             record[labelField];
-
 
           select.appendChild(
             option
@@ -1433,18 +1428,10 @@
 
     }
 
-
     async function editarItem(
-      itemId
+      itemId,
+      aprobado
     ) {
-
-      if (
-        solicitudActual.estado !==
-        "BORRADOR"
-      ) {
-        return;
-      }
-
 
       try {
 
@@ -1453,7 +1440,6 @@
             registro =>
               registro.id === itemId
           );
-
 
         if (!item) {
 
@@ -1465,21 +1451,57 @@
 
         }
 
+        if (
+          aprobado &&
+          !(
+            solicitudActual.estado ===
+            "APROBADA" &&
+            item.estado ===
+            "APROBADO"
+          )
+        ) {
+
+          alert(
+            "Este pago ya no puede editarse."
+          );
+
+          return;
+
+        }
+
+        if (
+          !aprobado &&
+          solicitudActual.estado !==
+          "BORRADOR"
+        ) {
+          return;
+        }
 
         await cargarCatalogos();
-
 
         editingItemId =
           item.id;
 
+        editingApprovedItem =
+          aprobado;
 
         document
           .getElementById(
             "paymentFormTitle"
           )
           .textContent =
-          "Editar Pago";
+          aprobado
+            ? "Editar Pago Aprobado"
+            : "Editar Pago";
 
+        document
+          .getElementById(
+            "approvedEditWarning"
+          )
+          .style.display =
+          aprobado
+            ? "block"
+            : "none";
 
         document
           .getElementById(
@@ -1488,14 +1510,12 @@
           .value =
           item.empresa_id;
 
-
         document
           .getElementById(
             "beneficiarioId"
           )
           .value =
           item.beneficiario_id;
-
 
         document
           .getElementById(
@@ -1504,14 +1524,12 @@
           .value =
           item.categoria_id || "";
 
-
         document
           .getElementById(
             "concepto"
           )
           .value =
           item.concepto || "";
-
 
         document
           .getElementById(
@@ -1520,14 +1538,12 @@
           .value =
           item.moneda;
 
-
         document
           .getElementById(
             "valor"
           )
           .value =
           item.valor;
-
 
         document
           .getElementById(
@@ -1536,7 +1552,6 @@
           .value =
           item.cuenta_contable_ref || "";
 
-
         document
           .getElementById(
             "comentario"
@@ -1544,21 +1559,17 @@
           .value =
           item.comentario || "";
 
-
         paymentMessage.textContent =
           "";
-
 
         paymentFormContainer
           .style.display =
           "block";
 
-
         paymentFormContainer
           .scrollIntoView({
             behavior: "smooth"
           });
-
 
       } catch (error) {
 
@@ -1571,8 +1582,7 @@
 
     }
 
-
-    async function quitarItem(
+    async function quitarItemBorrador(
       itemId
     ) {
 
@@ -1583,17 +1593,14 @@
         return;
       }
 
-
       const confirmar =
         confirm(
           "¿Deseas quitar este pago de la solicitud?"
         );
 
-
       if (!confirmar) {
         return;
       }
-
 
       try {
 
@@ -1616,14 +1623,11 @@
               itemId
             );
 
-
         if (error) {
           throw error;
         }
 
-
         await cargarItems();
-
 
       } catch (error) {
 
@@ -1631,7 +1635,6 @@
           "Error quitando pago:",
           error
         );
-
 
         alert(
           "No fue posible quitar el pago: " +
@@ -1642,6 +1645,100 @@
 
     }
 
+    async function eliminarItemAprobado(
+      itemId
+    ) {
+
+      const item =
+        itemsCargados.find(
+          registro =>
+            registro.id === itemId
+        );
+
+      if (!item) {
+        return;
+      }
+
+      if (
+        solicitudActual.estado !==
+        "APROBADA" ||
+        item.estado !==
+        "APROBADO"
+      ) {
+
+        alert(
+          "Este pago ya no puede eliminarse."
+        );
+
+        return;
+
+      }
+
+      const confirmar =
+        confirm(
+          "¿Confirmas que deseas eliminar este pago aprobado?\n\n" +
+          `${item.beneficiarios?.nombre || ""}\n` +
+          `${item.concepto || ""}\n` +
+          `${formatearValor(item.valor, item.moneda)}\n\n` +
+          "El pago no se borrará del historial. El item quedará ELIMINADO y el movimiento de Tesorería será ANULADO."
+        );
+
+      if (!confirmar) {
+        return;
+      }
+
+      const motivo =
+        prompt(
+          "Motivo de la eliminación:",
+          "Corrección de pago aprobado"
+        );
+
+      if (motivo === null) {
+        return;
+      }
+
+      try {
+
+        const {
+          data,
+          error
+        } =
+          await supabaseClient
+            .rpc(
+              "eliminar_item_solicitud_aprobada",
+              {
+                p_item_id:
+                  itemId,
+
+                p_motivo:
+                  motivo.trim() || null
+              }
+            );
+
+        if (error) {
+          throw error;
+        }
+
+        requestMessage.textContent =
+          "Pago aprobado eliminado correctamente. El movimiento asociado fue anulado.";
+
+        await cargarItems();
+
+      } catch (error) {
+
+        console.error(
+          "Error eliminando pago aprobado:",
+          error
+        );
+
+        alert(
+          "No fue posible eliminar el pago aprobado: " +
+          error.message
+        );
+
+      }
+
+    }
 
     document
       .getElementById(
@@ -1651,7 +1748,6 @@
         "click",
         cargarPagosFijos
       );
-
 
     document
       .getElementById(
@@ -1664,13 +1760,11 @@
           try {
 
             editingItemId = null;
-
+            editingApprovedItem = false;
 
             await cargarCatalogos();
 
-
             paymentForm.reset();
-
 
             document
               .getElementById(
@@ -1679,21 +1773,24 @@
               .textContent =
               "Nuevo Pago Extraordinario";
 
+            document
+              .getElementById(
+                "approvedEditWarning"
+              )
+              .style.display =
+              "none";
 
             paymentMessage.textContent =
               "";
-
 
             paymentFormContainer
               .style.display =
               "block";
 
-
             paymentFormContainer
               .scrollIntoView({
                 behavior: "smooth"
               });
-
 
           } catch (error) {
 
@@ -1707,7 +1804,6 @@
         }
       );
 
-
     document
       .getElementById(
         "cancelPaymentButton"
@@ -1717,10 +1813,18 @@
         () => {
 
           editingItemId = null;
+          editingApprovedItem = false;
 
           paymentForm.reset();
 
           paymentFormContainer
+            .style.display =
+            "none";
+
+          document
+            .getElementById(
+              "approvedEditWarning"
+            )
             .style.display =
             "none";
 
@@ -1730,102 +1834,196 @@
         }
       );
 
-
     paymentForm.addEventListener(
       "submit",
       async (event) => {
 
         event.preventDefault();
 
-
         paymentMessage.textContent =
           "";
 
-
         try {
 
+          const empresaId =
+            document
+              .getElementById(
+                "empresaId"
+              )
+              .value;
+
+          const beneficiarioId =
+            document
+              .getElementById(
+                "beneficiarioId"
+              )
+              .value;
+
+          const categoriaId =
+            document
+              .getElementById(
+                "categoriaId"
+              )
+              .value || null;
+
+          const concepto =
+            document
+              .getElementById(
+                "concepto"
+              )
+              .value
+              .trim();
+
+          const moneda =
+            document
+              .getElementById(
+                "moneda"
+              )
+              .value;
+
+          const valor =
+            Number(
+              document
+                .getElementById(
+                  "valor"
+                )
+                .value
+            );
+
+          const cuentaContableRef =
+            document
+              .getElementById(
+                "cuentaContableRef"
+              )
+              .value
+              .trim() || null;
+
+          const comentario =
+            document
+              .getElementById(
+                "comentario"
+              )
+              .value
+              .trim() || null;
+
           if (
-            solicitudActual.estado !==
-            "BORRADOR"
+            !empresaId ||
+            !beneficiarioId ||
+            !concepto ||
+            !moneda ||
+            !valor ||
+            valor <= 0
           ) {
 
             throw new Error(
-              "La solicitud ya no puede modificarse."
+              "Completa los campos obligatorios."
             );
 
           }
 
+          if (
+            editingItemId &&
+            editingApprovedItem
+          ) {
 
-          const datosPago = {
+            const confirmar =
+              confirm(
+                "Este pago ya fue aprobado.\n\n" +
+                "¿Confirmas que deseas modificarlo también en Tesorería?"
+              );
 
-            empresa_id:
-              document
-                .getElementById(
-                  "empresaId"
-                )
-                .value,
+            if (!confirmar) {
+              return;
+            }
 
-            beneficiario_id:
-              document
-                .getElementById(
-                  "beneficiarioId"
-                )
-                .value,
+            const {
+              data,
+              error
+            } =
+              await supabaseClient
+                .rpc(
+                  "editar_item_solicitud_aprobada",
+                  {
+                    p_item_id:
+                      editingItemId,
 
-            categoria_id:
-              document
-                .getElementById(
-                  "categoriaId"
-                )
-                .value || null,
+                    p_empresa_id:
+                      empresaId,
 
-            concepto:
-              document
-                .getElementById(
-                  "concepto"
-                )
-                .value
-                .trim(),
+                    p_beneficiario_id:
+                      beneficiarioId,
 
-            moneda:
-              document
-                .getElementById(
-                  "moneda"
-                )
-                .value,
+                    p_categoria_id:
+                      categoriaId,
 
-            valor:
-              Number(
-                document
-                  .getElementById(
-                    "valor"
-                  )
-                  .value
-              ),
+                    p_concepto:
+                      concepto,
 
-            cuenta_contable_ref:
-              document
-                .getElementById(
-                  "cuentaContableRef"
-                )
-                .value
-                .trim() || null,
+                    p_moneda:
+                      moneda,
 
-            comentario:
-              document
-                .getElementById(
-                  "comentario"
-                )
-                .value
-                .trim() || null,
+                    p_valor:
+                      valor,
 
-            updated_by:
-              usuarioActual.user_id
+                    p_comentario:
+                      comentario
+                  }
+                );
 
-          };
+            if (error) {
+              throw error;
+            }
 
+            paymentMessage.textContent =
+              "Pago aprobado actualizado correctamente en la solicitud y en Tesorería.";
 
-          if (editingItemId) {
+          }
+
+          else if (
+            editingItemId
+          ) {
+
+            if (
+              solicitudActual.estado !==
+              "BORRADOR"
+            ) {
+
+              throw new Error(
+                "La solicitud ya no puede modificarse directamente."
+              );
+
+            }
+
+            const datosPago = {
+
+              empresa_id:
+                empresaId,
+
+              beneficiario_id:
+                beneficiarioId,
+
+              categoria_id:
+                categoriaId,
+
+              concepto:
+                concepto,
+
+              moneda:
+                moneda,
+
+              valor:
+                valor,
+
+              cuenta_contable_ref:
+                cuentaContableRef,
+
+              comentario:
+                comentario,
+
+              updated_by:
+                usuarioActual.user_id
+
+            };
 
             const { error } =
               await supabaseClient
@@ -1840,11 +2038,9 @@
                   editingItemId
                 );
 
-
             if (error) {
               throw error;
             }
-
 
             paymentMessage.textContent =
               "Pago actualizado correctamente.";
@@ -1852,6 +2048,17 @@
           }
 
           else {
+
+            if (
+              solicitudActual.estado !==
+              "BORRADOR"
+            ) {
+
+              throw new Error(
+                "La solicitud ya no puede modificarse."
+              );
+
+            }
 
             if (
               solicitudActual.tipo_solicitud
@@ -1864,10 +2071,8 @@
 
             }
 
-
             const siguienteOrden =
               await obtenerSiguienteOrden();
-
 
             const nuevoItem = {
 
@@ -1883,16 +2088,40 @@
               pago_fijo_id:
                 null,
 
-              ...datosPago,
+              empresa_id:
+                empresaId,
+
+              beneficiario_id:
+                beneficiarioId,
+
+              categoria_id:
+                categoriaId,
+
+              concepto:
+                concepto,
+
+              moneda:
+                moneda,
+
+              valor:
+                valor,
+
+              cuenta_contable_ref:
+                cuentaContableRef,
+
+              comentario:
+                comentario,
 
               estado:
                 "BORRADOR",
 
               created_by:
+                usuarioActual.user_id,
+
+              updated_by:
                 usuarioActual.user_id
 
             };
-
 
             const { error } =
               await supabaseClient
@@ -1903,23 +2132,19 @@
                   nuevoItem
                 );
 
-
             if (error) {
               throw error;
             }
-
 
             paymentMessage.textContent =
               "Pago extraordinario agregado correctamente.";
 
           }
 
-
           editingItemId = null;
-
+          editingApprovedItem = false;
 
           paymentForm.reset();
-
 
           document
             .getElementById(
@@ -1928,9 +2153,14 @@
             .textContent =
             "Nuevo Pago Extraordinario";
 
+          document
+            .getElementById(
+              "approvedEditWarning"
+            )
+            .style.display =
+            "none";
 
           await cargarItems();
-
 
       } catch (error) {
 
@@ -1938,7 +2168,6 @@
           "Error guardando pago:",
           error
         );
-
 
         paymentMessage.textContent =
           "Error: " +
@@ -1950,109 +2179,97 @@
       }
 
     });
+
     document
-    .getElementById(
+      .getElementById(
         "approveRequestButton"
-    )
-    .addEventListener(
+      )
+      .addEventListener(
         "click",
         async () => {
 
-        if (
+          if (
             solicitudActual.estado !==
             "BORRADOR"
-        ) {
+          ) {
             return;
-        }
+          }
 
-
-        const confirmar =
+          const confirmar =
             confirm(
-            "¿Confirmas que Gerencia aprobó esta solicitud?\n\n" +
-            "Al aprobarla, todos los pagos incluidos pasarán a Movimientos de Tesorería."
+              "¿Confirmas que Gerencia aprobó esta solicitud?\n\n" +
+              "Al aprobarla, todos los pagos incluidos pasarán a Movimientos de Tesorería."
             );
 
-
-        if (!confirmar) {
+          if (!confirmar) {
             return;
-        }
+          }
 
-
-        const button =
+          const button =
             document.getElementById(
-            "approveRequestButton"
+              "approveRequestButton"
             );
 
+          button.disabled = true;
 
-        button.disabled = true;
-
-        button.textContent =
+          button.textContent =
             "Aprobando...";
 
-
-        requestMessage.textContent =
+          requestMessage.textContent =
             "";
 
-
-        try {
+          try {
 
             const {
-            data,
-            error
+              data,
+              error
             } =
-            await supabaseClient
+              await supabaseClient
                 .rpc(
-                "aprobar_solicitud_pago",
-                {
+                  "aprobar_solicitud_pago",
+                  {
                     p_solicitud_id:
-                    solicitudId
-                }
+                      solicitudId
+                  }
                 );
 
-
             if (error) {
-            throw error;
+              throw error;
             }
 
-
             requestMessage.textContent =
-            `Solicitud aprobada correctamente. ` +
-            `${data.movimientos_creados} movimientos fueron creados.`;
-
+              `Solicitud aprobada correctamente. ` +
+              `${data.movimientos_creados} movimientos fueron creados.`;
 
             await cargarSolicitud();
-
             await cargarItems();
 
-
-        } catch (error) {
+          } catch (error) {
 
             console.error(
-            "Error aprobando solicitud:",
-            error
+              "Error aprobando solicitud:",
+              error
             );
-
 
             requestMessage.textContent =
-            "Error: " +
-            (
+              "Error: " +
+              (
                 error.message ||
                 error
-            );
+              );
 
-
-        } finally {
+          } finally {
 
             button.disabled =
-            false;
+              false;
 
             button.textContent =
-            "Aprobar Solicitud";
+              "Aprobar Solicitud";
+
+          }
 
         }
-
-        }
-    );
+      );
 
     document
       .getElementById(
@@ -2063,16 +2280,22 @@
         logout
       );
 
+    document
+      .getElementById(
+        "managementFormatButton"
+      )
+      .addEventListener(
+        "click",
+        () => {
+
+          window.location.href =
+            `formato-gerencia.html?id=${solicitudId}`;
+
+        }
+      );
 
     inicializarPagina();
-    document
-    .getElementById("managementFormatButton")
-    .addEventListener("click", () => {
 
-        window.location.href =
-        `formato-gerencia.html?id=${solicitudId}`;
-
-    });
   </script>
 
   <script src="../../js/beneficiarios-solicitud.js"></script>

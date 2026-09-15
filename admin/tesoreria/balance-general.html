@@ -54,6 +54,11 @@
       cursor: pointer;
     }
 
+    button:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
     select,
     input {
       padding: 9px 10px;
@@ -108,6 +113,72 @@
     .secondary {
       background: #eee;
       color: #222;
+    }
+
+    /* =========================
+       ESTADO DEL BALANCE
+       ========================= */
+
+    .balance-review-card {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+
+    .balance-review-left {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+
+    .balance-review-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #666;
+      text-transform: uppercase;
+      letter-spacing: .4px;
+    }
+
+    .balance-state-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 14px;
+      border-radius: 999px;
+      font-weight: 700;
+      font-size: 13px;
+    }
+
+    .balance-state-ready {
+      background: #e8f7ec;
+      color: #176b2c;
+      border: 1px solid #c8e8cf;
+    }
+
+    .balance-state-pending {
+      background: #fff4d6;
+      color: #8a6200;
+      border: 1px solid #ead79b;
+    }
+
+    .balance-review-info {
+      font-size: 12px;
+      color: #666;
+      margin-top: 6px;
+    }
+
+    .ready-button {
+      background: #176b2c;
+      color: white;
+    }
+
+    .reopen-button {
+      background: #f0f0f0;
+      color: #333;
+      border: 1px solid #ddd;
     }
 
     /* =========================
@@ -312,6 +383,110 @@
       padding-left: 24px;
     }
 
+
+    /* =========================
+       VARIACION DIARIA
+       ========================= */
+
+    .variation-card {
+      background: white;
+      border-radius: 12px;
+      padding: 22px;
+      margin-bottom: 18px;
+      box-shadow: 0 5px 20px rgba(0,0,0,0.05);
+    }
+
+    .variation-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 18px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+
+    .variation-title {
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .variation-value {
+      font-size: 28px;
+      font-weight: 700;
+      text-align: right;
+    }
+
+    .variation-positive { color: #176b2c; }
+    .variation-negative { color: #a32020; }
+    .variation-neutral { color: #555; }
+
+    .reconciliation-ok {
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      background: #e8f7ec;
+      color: #176b2c;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .reconciliation-warning {
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      background: #fff1f1;
+      color: #a32020;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .variation-table {
+      min-width: 1250px;
+    }
+
+    .variation-table tr.detail-row {
+      cursor: pointer;
+    }
+
+    .variation-table tr.detail-row:hover td {
+      background: #fafafa;
+    }
+
+    .falcon-detail {
+      margin-top: 12px;
+      border: 1px solid #e1e1e1;
+      border-radius: 10px;
+      padding: 16px;
+      background: #fafafa;
+    }
+
+    .falcon-grid {
+      display: grid;
+      grid-template-columns: repeat(4,minmax(0,1fr));
+      gap: 12px;
+      margin-top: 12px;
+    }
+
+    .falcon-metric {
+      background: white;
+      border: 1px solid #e7e7e7;
+      border-radius: 8px;
+      padding: 12px;
+    }
+
+    .falcon-metric-label {
+      font-size: 10px;
+      font-weight: 700;
+      color: #666;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+
+    .falcon-metric-value {
+      font-size: 15px;
+      font-weight: 700;
+    }
+
     /* =========================
        MODAL
        ========================= */
@@ -487,10 +662,26 @@
 
 
   <div
+    id="balanceReviewPanel"
+    class="card"
+  >
+    Cargando estado del Balance...
+  </div>
+
+
+  <div
     id="summary"
     class="summary-grid"
   ></div>
 
+
+
+  <div
+    id="variationPanel"
+    class="variation-card"
+  >
+    Cargando variación diaria...
+  </div>
 
   <div
     id="statusPanel"
@@ -634,6 +825,20 @@
     null;
 
 
+  let variationRows = [];
+
+  let falconDetail = null;
+
+  let falconExpanded = false;
+
+  let balanceReviewStatus =
+    {
+      estado:"PENDIENTE",
+      comentario:null,
+      aprobado_at:null
+    };
+
+
   const $ =
     id =>
       document.getElementById(id);
@@ -715,6 +920,36 @@
 
 
     return `${d}/${m}/${y}`;
+
+  }
+
+
+  function formatDateTime(value) {
+
+    if(!value) {
+      return "";
+    }
+
+
+    try {
+
+      return new Intl.DateTimeFormat(
+        "es-CO",
+        {
+          dateStyle:"medium",
+          timeStyle:"short"
+        }
+      ).format(
+        new Date(value)
+      );
+
+    }
+
+    catch {
+
+      return value;
+
+    }
 
   }
 
@@ -803,6 +1038,411 @@
         MANUAL
       </span>
     `;
+
+  }
+
+
+  async function loadBalanceReviewStatus() {
+
+    const date =
+      $("balanceDate")
+        .value;
+
+
+    if(!date) {
+      return;
+    }
+
+
+    const {
+      data,
+      error
+    } =
+      await supabaseClient
+        .rpc(
+          "obtener_estado_balance_fecha",
+          {
+            p_fecha:date
+          }
+        );
+
+
+    if(error) {
+
+      console.error(
+        "Error cargando estado del Balance:",
+        error
+      );
+
+      throw error;
+
+    }
+
+
+    balanceReviewStatus =
+      data || {
+        fecha:date,
+        estado:"PENDIENTE",
+        comentario:null,
+        aprobado_at:null
+      };
+
+
+    renderBalanceReviewStatus();
+
+  }
+
+
+  function renderBalanceReviewStatus() {
+
+    const status =
+      balanceReviewStatus?.estado ||
+      "PENDIENTE";
+
+
+    const isReady =
+      status === "LISTO";
+
+
+    const isAdmin =
+      currentUser &&
+      currentUser.rol !== "consulta";
+
+
+    let actionButton =
+      "";
+
+
+    if(isAdmin) {
+
+      if(isReady) {
+
+        actionButton = `
+          <button
+            id="changeBalanceStatusButton"
+            class="reopen-button"
+          >
+            Reabrir balance
+          </button>
+        `;
+
+      }
+
+      else {
+
+        actionButton = `
+          <button
+            id="changeBalanceStatusButton"
+            class="ready-button"
+          >
+            Marcar como LISTO
+          </button>
+        `;
+
+      }
+
+    }
+
+
+    let details = "";
+
+
+    if(isReady) {
+
+      details = `
+        Este Balance ya fue revisado
+        manualmente y aprobado para
+        esta fecha.
+      `;
+
+
+      if(
+        balanceReviewStatus
+          ?.aprobado_at
+      ) {
+
+        details += `
+          Cierre registrado:
+          ${
+            escapeHtml(
+              formatDateTime(
+                balanceReviewStatus
+                  .aprobado_at
+              )
+            )
+          }.
+        `;
+
+      }
+
+    }
+
+    else {
+
+      details = `
+        El Balance todavía requiere
+        revisión manual antes de
+        considerarse terminado.
+      `;
+
+    }
+
+
+    $("balanceReviewPanel")
+      .innerHTML = `
+
+        <div class="balance-review-card">
+
+          <div>
+
+            <div class="balance-review-left">
+
+              <div class="balance-review-title">
+                Estado del Balance
+              </div>
+
+              <div
+                class="
+                  balance-state-badge
+                  ${
+                    isReady
+                    ?
+                    "balance-state-ready"
+                    :
+                    "balance-state-pending"
+                  }
+                "
+              >
+                ${
+                  isReady
+                  ?
+                  "✓ LISTO"
+                  :
+                  "● PENDIENTE"
+                }
+              </div>
+
+              <div>
+                ${
+                  formatDate(
+                    $("balanceDate")
+                      .value
+                  )
+                }
+              </div>
+
+            </div>
+
+
+            <div class="balance-review-info">
+
+              ${details}
+
+              ${
+                balanceReviewStatus
+                  ?.comentario
+                ?
+                `
+                  <br>
+                  <strong>
+                    Comentario:
+                  </strong>
+                  ${
+                    escapeHtml(
+                      balanceReviewStatus
+                        .comentario
+                    )
+                  }
+                `
+                :
+                ""
+              }
+
+            </div>
+
+          </div>
+
+
+          <div>
+
+            ${actionButton}
+
+          </div>
+
+        </div>
+
+      `;
+
+
+    const button =
+      $("changeBalanceStatusButton");
+
+
+    if(button) {
+
+      button.onclick =
+        toggleBalanceReviewStatus;
+
+    }
+
+  }
+
+
+  async function toggleBalanceReviewStatus() {
+
+    if(
+      !currentUser ||
+      currentUser.rol === "consulta"
+    ) {
+      return;
+    }
+
+
+    const date =
+      $("balanceDate")
+        .value;
+
+
+    const currentStatus =
+      balanceReviewStatus?.estado ||
+      "PENDIENTE";
+
+
+    const newStatus =
+      currentStatus === "LISTO"
+      ?
+      "PENDIENTE"
+      :
+      "LISTO";
+
+
+    let confirmationMessage;
+
+
+    if(newStatus === "LISTO") {
+
+      confirmationMessage =
+        "¿Confirmas que el Balance de esta fecha fue revisado completamente?\n\n" +
+        "Al marcarlo como LISTO estás indicando que todos los rubros fueron revisados manualmente y el Balance se considera terminado.";
+
+    }
+
+    else {
+
+      confirmationMessage =
+        "¿Confirmas que deseas reabrir este Balance?\n\n" +
+        "La fecha volverá a estado PENDIENTE para permitir nuevas revisiones.";
+
+    }
+
+
+    if(
+      !confirm(
+        confirmationMessage
+      )
+    ) {
+      return;
+    }
+
+
+    let comment = null;
+
+
+    if(newStatus === "PENDIENTE") {
+
+      const response =
+        prompt(
+          "Motivo de la reapertura:",
+          "Corrección pendiente"
+        );
+
+
+      if(response === null) {
+        return;
+      }
+
+
+      comment =
+        response.trim() ||
+        null;
+
+    }
+
+
+    const button =
+      $("changeBalanceStatusButton");
+
+
+    if(button) {
+
+      button.disabled =
+        true;
+
+      button.textContent =
+        newStatus === "LISTO"
+        ?
+        "Marcando..."
+        :
+        "Reabriendo...";
+
+    }
+
+
+    try {
+
+
+      const {
+        data,
+        error
+      } =
+        await supabaseClient
+          .rpc(
+            "marcar_balance_fecha_estado",
+            {
+
+              p_fecha:
+                date,
+
+              p_estado:
+                newStatus,
+
+              p_comentario:
+                comment
+
+            }
+          );
+
+
+      if(error) {
+
+        console.error(
+          "Error cambiando estado del Balance:",
+          error
+        );
+
+        throw error;
+
+      }
+
+
+      await loadBalanceReviewStatus();
+
+
+    }
+
+    catch(error) {
+
+
+      alert(
+        "No fue posible actualizar el estado del Balance: " +
+        (
+          error.message ||
+          error
+        )
+      );
+
+
+    }
 
   }
 
@@ -921,6 +1561,642 @@
   }
 
 
+
+  async function loadDailyVariation(date) {
+
+    const {
+      data,
+      error
+    } =
+      await supabaseClient
+        .rpc(
+          "obtener_variacion_balance_fecha",
+          {
+            p_fecha:date
+          }
+        );
+
+    if(error) {
+      throw error;
+    }
+
+    variationRows =
+      (data || [])
+        .filter(
+          row =>
+            Math.abs(
+              Number(
+                row.cambio_usd_total || 0
+              )
+            ) > 0.000001
+        );
+
+  }
+
+
+  async function loadFalconDetail(date) {
+
+    const falcon =
+      balanceRows.find(
+        row =>
+          row.codigo ===
+          "ACT_CXC_PRESTAMO_FALCON"
+      );
+
+    if(!falcon) {
+      falconDetail = null;
+      return;
+    }
+
+    const {
+      data,
+      error
+    } =
+      await supabaseClient
+        .rpc(
+          "obtener_detalle_amortizacion_cxc",
+          {
+            p_posicion_id:
+              falcon.posicion_id,
+            p_fecha:
+              date
+          }
+        );
+
+    if(error) {
+      throw error;
+    }
+
+    falconDetail =
+      data || null;
+
+  }
+
+
+  function variationClass(value) {
+
+    const number =
+      Number(value || 0);
+
+    if(number > 0.005) {
+      return "variation-positive";
+    }
+
+    if(number < -0.005) {
+      return "variation-negative";
+    }
+
+    return "variation-neutral";
+
+  }
+
+
+  function signedMoney(
+    value,
+    currency = "USD"
+  ) {
+
+    const number =
+      Number(value || 0);
+
+    const sign =
+      number > 0
+      ?
+      "+"
+      :
+      number < 0
+      ?
+      "−"
+      :
+      "";
+
+    return (
+      sign +
+      formatMoney(
+        Math.abs(number),
+        currency
+      )
+    );
+
+  }
+
+
+  function toggleFalconDetail() {
+
+    falconExpanded =
+      !falconExpanded;
+
+    renderVariation();
+
+  }
+
+
+  function renderFalconDetail() {
+
+    if(!falconDetail) {
+      return "";
+    }
+
+    return `
+      <div class="falcon-detail">
+
+        <div style="font-weight:700;">
+          Detalle de amortización · Préstamo Falcon
+        </div>
+
+        <div class="muted" style="margin-top:5px;font-size:12px;">
+          Los COP recibidos pendientes se valoran provisionalmente con la tasa disponible del Balance hasta que exista una monetización definitiva.
+        </div>
+
+        <div class="falcon-grid">
+
+          <div class="falcon-metric">
+            <div class="falcon-metric-label">
+              Deuda original
+            </div>
+            <div class="falcon-metric-value">
+              ${
+                formatMoney(
+                  falconDetail.principal_usd,
+                  "USD"
+                )
+              }
+            </div>
+          </div>
+
+          <div class="falcon-metric">
+            <div class="falcon-metric-label">
+              Amortizado definitivo
+            </div>
+            <div class="falcon-metric-value">
+              ${
+                formatMoney(
+                  falconDetail.usd_amortizado_definitivo,
+                  "USD"
+                )
+              }
+            </div>
+          </div>
+
+          <div class="falcon-metric">
+            <div class="falcon-metric-label">
+              COP recibidos
+            </div>
+            <div class="falcon-metric-value">
+              ${
+                formatMoney(
+                  falconDetail.cop_recibido,
+                  "COP"
+                )
+              }
+            </div>
+          </div>
+
+          <div class="falcon-metric">
+            <div class="falcon-metric-label">
+              COP pendientes
+            </div>
+            <div class="falcon-metric-value">
+              ${
+                formatMoney(
+                  falconDetail.cop_pendiente,
+                  "COP"
+                )
+              }
+            </div>
+          </div>
+
+          <div class="falcon-metric">
+            <div class="falcon-metric-label">
+              Tasa provisional
+            </div>
+            <div class="falcon-metric-value">
+              ${
+                formatNumber(
+                  falconDetail.tasa_valoracion_pendiente
+                )
+              } COP/USD
+            </div>
+          </div>
+
+          <div class="falcon-metric">
+            <div class="falcon-metric-label">
+              Fecha tasa
+            </div>
+            <div class="falcon-metric-value">
+              ${
+                formatDate(
+                  falconDetail.fecha_tasa
+                )
+              }
+            </div>
+          </div>
+
+          <div class="falcon-metric">
+            <div class="falcon-metric-label">
+              Equivalente USD pendiente
+            </div>
+            <div class="falcon-metric-value">
+              ${
+                formatMoney(
+                  falconDetail.equivalente_usd_pendiente,
+                  "USD"
+                )
+              }
+            </div>
+          </div>
+
+          <div class="falcon-metric">
+            <div class="falcon-metric-label">
+              Saldo CxC
+            </div>
+            <div class="falcon-metric-value">
+              ${
+                formatMoney(
+                  falconDetail.saldo_cxc_usd,
+                  "USD"
+                )
+              }
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    `;
+
+  }
+
+
+  function renderVariation() {
+
+    const panel =
+      $("variationPanel");
+
+    if(!panel) {
+      return;
+    }
+
+    const date =
+      $("balanceDate")
+        .value;
+
+    const currentTotals =
+      calculateTotals();
+
+    const rubricsImpact =
+      variationRows.reduce(
+        (total,row) =>
+          total +
+          Number(
+            row.impacto_patrimonio_usd ||
+            0
+          ),
+        0
+      );
+
+    const previousEquity =
+      currentTotals.equity -
+      rubricsImpact;
+
+    const directVariation =
+      currentTotals.equity -
+      previousEquity;
+
+    const difference =
+      directVariation -
+      rubricsImpact;
+
+    const reconciled =
+      Math.abs(difference) < 0.01;
+
+    const previousDate =
+      new Date(
+        `${date}T12:00:00`
+      );
+
+    previousDate.setDate(
+      previousDate.getDate() - 1
+    );
+
+    const previousDateText =
+      previousDate
+        .toISOString()
+        .slice(0,10);
+
+    const rows =
+      variationRows
+        .slice()
+        .sort(
+          (a,b) =>
+            Math.abs(
+              Number(
+                b.impacto_patrimonio_usd ||
+                0
+              )
+            )
+            -
+            Math.abs(
+              Number(
+                a.impacto_patrimonio_usd ||
+                0
+              )
+            )
+        )
+        .map(
+          row => {
+
+            const isFalcon =
+              row.codigo ===
+              "ACT_CXC_PRESTAMO_FALCON";
+
+            return `
+              <tr
+                class="${
+                  isFalcon
+                  ?
+                  "detail-row"
+                  :
+                  ""
+                }"
+                ${
+                  isFalcon
+                  ?
+                  'onclick="toggleFalconDetail()"'
+                  :
+                  ""
+                }
+              >
+
+                <td>
+                  <span class="position-name">
+                    ${
+                      escapeHtml(
+                        row.nombre
+                      )
+                    }
+                  </span>
+
+                  ${
+                    row.empresa
+                    ?
+                    `
+                      <span class="position-sub">
+                        ${
+                          escapeHtml(
+                            row.empresa
+                          )
+                        }
+                      </span>
+                    `
+                    :
+                    ""
+                  }
+
+                  ${
+                    isFalcon
+                    ?
+                    `
+                      <span class="position-sub">
+                        ${
+                          falconExpanded
+                          ?
+                          "▲ Ocultar detalle"
+                          :
+                          "▼ Ver amortización"
+                        }
+                      </span>
+                    `
+                    :
+                    ""
+                  }
+                </td>
+
+                <td>
+                  ${
+                    escapeHtml(
+                      row.lado
+                    )
+                  }
+                </td>
+
+                <td>
+                  ${
+                    escapeHtml(
+                      row.moneda
+                    )
+                  }
+                </td>
+
+                <td class="number">
+                  ${
+                    formatMoney(
+                      row.valor_anterior,
+                      row.moneda
+                    )
+                  }
+                </td>
+
+                <td class="number">
+                  ${
+                    formatMoney(
+                      row.valor_actual,
+                      row.moneda
+                    )
+                  }
+                </td>
+
+                <td class="number ${
+                  variationClass(
+                    row.cambio_moneda_original
+                  )
+                }">
+                  ${
+                    signedMoney(
+                      row.cambio_moneda_original,
+                      row.moneda
+                    )
+                  }
+                </td>
+
+                <td class="number ${
+                  variationClass(
+                    row.cambio_usd_movimiento
+                  )
+                }">
+                  ${
+                    signedMoney(
+                      row.cambio_usd_movimiento,
+                      "USD"
+                    )
+                  }
+                </td>
+
+                <td class="number ${
+                  variationClass(
+                    row.cambio_usd_tasa
+                  )
+                }">
+                  ${
+                    signedMoney(
+                      row.cambio_usd_tasa,
+                      "USD"
+                    )
+                  }
+                </td>
+
+                <td class="number ${
+                  variationClass(
+                    row.impacto_patrimonio_usd
+                  )
+                }">
+                  <strong>
+                    ${
+                      signedMoney(
+                        row.impacto_patrimonio_usd,
+                        "USD"
+                      )
+                    }
+                  </strong>
+                </td>
+
+              </tr>
+            `;
+          }
+        )
+        .join("");
+
+    panel.innerHTML = `
+
+      <div class="variation-header">
+
+        <div>
+
+          <div class="variation-title">
+            Variación diaria del patrimonio
+          </div>
+
+          <div class="muted" style="margin-top:5px;">
+            ${
+              formatDate(
+                previousDateText
+              )
+            }
+            →
+            ${
+              formatDate(
+                date
+              )
+            }
+          </div>
+
+        </div>
+
+        <div>
+
+          <div
+            class="
+              variation-value
+              ${
+                variationClass(
+                  directVariation
+                )
+              }
+            "
+          >
+            ${
+              signedMoney(
+                directVariation,
+                "USD"
+              )
+            }
+          </div>
+
+          <div class="muted" style="text-align:right;margin-top:4px;">
+            Patrimonio anterior:
+            ${
+              formatMoney(
+                previousEquity,
+                "USD"
+              )
+            }
+          </div>
+
+        </div>
+
+      </div>
+
+      <div class="${
+        reconciled
+        ?
+        "reconciliation-ok"
+        :
+        "reconciliation-warning"
+      }">
+        ${
+          reconciled
+          ?
+          `✓ Control de cuadre correcto. La suma de los impactos por rubro explica el 100% de la variación patrimonial.`
+          :
+          `⚠ Diferencia de cuadre: ${formatMoney(Math.abs(difference),"USD")}. Revisar antes de marcar el Balance como LISTO.`
+        }
+      </div>
+
+      ${
+        variationRows.length
+        ?
+        `
+          <div style="font-weight:700;margin:20px 0 10px;">
+            Explicación del cambio patrimonial
+          </div>
+
+          <div class="table-wrap">
+
+            <table class="variation-table">
+
+              <thead>
+                <tr>
+                  <th>Rubro</th>
+                  <th>Lado</th>
+                  <th>Moneda</th>
+                  <th class="number">Saldo anterior</th>
+                  <th class="number">Saldo actual</th>
+                  <th class="number">Cambio original</th>
+                  <th class="number">Efecto movimiento USD</th>
+                  <th class="number">Efecto tasa USD</th>
+                  <th class="number">Impacto patrimonio USD</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                ${rows}
+              </tbody>
+
+            </table>
+
+          </div>
+
+          ${
+            falconExpanded
+            ?
+            renderFalconDetail()
+            :
+            ""
+          }
+        `
+        :
+        `
+          <div class="muted" style="margin-top:16px;">
+            No hay variaciones de rubros frente al día anterior.
+          </div>
+        `
+      }
+
+    `;
+
+  }
+
+
   async function loadBalance() {
 
     const date =
@@ -942,11 +2218,20 @@
       `;
 
 
+    $("balanceReviewPanel")
+      .innerHTML =
+      "Cargando estado del Balance...";
+
+
     await Promise.all([
 
       loadRates(date),
 
-      loadMetadata()
+      loadMetadata(),
+
+      loadBalanceReviewStatus(),
+
+      loadDailyVariation(date)
 
     ]);
 
@@ -994,6 +2279,8 @@
           }
         );
 
+
+    await loadFalconDetail(date);
 
     render();
 
@@ -1848,6 +3135,10 @@
 
     renderStatus();
 
+    renderBalanceReviewStatus();
+
+    renderVariation();
+
 
     $("balanceContent")
       .innerHTML = `
@@ -2224,12 +3515,6 @@
       }
     );
 
-</script>
-
-
-</body>
-
-</html>
 </script>
 
 

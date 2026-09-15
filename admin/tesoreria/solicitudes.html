@@ -25,7 +25,7 @@
     }
 
     .page-main {
-      max-width: 1300px;
+      max-width: 1400px;
       margin: 35px auto;
       padding: 0 24px;
     }
@@ -77,6 +77,7 @@
       padding: 13px 14px;
       border-bottom: 1px solid #eee;
       text-align: left;
+      vertical-align: top;
     }
 
     th {
@@ -94,6 +95,72 @@
       overflow-x: auto;
     }
 
+    .status-badge {
+      display: inline-block;
+      padding: 5px 9px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      background: #eee;
+    }
+
+    .summary-button {
+      background: #f0f0f0;
+      margin-right: 6px;
+    }
+
+    .open-request-button {
+      background: #222;
+      color: white;
+    }
+
+    .summary-row {
+      display: none;
+      background: #fafafa;
+    }
+
+    .summary-box {
+      padding: 18px 8px;
+    }
+
+    .summary-table {
+      margin-top: 12px;
+      background: white;
+      border: 1px solid #eee;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .summary-table th,
+    .summary-table td {
+      padding: 10px 12px;
+      font-size: 13px;
+    }
+
+    .totals-box {
+      margin-top: 14px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .total-chip {
+      padding: 8px 12px;
+      border-radius: 8px;
+      background: white;
+      border: 1px solid #ddd;
+      font-weight: 700;
+    }
+
+    .muted {
+      color: #777;
+    }
+
+    .loading-inline {
+      padding: 12px 0;
+      color: #666;
+    }
+
     @media (max-width: 700px) {
       .form-grid {
         grid-template-columns: 1fr;
@@ -103,6 +170,12 @@
         flex-direction: column;
         align-items: flex-start;
         gap: 15px;
+      }
+
+      .page-header {
+        flex-direction: column;
+        gap: 12px;
+        align-items: flex-start;
       }
     }
   </style>
@@ -144,7 +217,6 @@
 
     </div>
 
-
     <div
       id="requestFormContainer"
       class="card"
@@ -166,7 +238,6 @@
               required
             />
           </div>
-
 
           <div>
             <label>Tipo de solicitud *</label>
@@ -190,7 +261,6 @@
 
             </select>
           </div>
-
 
           <div
             id="quincenaContainer"
@@ -219,7 +289,6 @@
 
         </div>
 
-
         <div style="margin-top: 18px;">
 
           <label>Observaciones</label>
@@ -230,7 +299,6 @@
           ></textarea>
 
         </div>
-
 
         <div style="margin-top: 20px;">
 
@@ -247,7 +315,6 @@
 
         </div>
 
-
         <div
           id="formMessage"
           style="
@@ -260,19 +327,16 @@
 
     </div>
 
-
     <div class="card">
 
       <div id="loadingState">
         Cargando solicitudes...
       </div>
 
-
       <div
         id="errorState"
         style="display: none;"
       ></div>
-
 
       <div
         id="emptyState"
@@ -280,7 +344,6 @@
       >
         No hay solicitudes registradas.
       </div>
-
 
       <div
         id="tableWrapper"
@@ -298,11 +361,11 @@
               <th>Tipo</th>
               <th>Quincena</th>
               <th>Estado</th>
+              <th>Resumen</th>
               <th>Acciones</th>
             </tr>
 
           </thead>
-
 
           <tbody id="requestsTableBody"></tbody>
 
@@ -313,7 +376,6 @@
     </div>
 
   </main>
-
 
   <script
     src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
@@ -326,7 +388,6 @@
   <script
     src="../../js/auth.js"
   ></script>
-
 
   <script>
 
@@ -365,6 +426,8 @@
         "quincena"
       );
 
+    const resumenCache = {};
+
 
     function actualizarQuincena() {
 
@@ -377,23 +440,7 @@
 
         quincenaSelect.required = true;
 
-      }
-
-      else if (
-        tipoSolicitud.value ===
-        "EXTRAORDINARIOS"
-      ) {
-
-        quincenaContainer.style.display =
-          "none";
-
-        quincenaSelect.required = false;
-
-        quincenaSelect.value = "";
-
-      }
-
-      else {
+      } else {
 
         quincenaContainer.style.display =
           "none";
@@ -411,6 +458,345 @@
       "change",
       actualizarQuincena
     );
+
+
+    function formatearMoneda(
+      valor,
+      moneda
+    ) {
+
+      const numero =
+        Number(valor || 0);
+
+      try {
+
+        return new Intl.NumberFormat(
+          "es-CO",
+          {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+          }
+        ).format(numero) +
+          " " +
+          moneda;
+
+      } catch {
+
+        return numero.toFixed(2) +
+          " " +
+          moneda;
+
+      }
+
+    }
+
+
+    function obtenerEstadoBadge(
+      estado
+    ) {
+
+      return `
+        <span class="status-badge">
+          ${estado || ""}
+        </span>
+      `;
+
+    }
+
+
+    async function cargarResumenSolicitud(
+      solicitudId,
+      container
+    ) {
+
+      if (
+        resumenCache[solicitudId]
+      ) {
+
+        renderizarResumen(
+          resumenCache[solicitudId],
+          container
+        );
+
+        return;
+
+      }
+
+
+      container.innerHTML = `
+        <div class="loading-inline">
+          Cargando detalle...
+        </div>
+      `;
+
+
+      const { data, error } =
+        await supabaseClient
+          .from(
+            "solicitud_pago_items"
+          )
+          .select(`
+            id,
+            orden,
+            concepto,
+            moneda,
+            valor,
+            estado,
+            empresa_id,
+            beneficiario_id,
+            empresas (
+              id,
+              nombre_corto
+            ),
+            beneficiarios (
+              id,
+              nombre
+            )
+          `)
+          .eq(
+            "solicitud_id",
+            solicitudId
+          )
+          .neq(
+            "estado",
+            "ELIMINADO"
+          )
+          .order(
+            "orden",
+            {
+              ascending: true
+            }
+          );
+
+
+      if (error) {
+
+        container.innerHTML = `
+          <div style="color:#b00020;">
+            Error cargando detalle:
+            ${error.message}
+          </div>
+        `;
+
+        return;
+
+      }
+
+
+      resumenCache[solicitudId] =
+        data || [];
+
+
+      renderizarResumen(
+        data || [],
+        container
+      );
+
+    }
+
+
+    function renderizarResumen(
+      items,
+      container
+    ) {
+
+      if (
+        !items ||
+        items.length === 0
+      ) {
+
+        container.innerHTML = `
+          <div class="muted">
+            Esta solicitud no tiene pagos activos.
+          </div>
+        `;
+
+        return;
+
+      }
+
+
+      const totales = {};
+
+
+      items.forEach(
+        (item) => {
+
+          const moneda =
+            item.moneda || "—";
+
+          if (!totales[moneda]) {
+            totales[moneda] = 0;
+          }
+
+          totales[moneda] +=
+            Number(item.valor || 0);
+
+        }
+      );
+
+
+      const filas =
+        items
+          .map(
+            (item) => {
+
+              const beneficiario =
+                item.beneficiarios
+                  ?.nombre ||
+                "—";
+
+              const empresa =
+                item.empresas
+                  ?.nombre_corto ||
+                "—";
+
+              return `
+                <tr>
+                  <td>
+                    ${empresa}
+                  </td>
+
+                  <td>
+                    <strong>
+                      ${beneficiario}
+                    </strong>
+                  </td>
+
+                  <td>
+                    ${item.concepto || "—"}
+                  </td>
+
+                  <td>
+                    ${item.moneda || "—"}
+                  </td>
+
+                  <td>
+                    ${formatearMoneda(
+                      item.valor,
+                      item.moneda
+                    )}
+                  </td>
+
+                  <td>
+                    ${obtenerEstadoBadge(
+                      item.estado
+                    )}
+                  </td>
+                </tr>
+              `;
+
+            }
+          )
+          .join("");
+
+
+      const totalesHtml =
+        Object
+          .entries(totales)
+          .map(
+            ([moneda, valor]) => `
+              <div class="total-chip">
+                ${moneda}:
+                ${formatearMoneda(
+                  valor,
+                  moneda
+                )}
+              </div>
+            `
+          )
+          .join("");
+
+
+      container.innerHTML = `
+
+        <div class="summary-box">
+
+          <strong>
+            Pagos incluidos
+          </strong>
+
+          <div class="summary-table table-wrapper">
+
+            <table>
+
+              <thead>
+                <tr>
+                  <th>Empresa</th>
+                  <th>Beneficiario</th>
+                  <th>Concepto</th>
+                  <th>Moneda</th>
+                  <th>Valor</th>
+                  <th>Estado</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                ${filas}
+              </tbody>
+
+            </table>
+
+          </div>
+
+          <div class="totals-box">
+            ${totalesHtml}
+          </div>
+
+        </div>
+
+      `;
+
+    }
+
+
+    async function alternarResumen(
+      solicitudId,
+      rowId
+    ) {
+
+      const row =
+        document.getElementById(
+          rowId
+        );
+
+
+      if (!row) {
+        return;
+      }
+
+
+      const abierto =
+        row.style.display ===
+        "table-row";
+
+
+      if (abierto) {
+
+        row.style.display =
+          "none";
+
+        return;
+
+      }
+
+
+      row.style.display =
+        "table-row";
+
+
+      const container =
+        row.querySelector(
+          ".summary-content"
+        );
+
+
+      await cargarResumenSolicitud(
+        solicitudId,
+        container
+      );
+
+    }
 
 
     async function cargarSolicitudes() {
@@ -433,9 +819,12 @@
 
         const { data, error } =
           await supabaseClient
-            .from("solicitudes_pago")
+            .from(
+              "solicitudes_pago"
+            )
             .select(`
               id,
+              numero,
               codigo_visible,
               fecha_solicitud,
               quincena,
@@ -444,6 +833,12 @@
             `)
             .order(
               "fecha_solicitud",
+              {
+                ascending: false
+              }
+            )
+            .order(
+              "numero",
               {
                 ascending: false
               }
@@ -509,15 +904,18 @@
               );
 
 
+            const summaryRowId =
+              `summary-${solicitud.id}`;
+
+
             row.innerHTML = `
 
               <td>
                 ${
                   solicitud.codigo_visible ||
-                  ""
+                  `#${solicitud.numero || ""}`
                 }
               </td>
-
 
               <td>
                 ${
@@ -525,7 +923,6 @@
                   ""
                 }
               </td>
-
 
               <td>
                 ${
@@ -536,7 +933,6 @@
                 }
               </td>
 
-
               <td>
                 ${
                   solicitud.quincena ||
@@ -544,14 +940,25 @@
                 }
               </td>
 
-
               <td>
                 ${
-                  solicitud.estado ||
-                  ""
+                  obtenerEstadoBadge(
+                    solicitud.estado
+                  )
                 }
               </td>
 
+              <td>
+
+                <button
+                  class="summary-button"
+                  data-id="${solicitud.id}"
+                  data-row-id="${summaryRowId}"
+                >
+                  Ver pagos
+                </button>
+
+              </td>
 
               <td>
 
@@ -569,6 +976,33 @@
 
             requestsTableBody
               .appendChild(row);
+
+
+            const summaryRow =
+              document.createElement(
+                "tr"
+              );
+
+
+            summaryRow.id =
+              summaryRowId;
+
+
+            summaryRow.className =
+              "summary-row";
+
+
+            summaryRow.innerHTML = `
+              <td colspan="7">
+                <div class="summary-content"></div>
+              </td>
+            `;
+
+
+            requestsTableBody
+              .appendChild(
+                summaryRow
+              );
 
           }
         );
@@ -595,6 +1029,29 @@
 
                   window.location.href =
                     `solicitud-detalle.html?id=${button.dataset.id}`;
+
+                }
+              );
+
+            }
+          );
+
+
+        document
+          .querySelectorAll(
+            ".summary-button"
+          )
+          .forEach(
+            (button) => {
+
+              button.addEventListener(
+                "click",
+                async () => {
+
+                  await alternarResumen(
+                    button.dataset.id,
+                    button.dataset.rowId
+                  );
 
                 }
               );

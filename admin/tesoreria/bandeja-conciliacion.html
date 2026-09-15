@@ -1,14 +1,26 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
+
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <title>Bandeja de Conciliación | CI Inti Mining</title>
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
 
-  <link rel="stylesheet" href="../../styles.css">
+  <title>
+    Bandeja de Conciliación | CI Inti Mining
+  </title>
+
+  <link
+    rel="stylesheet"
+    href="../../styles.css"
+  >
 
   <style>
+
     body {
       margin: 0;
       background: #f5f5f5;
@@ -229,13 +241,18 @@
       background: #f0e9ff;
     }
 
+    .badge-approved-payment {
+      background: #fff0cc;
+      color: #7a5600;
+    }
+
     .proposals {
       padding: 18px;
     }
 
     .proposal {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) 140px 200px;
+      grid-template-columns: minmax(0, 1fr) 140px 230px;
       gap: 20px;
       align-items: center;
       padding: 16px 0;
@@ -246,6 +263,13 @@
       border-bottom: 0;
     }
 
+    .proposal-approved {
+      background: #fffdf6;
+      padding-left: 14px;
+      padding-right: 14px;
+      border-radius: 10px;
+    }
+
     .proposal-title {
       font-weight: 700;
     }
@@ -254,6 +278,15 @@
       margin-top: 4px;
       font-size: 13px;
       color: #666;
+      line-height: 1.5;
+    }
+
+    .approved-payment-note {
+      margin-top: 10px;
+      padding: 10px 12px;
+      background: #fff5d6;
+      border-radius: 8px;
+      font-size: 12px;
       line-height: 1.5;
     }
 
@@ -281,11 +314,6 @@
     .no-proposal {
       padding: 20px;
       background: #fffaf0;
-    }
-
-    .no-proposal strong {
-      display: block;
-      margin-bottom: 8px;
     }
 
     .reconciled-info {
@@ -348,7 +376,7 @@
     }
 
     .modal {
-      width: min(820px, 100%);
+      width: min(900px, 100%);
       max-height: 90vh;
       overflow-y: auto;
       background: white;
@@ -435,6 +463,24 @@
       font-weight: 600;
     }
 
+    .transfer-type-description {
+      margin-top: 10px;
+      padding: 12px;
+      border-radius: 8px;
+      background: #eef3ff;
+      line-height: 1.5;
+      font-size: 13px;
+    }
+
+    .exchange-summary {
+      margin-top: 15px;
+      padding: 14px;
+      border-radius: 9px;
+      background: #eef8ee;
+      display: none;
+      line-height: 1.6;
+    }
+
     .counterpart-list {
       margin-top: 15px;
     }
@@ -472,6 +518,7 @@
     }
 
     @media (max-width: 900px) {
+
       .summary-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
@@ -508,9 +555,11 @@
         flex-direction: column;
         align-items: flex-start;
       }
+
     }
 
     @media (max-width: 550px) {
+
       .summary-grid {
         grid-template-columns: 1fr;
       }
@@ -519,17 +568,29 @@
         flex-direction: column;
         align-items: stretch;
       }
+
     }
+
   </style>
+
 </head>
 
+
 <body>
+
 
 <header class="page-header">
 
   <div>
-    <a href="conciliacion.html">← Cargas Bancarias</a>
-    <strong style="margin-left:20px;">CI Inti Mining · Conciliación</strong>
+
+    <a href="conciliacion.html">
+      ← Cargas Bancarias
+    </a>
+
+    <strong style="margin-left:20px;">
+      CI Inti Mining · Conciliación
+    </strong>
+
   </div>
 
   <button id="logoutButton">
@@ -541,13 +602,19 @@
 
 <main class="page-main">
 
+
   <div class="toolbar">
 
     <div>
-      <h1>Bandeja de Conciliación</h1>
+
+      <h1>
+        Bandeja de Conciliación
+      </h1>
+
       <p>
         Todo movimiento bancario debe terminar relacionado con una explicación registrada en el sistema.
       </p>
+
     </div>
 
   </div>
@@ -558,79 +625,184 @@
     <div class="filters">
 
       <div class="filter-group">
-        <label>Periodo</label>
-        <input type="month" id="periodFilter">
+
+        <label>
+          Periodo
+        </label>
+
+        <input
+          type="month"
+          id="periodFilter"
+        >
+
       </div>
 
+
       <div class="filter-group">
-        <label>Grupo</label>
+
+        <label>
+          Grupo
+        </label>
 
         <select id="groupFilter">
-          <option value="NACIONAL">Nacional</option>
-          <option value="INTERNACIONAL">Internacional</option>
+
+          <option value="NACIONAL">
+            Nacional
+          </option>
+
+          <option value="INTERNACIONAL">
+            Internacional
+          </option>
+
         </select>
+
       </div>
+
 
       <div class="filter-group">
-        <label>Estado</label>
+
+        <label>
+          Estado
+        </label>
 
         <select id="statusFilter">
-          <option value="">Todos</option>
-          <option value="PENDIENTE">Pendientes</option>
-          <option value="CONCILIADO">Conciliados</option>
+
+          <option value="">
+            Todos
+          </option>
+
+          <option value="PENDIENTE">
+            Pendientes
+          </option>
+
+          <option value="CONCILIADO">
+            Conciliados
+          </option>
+
         </select>
+
       </div>
 
-      <button id="applyFiltersButton" class="secondary-button">
+
+      <button
+        id="applyFiltersButton"
+        class="secondary-button"
+      >
         Aplicar
       </button>
 
-      <button id="generateProposalsButton" class="primary-button">
+
+      <button
+        id="generateProposalsButton"
+        class="primary-button"
+      >
         Generar Propuestas
       </button>
 
     </div>
 
-    <div id="generalMessage" class="message"></div>
+
+    <div
+      id="generalMessage"
+      class="message"
+    ></div>
 
   </div>
 
 
   <div class="card">
 
-    <h2>Cobertura del Periodo</h2>
+    <h2>
+      Cobertura del Periodo
+    </h2>
+
 
     <div class="summary-grid">
 
       <div class="summary-box">
-        <div class="summary-label">Movimientos Banco</div>
-        <div id="totalBankMovements" class="summary-value">0</div>
+
+        <div class="summary-label">
+          Movimientos Banco
+        </div>
+
+        <div
+          id="totalBankMovements"
+          class="summary-value"
+        >
+          0
+        </div>
+
       </div>
 
-      <div class="summary-box">
-        <div class="summary-label">Conciliados</div>
-        <div id="reconciledCount" class="summary-value">0</div>
-      </div>
 
       <div class="summary-box">
-        <div class="summary-label">Pendientes</div>
-        <div id="pendingCount" class="summary-value">0</div>
+
+        <div class="summary-label">
+          Conciliados
+        </div>
+
+        <div
+          id="reconciledCount"
+          class="summary-value"
+        >
+          0
+        </div>
+
       </div>
 
+
       <div class="summary-box">
-        <div class="summary-label">Cobertura</div>
-        <div id="coveragePercent" class="summary-value">0%</div>
+
+        <div class="summary-label">
+          Pendientes
+        </div>
+
+        <div
+          id="pendingCount"
+          class="summary-value"
+        >
+          0
+        </div>
+
+      </div>
+
+
+      <div class="summary-box">
+
+        <div class="summary-label">
+          Cobertura
+        </div>
+
+        <div
+          id="coveragePercent"
+          class="summary-value"
+        >
+          0%
+        </div>
+
       </div>
 
     </div>
+
 
     <div class="coverage-container">
+
       <div class="coverage-bar">
-        <div id="coverageProgress" class="coverage-progress"></div>
+
+        <div
+          id="coverageProgress"
+          class="coverage-progress"
+        ></div>
+
       </div>
+
     </div>
 
-    <div id="periodStatus" class="period-status period-open">
+
+    <div
+      id="periodStatus"
+      class="period-status period-open"
+    >
       El periodo todavía tiene movimientos bancarios pendientes de explicación.
     </div>
 
@@ -639,7 +811,9 @@
 
   <div class="card">
 
-    <h2>Movimientos Bancarios</h2>
+    <h2>
+      Movimientos Bancarios
+    </h2>
 
     <div id="loadingState">
       Cargando movimientos...
@@ -647,18 +821,28 @@
 
     <div id="movementsContainer"></div>
 
-    <div id="emptyState" class="empty-state" style="display:none;">
+    <div
+      id="emptyState"
+      class="empty-state"
+      style="display:none;"
+    >
       No existen movimientos para los filtros seleccionados.
     </div>
 
   </div>
 
+
 </main>
 
 
-<!-- MODAL PRINCIPAL: EXPLICAR MOVIMIENTO -->
+<!-- =========================================================
+     MODAL PRINCIPAL
+     ========================================================= -->
 
-<div id="explainModalOverlay" class="modal-overlay">
+<div
+  id="explainModalOverlay"
+  class="modal-overlay"
+>
 
   <div class="modal">
 
@@ -676,6 +860,7 @@
 
       </div>
 
+
       <button
         id="closeExplainModalButton"
         class="modal-close"
@@ -687,18 +872,28 @@
     </div>
 
 
-    <div id="modalBankSummary" class="modal-bank-summary"></div>
+    <div
+      id="modalBankSummary"
+      class="modal-bank-summary"
+    ></div>
 
 
     <form id="explainMovementForm">
 
+
       <div class="modal-grid">
+
 
         <div class="modal-field modal-field-full">
 
-          <label>Clasificación *</label>
+          <label>
+            Clasificación *
+          </label>
 
-          <select id="explainClassification" required>
+          <select
+            id="explainClassification"
+            required
+          >
 
             <option value="">
               Seleccionar
@@ -711,9 +906,11 @@
             <option value="GMF">
               GMF
             </option>
+
             <option value="IMPUESTOS">
               Impuestos
             </option>
+
             <option value="RENDIMIENTOS">
               Rendimientos
             </option>
@@ -728,6 +925,10 @@
 
             <option value="TRANSFERENCIA_NO_OPERATIVA">
               Transferencia no operativa
+            </option>
+
+            <option value="TRANSFERENCIA_OPERATIVA">
+              Transferencia Operativa (no clasifica para el PyG)
             </option>
 
             <option value="INGRESO">
@@ -745,15 +946,12 @@
           </select>
 
           <div class="helper-text">
-            Gasto Bancario, GMF y Rendimientos se explican directamente desde el banco.
-            Una transferencia entre cuentas propias relaciona dos cuentas nuestras.
-            Una transferencia no operativa entra o sale del sistema pero no cuenta como ingreso o gasto operativo.
+            Las transferencias entre cuentas propias pueden ocurrir entre diferentes
+            empresas del grupo y también pueden incluir cambio de moneda.
           </div>
 
         </div>
 
-
-        <!-- CAMPOS OPERATIVOS GENERALES -->
 
         <div
           id="operationalFields"
@@ -765,12 +963,16 @@
 
             <div class="modal-field">
 
-              <label>Empresa *</label>
+              <label>
+                Empresa *
+              </label>
 
               <select id="explainCompany">
+
                 <option value="">
                   Seleccionar empresa
                 </option>
+
               </select>
 
             </div>
@@ -778,14 +980,18 @@
 
             <div class="modal-field">
 
-              <label>Beneficiario / Contraparte</label>
+              <label>
+                Beneficiario / Contraparte
+              </label>
 
               <div class="inline-actions">
 
                 <select id="explainBeneficiary">
+
                   <option value="">
                     Sin beneficiario
                   </option>
+
                 </select>
 
                 <button
@@ -798,16 +1004,14 @@
 
               </div>
 
-              <div class="helper-text">
-                Si la contraparte no existe, créala aquí sin salir de la conciliación.
-              </div>
-
             </div>
 
 
             <div class="modal-field modal-field-full">
 
-              <label>Concepto *</label>
+              <label>
+                Concepto *
+              </label>
 
               <input
                 type="text"
@@ -821,8 +1025,6 @@
 
         </div>
 
-
-        <!-- TRANSFERENCIA NO OPERATIVA -->
 
         <div
           id="nonOperatingTransferInfo"
@@ -842,16 +1044,16 @@
             ></div>
 
             <div class="helper-text">
-              Este movimiento será registrado y conciliado, pero quedará marcado con
-              <strong>impacto_operativo = false</strong>. Por lo tanto, no se sumará como ingreso ni gasto operativo.
+
+              Este movimiento será conciliado con
+              <strong>impacto_operativo = false</strong>.
+
             </div>
 
           </div>
 
         </div>
 
-
-        <!-- TRANSFERENCIA ENTRE CUENTAS PROPIAS -->
 
         <div
           id="transferFields"
@@ -860,8 +1062,9 @@
         >
 
           <h3 style="margin-top:0;">
-            Transferencia entre cuentas propias
+            Transferencia interna de recursos
           </h3>
+
 
           <div
             id="transferDirection"
@@ -871,9 +1074,78 @@
 
           <div class="modal-grid">
 
+            <div class="modal-field modal-field-full">
+
+              <label>
+                Tipo de transferencia *
+              </label>
+
+              <select id="transferType">
+
+                <option value="MISMA_EMPRESA_MISMA_MONEDA">
+                  Entre cuentas propias — misma empresa y moneda
+                </option>
+
+                <option value="CAMBIO_MONEDA">
+                  Cambio de moneda
+                </option>
+
+                <option value="INTERCOMPANIA">
+                  Transferencia entre empresas del grupo
+                </option>
+
+                <option value="MONETIZACION_INTERCOMPANIA">
+                  Monetización entre empresas del grupo
+                </option>
+
+              </select>
+
+              <div
+                id="transferTypeDescription"
+                class="transfer-type-description"
+              ></div>
+
+            </div>
+
+
             <div class="modal-field">
 
-              <label>Empresa propietaria</label>
+              <label>
+                Cuenta actual
+              </label>
+
+              <input
+                id="transferCurrentAccount"
+                type="text"
+                readonly
+                class="locked-field"
+              >
+
+            </div>
+
+
+            <div class="modal-field">
+
+              <label>
+                Cuenta contraparte *
+              </label>
+
+              <select id="transferCounterAccount">
+
+                <option value="">
+                  Seleccionar cuenta
+                </option>
+
+              </select>
+
+            </div>
+
+
+            <div class="modal-field">
+
+              <label>
+                Empresa actual
+              </label>
 
               <input
                 type="text"
@@ -887,21 +1159,76 @@
 
             <div class="modal-field">
 
-              <label>Cuenta contraparte *</label>
+              <label>
+                Empresa contraparte
+              </label>
 
-              <select id="transferCounterAccount">
+              <input
+                type="text"
+                id="transferCounterCompany"
+                class="locked-field"
+                readonly
+              >
+
+            </div>
+
+
+            <div
+              id="transferIntermediaryField"
+              class="modal-field"
+              style="display:none;"
+            >
+
+              <label>
+                Intermediario
+              </label>
+
+              <select id="transferIntermediary">
+
                 <option value="">
-                  Seleccionar cuenta
+                  Sin intermediario
                 </option>
+
               </select>
 
               <div class="helper-text">
-                Debe ser otra cuenta de la misma empresa y de la misma moneda.
+                Ej. Kambista o Casa de Bolsa USA.
+              </div>
+
+            </div>
+
+
+            <div
+              id="transferRateField"
+              class="modal-field"
+              style="display:none;"
+            >
+
+              <label>
+                Tasa de cambio
+              </label>
+
+              <input
+                id="transferExchangeRate"
+                type="number"
+                min="0"
+                step="0.000001"
+                placeholder="Se calcula automáticamente al escoger contraparte"
+              >
+
+              <div class="helper-text">
+                Unidades de moneda destino por cada unidad de moneda origen.
               </div>
 
             </div>
 
           </div>
+
+
+          <div
+            id="exchangeSummary"
+            class="exchange-summary"
+          ></div>
 
 
           <div style="margin-top:18px;">
@@ -911,8 +1238,9 @@
             </strong>
 
             <div class="helper-text">
-              Buscamos movimientos con mismo valor y moneda, naturaleza opuesta y fecha cercana.
+              Para cambios de moneda y operaciones intercompañía no se exige igual valor ni igual moneda.
             </div>
+
 
             <div
               id="transferCandidatesLoading"
@@ -921,18 +1249,22 @@
               Buscando contrapartes...
             </div>
 
+
             <div
               id="transferCandidates"
               class="counterpart-list"
             ></div>
+
 
             <div
               id="transferNoCandidates"
               class="warning-message"
               style="margin-top:12px; display:none;"
             >
-              No encontramos todavía la otra cara de la transferencia.
-              Puedes seleccionar la cuenta contraparte y guardar el movimiento como pendiente de contraparte.
+
+              No encontramos todavía la otra cara bancaria.
+              Puedes seleccionar la cuenta contraparte y registrar la transferencia pendiente.
+
             </div>
 
           </div>
@@ -940,11 +1272,11 @@
         </div>
 
 
-        <!-- DATOS FIJOS DEL BANCO -->
-
         <div class="modal-field">
 
-          <label>Fecha</label>
+          <label>
+            Fecha
+          </label>
 
           <input
             type="text"
@@ -958,7 +1290,9 @@
 
         <div class="modal-field">
 
-          <label>Cuenta bancaria</label>
+          <label>
+            Cuenta bancaria
+          </label>
 
           <input
             type="text"
@@ -972,7 +1306,9 @@
 
         <div class="modal-field">
 
-          <label>Valor</label>
+          <label>
+            Valor
+          </label>
 
           <input
             type="text"
@@ -986,7 +1322,9 @@
 
         <div class="modal-field">
 
-          <label>Naturaleza bancaria</label>
+          <label>
+            Naturaleza bancaria
+          </label>
 
           <input
             type="text"
@@ -1000,11 +1338,13 @@
 
         <div class="modal-field modal-field-full">
 
-          <label>Comentario</label>
+          <label>
+            Comentario
+          </label>
 
           <textarea
             id="explainComment"
-            placeholder="Información adicional, motivo del error, detalle de la operación, etc."
+            placeholder="Información adicional, detalle de la operación, tasa pactada, etc."
           ></textarea>
 
         </div>
@@ -1012,7 +1352,10 @@
       </div>
 
 
-      <div id="explainFormMessage" class="message"></div>
+      <div
+        id="explainFormMessage"
+        class="message"
+      ></div>
 
 
       <div class="modal-actions">
@@ -1042,7 +1385,9 @@
 </div>
 
 
-<!-- MODAL NUEVO BENEFICIARIO -->
+<!-- =========================================================
+     MODAL NUEVO BENEFICIARIO
+     ========================================================= -->
 
 <div
   id="newBeneficiaryModalOverlay"
@@ -1065,6 +1410,7 @@
 
       </div>
 
+
       <button
         id="closeNewBeneficiaryButton"
         class="modal-close"
@@ -1082,7 +1428,9 @@
 
         <div class="modal-field modal-field-full">
 
-          <label>Nombre *</label>
+          <label>
+            Nombre *
+          </label>
 
           <input
             type="text"
@@ -1096,7 +1444,9 @@
 
         <div class="modal-field">
 
-          <label>Tipo *</label>
+          <label>
+            Tipo *
+          </label>
 
           <select
             id="newBeneficiaryType"
@@ -1134,7 +1484,9 @@
 
         <div class="modal-field">
 
-          <label>País</label>
+          <label>
+            País
+          </label>
 
           <select id="newBeneficiaryCountry">
 
@@ -1161,7 +1513,9 @@
 
         <div class="modal-field modal-field-full">
 
-          <label>Identificación</label>
+          <label>
+            Identificación
+          </label>
 
           <input
             type="text"
@@ -1169,16 +1523,15 @@
             placeholder="NIT, RUC, documento, EIN, etc."
           >
 
-          <div class="helper-text">
-            Si existe una identificación, úsala: mejora la detección de duplicados.
-          </div>
-
         </div>
 
       </div>
 
 
-      <div id="newBeneficiaryMessage" class="message"></div>
+      <div
+        id="newBeneficiaryMessage"
+        class="message"
+      ></div>
 
 
       <div class="modal-actions">
@@ -1233,75 +1586,59 @@
 
 
   const periodFilter =
-    document.getElementById(
-      "periodFilter"
-    );
+    document.getElementById("periodFilter");
 
 
   const groupFilter =
-    document.getElementById(
-      "groupFilter"
-    );
+    document.getElementById("groupFilter");
 
 
   const statusFilter =
-    document.getElementById(
-      "statusFilter"
-    );
+    document.getElementById("statusFilter");
 
 
   const movementsContainer =
-    document.getElementById(
-      "movementsContainer"
-    );
+    document.getElementById("movementsContainer");
 
 
   const generalMessage =
-    document.getElementById(
-      "generalMessage"
-    );
+    document.getElementById("generalMessage");
 
 
   const explainModalOverlay =
-    document.getElementById(
-      "explainModalOverlay"
-    );
+    document.getElementById("explainModalOverlay");
 
 
   const newBeneficiaryModalOverlay =
-    document.getElementById(
-      "newBeneficiaryModalOverlay"
-    );
+    document.getElementById("newBeneficiaryModalOverlay");
 
 
   const explainMovementForm =
-    document.getElementById(
-      "explainMovementForm"
-    );
+    document.getElementById("explainMovementForm");
 
 
   const explainClassification =
-    document.getElementById(
-      "explainClassification"
-    );
+    document.getElementById("explainClassification");
 
 
   const operationalFields =
-    document.getElementById(
-      "operationalFields"
-    );
+    document.getElementById("operationalFields");
 
 
   const transferFields =
-    document.getElementById(
-      "transferFields"
-    );
+    document.getElementById("transferFields");
 
 
   const nonOperatingTransferInfo =
-    document.getElementById(
-      "nonOperatingTransferInfo"
-    );
+    document.getElementById("nonOperatingTransferInfo");
+
+
+  const transferType =
+    document.getElementById("transferType");
+
+
+  const transferCounterAccount =
+    document.getElementById("transferCounterAccount");
 
 
   function establecerMesActual() {
@@ -1311,16 +1648,9 @@
 
 
     periodFilter.value =
-      `${
-        hoy.getFullYear()
-      }-${
-        String(
-          hoy.getMonth() + 1
-        ).padStart(
-          2,
-          "0"
-        )
-      }`;
+      `${hoy.getFullYear()}-${String(
+        hoy.getMonth() + 1
+      ).padStart(2,"0")}`;
 
   }
 
@@ -1336,9 +1666,7 @@
       year,
       month
     ] =
-      periodFilter
-        .value
-        .split("-");
+      periodFilter.value.split("-");
 
 
     const inicio =
@@ -1354,16 +1682,9 @@
 
 
     const fin =
-      `${
-        siguienteMes.getFullYear()
-      }-${
-        String(
-          siguienteMes.getMonth() + 1
-        ).padStart(
-          2,
-          "0"
-        )
-      }-01`;
+      `${siguienteMes.getFullYear()}-${String(
+        siguienteMes.getMonth() + 1
+      ).padStart(2,"0")}-01`;
 
 
     return {
@@ -1419,9 +1740,7 @@
       fecha.split("-");
 
 
-    return (
-      `${day}/${month}/${year}`
-    );
+    return `${day}/${month}/${year}`;
 
   }
 
@@ -1448,19 +1767,109 @@
 
     if (
       categoria ===
-      "RENDIMIENTOS"
-    ) {
-      return "Rendimientos";
-    }
-
-    if (
-      categoria ===
       "IMPUESTOS"
     ) {
       return "Impuestos";
     }
 
+
+    if (
+      categoria ===
+      "RENDIMIENTOS"
+    ) {
+      return "Rendimientos";
+    }
+
+
     return categoria || "";
+
+  }
+
+
+  function nombreTipoTransferencia(
+    tipo
+  ) {
+
+    const mapa = {
+
+      MISMA_EMPRESA_MISMA_MONEDA:
+        "Entre cuentas propias",
+
+      CAMBIO_MONEDA:
+        "Cambio de moneda",
+
+      INTERCOMPANIA:
+        "Transferencia intercompañía",
+
+      MONETIZACION_INTERCOMPANIA:
+        "Monetización intercompañía"
+
+    };
+
+
+    return mapa[tipo] ||
+      tipo ||
+      "Transferencia interna";
+
+  }
+
+
+  function propuestaRequiereRegistroPago(
+    propuesta
+  ) {
+
+    return (
+      propuesta
+        ?.criterio
+        ?.requiere_registro_pago ===
+      true
+      ||
+      propuesta
+        ?.movimientos_tesoreria
+        ?.estado ===
+      "APROBADO"
+    );
+
+  }
+
+
+  function buscarPropuestaPorId(
+    conciliacionId
+  ) {
+
+    for (
+      const movimiento of
+      movimientosBanco
+    ) {
+
+      const propuesta =
+        (
+          movimiento.conciliaciones ||
+          []
+        )
+        .find(
+          conciliacion =>
+            conciliacion.id ===
+            conciliacionId
+        );
+
+
+      if (
+        propuesta
+      ) {
+
+        return {
+          movimientoBanco:
+            movimiento,
+          propuesta
+        };
+
+      }
+
+    }
+
+
+    return null;
 
   }
 
@@ -1484,7 +1893,6 @@
 
 
       establecerMesActual();
-
 
       await cargarCatalogos();
 
@@ -1569,6 +1977,7 @@
             numero_mask,
             moneda,
             activo,
+            conciliacion_habilitada,
 
             empresas (
               id,
@@ -1641,12 +2050,22 @@
       );
 
 
+    const intermediarySelect =
+      document.getElementById(
+        "transferIntermediary"
+      );
+
+
     const empresaActual =
       companySelect.value;
 
 
     const beneficiarioActual =
       beneficiarySelect.value;
+
+
+    const intermediarioActual =
+      intermediarySelect.value;
 
 
     companySelect.innerHTML = `
@@ -1659,6 +2078,13 @@
     beneficiarySelect.innerHTML = `
       <option value="">
         Sin beneficiario
+      </option>
+    `;
+
+
+    intermediarySelect.innerHTML = `
+      <option value="">
+        Sin intermediario
       </option>
     `;
 
@@ -1709,6 +2135,25 @@
           option
         );
 
+
+        const intermediaryOption =
+          document.createElement(
+            "option"
+          );
+
+
+        intermediaryOption.value =
+          beneficiario.id;
+
+
+        intermediaryOption.textContent =
+          beneficiario.nombre;
+
+
+        intermediarySelect.appendChild(
+          intermediaryOption
+        );
+
       }
     );
 
@@ -1729,6 +2174,16 @@
 
       beneficiarySelect.value =
         beneficiarioActual;
+
+    }
+
+
+    if (
+      intermediarioActual
+    ) {
+
+      intermediarySelect.value =
+        intermediarioActual;
 
     }
 
@@ -1759,7 +2214,9 @@
         );
 
 
-    if (error) {
+    if (
+      error
+    ) {
       throw error;
     }
 
@@ -1794,7 +2251,9 @@
       obtenerRangoMes();
 
 
-    if (!rango) {
+    if (
+      !rango
+    ) {
       return;
     }
 
@@ -1934,7 +2393,9 @@
       await query;
 
 
-    if (error) {
+    if (
+      error
+    ) {
       throw error;
     }
 
@@ -2001,7 +2462,9 @@
         );
 
 
-    if (error) {
+    if (
+      error
+    ) {
       throw error;
     }
 
@@ -2027,8 +2490,7 @@
     const conciliados =
       todos.filter(
         item =>
-          item
-            .estado_conciliacion ===
+          item.estado_conciliacion ===
           "CONCILIADO"
       ).length;
 
@@ -2079,11 +2541,7 @@
         "coveragePercent"
       )
       .textContent =
-      `${
-        cobertura.toFixed(
-          1
-        )
-      }%`;
+      `${cobertura.toFixed(1)}%`;
 
 
     document
@@ -2091,12 +2549,10 @@
         "coverageProgress"
       )
       .style.width =
-      `${
-        Math.min(
-          cobertura,
-          100
-        )
-      }%`;
+      `${Math.min(
+        cobertura,
+        100
+      )}%`;
 
 
     const periodStatus =
@@ -2320,6 +2776,7 @@
                 <br>
 
                 Fecha:
+
                 ${
                   formatearFecha(
                     movimiento
@@ -2362,6 +2819,7 @@
                 }
 
               </div>
+
 
               ${estadoBadge}
 
@@ -2471,10 +2929,20 @@
           ?.estado_transferencia;
 
 
+      const subtipo =
+        conciliacion
+          .criterio
+          ?.subtipo;
+
+
       div.innerHTML = `
 
         <strong>
-          Transferencia entre cuentas propias
+          ${
+            nombreTipoTransferencia(
+              subtipo
+            )
+          }
         </strong>
 
         <br><br>
@@ -2485,8 +2953,15 @@
           ?
           "✓ Salida e ingreso bancario emparejados."
           :
-          "⚠ Transferencia identificada; la contraparte bancaria todavía no estaba disponible al momento de explicarla."
+          "⚠ Transferencia registrada; contraparte bancaria pendiente."
         }
+
+        <br>
+
+        Impacto operativo:
+        <strong>
+          NO
+        </strong>
 
         ${
           conciliacion.comentario
@@ -2503,11 +2978,14 @@
 
     }
 
-    else if (
-      movimiento
-        ?.clasificacion_operativa ===
-      "TRANSFERENCIA_NO_OPERATIVA"
-    ) {
+      else if (
+        [
+          "TRANSFERENCIA_NO_OPERATIVA",
+          "TRANSFERENCIA_OPERATIVA"
+        ].includes(
+          movimiento?.clasificacion_operativa
+        )
+      ) {
 
       const direccion =
         conciliacion
@@ -2527,9 +3005,16 @@
 
       div.innerHTML = `
 
-        <strong>
-          Transferencia no operativa
-        </strong>
+      <strong>
+        ${
+          movimiento.clasificacion_operativa ===
+          "TRANSFERENCIA_OPERATIVA"
+          ?
+          "Transferencia Operativa (no clasifica para el PyG)"
+          :
+          "Transferencia no operativa"
+        }
+      </strong>
 
         <br><br>
 
@@ -2570,11 +3055,6 @@
           NO
         </strong>
 
-        <br><br>
-
-        Este movimiento se contabiliza y afecta saldos,
-        pero no debe sumarse como ingreso o gasto operativo.
-
         ${
           conciliacion.comentario
           ?
@@ -2605,6 +3085,7 @@
         <br><br>
 
         Categoría:
+
         <strong>
           ${
             nombreCategoriaBancaria(
@@ -2643,10 +3124,23 @@
 
     else {
 
+      const fueRegistradoDesdeBanco =
+        conciliacion
+          .criterio
+          ?.pago_registrado_desde_banco ===
+        true;
+
+
       div.innerHTML = `
 
         <strong>
-          Contraparte confirmada
+          ${
+            fueRegistradoDesdeBanco
+            ?
+            "Pago registrado desde el movimiento bancario"
+            :
+            "Contraparte confirmada"
+          }
         </strong>
 
         <br><br>
@@ -2667,12 +3161,16 @@
 
         <br>
 
-        ${
-          formatearFecha(
-            movimiento.fecha_pago ||
-            movimiento.fecha_causacion
-          )
-        }
+        Fecha pago:
+
+        <strong>
+          ${
+            formatearFecha(
+              movimiento.fecha_pago ||
+              movimiento.fecha_causacion
+            )
+          }
+        </strong>
 
         ·
 
@@ -2685,16 +3183,24 @@
 
         <br>
 
-        Tipo:
-        ${
-          movimiento.tipo_movimiento
-        }
+        Estado Tesorería:
 
-        ·
+        <strong>
+          ${
+            movimiento.estado ||
+            ""
+          }
+        </strong>
 
-        Origen:
         ${
-          movimiento.origen
+          fueRegistradoDesdeBanco
+          ?
+          `
+            <br><br>
+            La fecha efectiva y la cuenta bancaria fueron tomadas automáticamente del banco.
+          `
+          :
+          ""
         }
 
       `;
@@ -2748,9 +3254,17 @@
             .movimientos_tesoreria;
 
 
-        if (!movimiento) {
+        if (
+          !movimiento
+        ) {
           return;
         }
+
+
+        const requiereRegistroPago =
+          propuestaRequiereRegistroPago(
+            propuesta
+          );
 
 
         const porcentaje =
@@ -2769,14 +3283,50 @@
 
 
         row.className =
+          requiereRegistroPago
+          ?
+          "proposal proposal-approved"
+          :
           "proposal";
+
+
+        const fechaBanco =
+          movimientoBanco
+            .fecha_movimiento;
+
+
+        const cuentaBanco =
+          movimientoBanco
+            .cuentas_bancarias;
 
 
         row.innerHTML = `
 
           <div>
 
-            <div class="proposal-title">
+            ${
+              requiereRegistroPago
+              ?
+              `
+                <span class="badge badge-approved-payment">
+                  PAGO APROBADO SIN REGISTRAR
+                </span>
+              `
+              :
+              ""
+            }
+
+
+            <div
+              class="proposal-title"
+              style="margin-top:${
+                requiereRegistroPago
+                ?
+                "8px"
+                :
+                "0"
+              };"
+            >
 
               ${
                 movimiento
@@ -2798,6 +3348,7 @@
             <div class="proposal-meta">
 
               Empresa:
+
               ${
                 movimiento
                   .empresas
@@ -2807,7 +3358,8 @@
 
               <br>
 
-              Fecha:
+              Tesorería:
+
               ${
                 formatearFecha(
                   movimiento.fecha_pago ||
@@ -2826,19 +3378,76 @@
 
               <br>
 
-              Tipo:
-              ${
-                movimiento.tipo_movimiento
-              }
+              Estado:
 
-              ·
-
-              Origen:
-              ${
-                movimiento.origen
-              }
+              <strong>
+                ${
+                  movimiento.estado ||
+                  ""
+                }
+              </strong>
 
             </div>
+
+
+            ${
+              requiereRegistroPago
+              ?
+              `
+
+                <div class="approved-payment-note">
+
+                  <strong>
+                    Si confirmas:
+                  </strong>
+
+                  <br>
+
+                  Estado:
+                  APROBADO → PAGADO
+
+                  <br>
+
+                  Fecha real:
+                  <strong>
+                    ${
+                      formatearFecha(
+                        fechaBanco
+                      )
+                    }
+                  </strong>
+
+                  <br>
+
+                  Cuenta:
+                  <strong>
+
+                    ${
+                      cuentaBanco
+                        ?.banco ||
+                      ""
+                    }
+
+                    ·
+
+                    ${
+                      cuentaBanco
+                        ?.numero_mask ||
+                      ""
+                    }
+
+                  </strong>
+
+                  <br>
+
+                  No necesitas ingresar manualmente fecha ni cuenta bancaria.
+
+                </div>
+
+              `
+              :
+              ""
+            }
 
           </div>
 
@@ -2856,7 +3465,15 @@
             </div>
 
             <div class="confidence-label">
-              Confianza
+
+              ${
+                requiereRegistroPago
+                ?
+                "Coincidencia pago"
+                :
+                "Confianza"
+              }
+
             </div>
 
           </div>
@@ -2867,8 +3484,23 @@
             <button
               class="primary-button confirm-button"
               data-id="${propuesta.id}"
+              data-register-payment="${
+                requiereRegistroPago
+                ?
+                "true"
+                :
+                "false"
+              }"
             >
-              Confirmar
+
+              ${
+                requiereRegistroPago
+                ?
+                "Registrar pago y conciliar"
+                :
+                "Confirmar"
+              }
+
             </button>
 
 
@@ -2994,7 +3626,9 @@
             async () => {
 
               await confirmarPropuesta(
-                button.dataset.id
+                button.dataset.id,
+                button.dataset.registerPayment ===
+                "true"
               );
 
             }
@@ -3049,9 +3683,7 @@
             () => {
 
               abrirModalExplicacion(
-                button
-                  .dataset
-                  .bankId
+                button.dataset.bankId
               );
 
             }
@@ -3113,6 +3745,14 @@
 
     document
       .getElementById(
+        "exchangeSummary"
+      )
+      .style.display =
+      "none";
+
+
+    document
+      .getElementById(
         "explainFormMessage"
       )
       .innerHTML =
@@ -3131,16 +3771,29 @@
       .innerHTML = `
 
         <strong>
+
           ${
             cuenta?.banco ||
             ""
           }
+
           ·
+
           ${
             cuenta?.numero_mask ||
             ""
           }
+
         </strong>
+
+        <br>
+
+        ${
+          cuenta
+            ?.empresas
+            ?.nombre_corto ||
+          ""
+        }
 
         <br>
 
@@ -3314,17 +3967,21 @@
           clasificacion ===
           "TRANSFERENCIA_NO_OPERATIVA";
 
+        const esTransferenciaOperativa =
+          clasificacion ===
+          "TRANSFERENCIA_OPERATIVA";
 
-        operationalFields.style.display =
-          (
-            clasificacion &&
-            !esClasificacionBancaria &&
-            !esTransferenciaInterna
-          )
-          ?
-          "block"
-          :
-          "none";
+
+          operationalFields.style.display =
+            (
+              clasificacion &&
+              !esClasificacionBancaria &&
+              !esTransferenciaInterna
+            )
+            ?
+            "block"
+            :
+            "none";
 
 
         transferFields.style.display =
@@ -3447,6 +4104,18 @@
 
     }
 
+    if (
+      clasificacion ===
+      "TRANSFERENCIA_OPERATIVA"
+    ) {
+
+      input.placeholder =
+        "Ej. Anticipo relacionado con operación / exportación";
+
+      return;
+
+    }
+
 
     if (
       clasificacion ===
@@ -3502,14 +4171,30 @@
     }
 
 
+    transferenciaContraparteSeleccionada =
+      null;
+
+
     const cuentaActual =
       movimientoSeleccionado
         .cuentas_bancarias;
 
 
-    const empresaActual =
-      cuentaActual
-        ?.empresas;
+    document
+      .getElementById(
+        "transferCurrentAccount"
+      )
+      .value =
+      `${
+        cuentaActual?.banco ||
+        ""
+      } · ${
+        cuentaActual?.nombre_cuenta ||
+        ""
+      } · ${
+        cuentaActual?.moneda ||
+        ""
+      }`;
 
 
     document
@@ -3517,7 +4202,8 @@
         "transferCompany"
       )
       .value =
-      empresaActual
+      cuentaActual
+        ?.empresas
         ?.nombre_corto ||
       "";
 
@@ -3527,9 +4213,9 @@
         .naturaleza ===
         "DEBITO"
         ?
-        "SALIDA: el dinero salió de esta cuenta hacia otra cuenta propia."
+        "SALIDA: este movimiento representa el origen de los recursos."
         :
-        "ENTRADA: el dinero ingresó a esta cuenta desde otra cuenta propia.";
+        "ENTRADA: este movimiento representa el destino de los recursos.";
 
 
     document
@@ -3540,7 +4226,11 @@
       direccion;
 
 
-    llenarCuentasContraparte();
+    transferType.value =
+      "MISMA_EMPRESA_MISMA_MONEDA";
+
+
+    actualizarConfiguracionTipoTransferencia();
 
 
     await buscarContrapartesTransferencia();
@@ -3548,19 +4238,144 @@
   }
 
 
-  function llenarCuentasContraparte() {
+  function actualizarConfiguracionTipoTransferencia() {
 
-    const select =
+    if (
+      !movimientoSeleccionado
+    ) {
+      return;
+    }
+
+
+    const tipo =
+      transferType.value;
+
+
+    const descripcion =
       document.getElementById(
-        "transferCounterAccount"
+        "transferTypeDescription"
       );
 
 
-    select.innerHTML = `
+    const intermediaryField =
+      document.getElementById(
+        "transferIntermediaryField"
+      );
+
+
+    const rateField =
+      document.getElementById(
+        "transferRateField"
+      );
+
+
+    if (
+      tipo ===
+      "MISMA_EMPRESA_MISMA_MONEDA"
+    ) {
+
+      descripcion.innerHTML = `
+        Movimiento entre dos cuentas de la misma empresa y en la misma moneda.
+      `;
+
+
+      intermediaryField.style.display =
+        "none";
+
+
+      rateField.style.display =
+        "none";
+
+    }
+
+
+    else if (
+      tipo ===
+      "CAMBIO_MONEDA"
+    ) {
+
+      descripcion.innerHTML = `
+        Los recursos continúan siendo de la misma empresa,
+        pero cambian de moneda.
+      `;
+
+
+      intermediaryField.style.display =
+        "block";
+
+
+      rateField.style.display =
+        "block";
+
+    }
+
+
+    else if (
+      tipo ===
+      "INTERCOMPANIA"
+    ) {
+
+      descripcion.innerHTML = `
+        Los recursos pasan entre dos empresas del grupo
+        sin representar ingreso o gasto operativo consolidado.
+      `;
+
+
+      intermediaryField.style.display =
+        "block";
+
+
+      rateField.style.display =
+        "none";
+
+    }
+
+
+    else {
+
+      descripcion.innerHTML = `
+        Transferencia entre empresas del grupo con cambio de moneda.
+        Puede utilizar un intermediario como Casa de Bolsa USA.
+      `;
+
+
+      intermediaryField.style.display =
+        "block";
+
+
+      rateField.style.display =
+        "block";
+
+    }
+
+
+    transferenciaContraparteSeleccionada =
+      null;
+
+
+    llenarCuentasContraparte();
+
+
+    actualizarResumenCambio();
+
+  }
+
+
+  function llenarCuentasContraparte() {
+
+    transferCounterAccount.innerHTML = `
       <option value="">
         Seleccionar cuenta
       </option>
     `;
+
+
+    document
+      .getElementById(
+        "transferCounterCompany"
+      )
+      .value =
+      "";
 
 
     if (
@@ -3575,19 +4390,89 @@
         .cuentas_bancarias;
 
 
-    const candidatas =
+    const tipo =
+      transferType.value;
+
+
+    let candidatas =
       cuentasDisponibles
         .filter(
           cuenta =>
             cuenta.id !==
             cuentaActual.id
             &&
+            cuenta.conciliacion_habilitada !==
+            false
+        );
+
+
+    if (
+      tipo ===
+      "MISMA_EMPRESA_MISMA_MONEDA"
+    ) {
+
+      candidatas =
+        candidatas.filter(
+          cuenta =>
             cuenta.empresa_id ===
             cuentaActual.empresa_id
             &&
             cuenta.moneda ===
             movimientoSeleccionado.moneda
         );
+
+    }
+
+
+    if (
+      tipo ===
+      "CAMBIO_MONEDA"
+    ) {
+
+      candidatas =
+        candidatas.filter(
+          cuenta =>
+            cuenta.empresa_id ===
+            cuentaActual.empresa_id
+            &&
+            cuenta.moneda !==
+            movimientoSeleccionado.moneda
+        );
+
+    }
+
+
+    if (
+      tipo ===
+      "INTERCOMPANIA"
+    ) {
+
+      candidatas =
+        candidatas.filter(
+          cuenta =>
+            cuenta.empresa_id !==
+            cuentaActual.empresa_id
+        );
+
+    }
+
+
+    if (
+      tipo ===
+      "MONETIZACION_INTERCOMPANIA"
+    ) {
+
+      candidatas =
+        candidatas.filter(
+          cuenta =>
+            cuenta.empresa_id !==
+            cuentaActual.empresa_id
+            &&
+            cuenta.moneda !==
+            movimientoSeleccionado.moneda
+        );
+
+    }
 
 
     candidatas.forEach(
@@ -3605,19 +4490,27 @@
 
         option.textContent =
           `${
+            cuenta
+              .empresas
+              ?.nombre_corto ||
+            ""
+          } · ${
             cuenta.banco
           } · ${
             cuenta.nombre_cuenta ||
             ""
+          } · ${
+            cuenta.moneda
           } · ${
             cuenta.numero_mask ||
             "Sin número"
           }`;
 
 
-        select.appendChild(
-          option
-        );
+        transferCounterAccount
+          .appendChild(
+            option
+          );
 
       }
     );
@@ -3680,7 +4573,7 @@
       } =
         await supabaseClient
           .rpc(
-            "buscar_contrapartes_transferencia",
+            "buscar_contrapartes_transferencia_ampliada",
             {
               p_movimiento_bancario_id:
                 movimientoSeleccionado.id
@@ -3700,140 +4593,7 @@
         [];
 
 
-      if (
-        transferenciaCandidatos.length ===
-        0
-      ) {
-
-        empty.style.display =
-          "block";
-
-
-        return;
-
-      }
-
-
-      transferenciaCandidatos.forEach(
-        candidato => {
-
-          const div =
-            document.createElement(
-              "div"
-            );
-
-
-          div.className =
-            "counterpart-item";
-
-
-          div.dataset.id =
-            candidato.movimiento_bancario_id;
-
-
-          div.innerHTML = `
-
-            <div class="counterpart-row">
-
-              <div>
-
-                <strong>
-                  ${
-                    candidato.banco
-                  }
-                  ·
-                  ${
-                    candidato.numero_mask ||
-                    ""
-                  }
-                </strong>
-
-                <div class="counterpart-meta">
-
-                  ${
-                    formatearFecha(
-                      candidato.fecha_movimiento
-                    )
-                  }
-
-                  ·
-
-                  ${
-                    candidato.naturaleza
-                  }
-
-                  ·
-
-                  ${
-                    formatearValor(
-                      candidato.valor,
-                      candidato.moneda
-                    )
-                  }
-
-                  <br>
-
-                  ${
-                    candidato.descripcion_original ||
-                    ""
-                  }
-
-                  <br>
-
-                  Diferencia:
-                  ${
-                    candidato.dias_diferencia
-                  }
-                  día(s)
-
-                </div>
-
-              </div>
-
-
-              <button
-                type="button"
-                class="secondary-button select-transfer-candidate"
-                data-id="${candidato.movimiento_bancario_id}"
-                data-account-id="${candidato.cuenta_bancaria_id}"
-              >
-                Usar contraparte
-              </button>
-
-            </div>
-
-          `;
-
-
-          container.appendChild(
-            div
-          );
-
-        }
-      );
-
-
-      container
-        .querySelectorAll(
-          ".select-transfer-candidate"
-        )
-        .forEach(
-          button => {
-
-            button.addEventListener(
-              "click",
-              () => {
-
-                seleccionarContraparteTransferencia(
-                  button.dataset.id,
-                  button.dataset.accountId
-                );
-
-              }
-            );
-
-          }
-        );
+      renderizarCandidatosTransferencia();
 
 
     } catch (error) {
@@ -3861,6 +4621,259 @@
   }
 
 
+  function candidatoCompatibleConTipo(
+    candidato
+  ) {
+
+    const tipo =
+      transferType.value;
+
+
+    if (
+      tipo ===
+      "MISMA_EMPRESA_MISMA_MONEDA"
+    ) {
+
+      return (
+        candidato.misma_empresa &&
+        candidato.misma_moneda &&
+        candidato.mismo_valor
+      );
+
+    }
+
+
+    if (
+      tipo ===
+      "CAMBIO_MONEDA"
+    ) {
+
+      return (
+        candidato.misma_empresa &&
+        !candidato.misma_moneda
+      );
+
+    }
+
+
+    if (
+      tipo ===
+      "INTERCOMPANIA"
+    ) {
+
+      return (
+        !candidato.misma_empresa
+      );
+
+    }
+
+
+    if (
+      tipo ===
+      "MONETIZACION_INTERCOMPANIA"
+    ) {
+
+      return (
+        !candidato.misma_empresa &&
+        !candidato.misma_moneda
+      );
+
+    }
+
+
+    return true;
+
+  }
+
+
+  function renderizarCandidatosTransferencia() {
+
+    const container =
+      document.getElementById(
+        "transferCandidates"
+      );
+
+
+    const empty =
+      document.getElementById(
+        "transferNoCandidates"
+      );
+
+
+    container.innerHTML =
+      "";
+
+
+    const compatibles =
+      transferenciaCandidatos
+        .filter(
+          candidato =>
+            candidatoCompatibleConTipo(
+              candidato
+            )
+        );
+
+
+    if (
+      compatibles.length ===
+      0
+    ) {
+
+      empty.style.display =
+        "block";
+
+      return;
+
+    }
+
+
+    empty.style.display =
+      "none";
+
+
+    compatibles.forEach(
+      candidato => {
+
+        const div =
+          document.createElement(
+            "div"
+          );
+
+
+        div.className =
+          "counterpart-item";
+
+
+        div.dataset.id =
+          candidato
+            .movimiento_bancario_id;
+
+
+        div.innerHTML = `
+
+          <div class="counterpart-row">
+
+            <div>
+
+              <strong>
+
+                ${
+                  candidato
+                    .empresa_nombre ||
+                  ""
+                }
+
+                ·
+
+                ${
+                  candidato.banco
+                }
+
+                ·
+
+                ${
+                  candidato.numero_mask ||
+                  ""
+                }
+
+              </strong>
+
+
+              <div class="counterpart-meta">
+
+                ${
+                  formatearFecha(
+                    candidato
+                      .fecha_movimiento
+                  )
+                }
+
+                ·
+
+                ${
+                  candidato.naturaleza
+                }
+
+                ·
+
+                ${
+                  formatearValor(
+                    candidato.valor,
+                    candidato.moneda
+                  )
+                }
+
+                <br>
+
+                ${
+                  candidato
+                    .descripcion_original ||
+                  ""
+                }
+
+                <br>
+
+                Diferencia:
+
+                ${
+                  candidato
+                    .dias_diferencia
+                }
+
+                día(s)
+
+              </div>
+
+            </div>
+
+
+            <button
+              type="button"
+              class="secondary-button select-transfer-candidate"
+              data-id="${candidato.movimiento_bancario_id}"
+              data-account-id="${candidato.cuenta_bancaria_id}"
+            >
+              Usar contraparte
+            </button>
+
+          </div>
+
+        `;
+
+
+        container.appendChild(
+          div
+        );
+
+      }
+    );
+
+
+    container
+      .querySelectorAll(
+        ".select-transfer-candidate"
+      )
+      .forEach(
+        button => {
+
+          button.addEventListener(
+            "click",
+            () => {
+
+              seleccionarContraparteTransferencia(
+                button.dataset.id,
+                button.dataset.accountId
+              );
+
+            }
+          );
+
+        }
+      );
+
+  }
+
+
   function seleccionarContraparteTransferencia(
     movimientoId,
     cuentaId
@@ -3870,12 +4883,11 @@
       movimientoId;
 
 
-    document
-      .getElementById(
-        "transferCounterAccount"
-      )
-      .value =
+    transferCounterAccount.value =
       cuentaId;
+
+
+    actualizarEmpresaContraparte();
 
 
     document
@@ -3894,13 +4906,354 @@
         }
       );
 
+
+    calcularTasaDesdeContraparte();
+
+
+    actualizarResumenCambio();
+
   }
 
 
-  document
-    .getElementById(
-      "transferCounterAccount"
-    )
+  function actualizarEmpresaContraparte() {
+
+    const cuentaId =
+      transferCounterAccount.value;
+
+
+    const cuenta =
+      cuentasDisponibles.find(
+        item =>
+          item.id ===
+          cuentaId
+      );
+
+
+    document
+      .getElementById(
+        "transferCounterCompany"
+      )
+      .value =
+      cuenta
+        ?.empresas
+        ?.nombre_corto ||
+      "";
+
+
+    actualizarResumenCambio();
+
+  }
+
+
+  function calcularTasaDesdeContraparte() {
+
+    if (
+      !transferenciaContraparteSeleccionada ||
+      !movimientoSeleccionado
+    ) {
+      return;
+    }
+
+
+    const candidato =
+      transferenciaCandidatos.find(
+        item =>
+          item.movimiento_bancario_id ===
+          transferenciaContraparteSeleccionada
+      );
+
+
+    if (
+      !candidato
+    ) {
+      return;
+    }
+
+
+    const requiereCambio =
+      [
+        "CAMBIO_MONEDA",
+        "MONETIZACION_INTERCOMPANIA"
+      ]
+      .includes(
+        transferType.value
+      );
+
+
+    if (
+      !requiereCambio
+    ) {
+      return;
+    }
+
+
+    let valorOrigen;
+    let valorDestino;
+
+
+    if (
+      movimientoSeleccionado.naturaleza ===
+      "DEBITO"
+    ) {
+
+      valorOrigen =
+        Number(
+          movimientoSeleccionado.valor
+        );
+
+
+      valorDestino =
+        Number(
+          candidato.valor
+        );
+
+    }
+
+    else {
+
+      valorOrigen =
+        Number(
+          candidato.valor
+        );
+
+
+      valorDestino =
+        Number(
+          movimientoSeleccionado.valor
+        );
+
+    }
+
+
+    if (
+      valorOrigen > 0 &&
+      valorDestino > 0
+    ) {
+
+      document
+        .getElementById(
+          "transferExchangeRate"
+        )
+        .value =
+        (
+          valorDestino /
+          valorOrigen
+        )
+        .toFixed(
+          6
+        );
+
+    }
+
+  }
+
+
+  function actualizarResumenCambio() {
+
+    const resumen =
+      document.getElementById(
+        "exchangeSummary"
+      );
+
+
+    if (
+      !movimientoSeleccionado
+    ) {
+
+      resumen.style.display =
+        "none";
+
+      return;
+
+    }
+
+
+    const tipo =
+      transferType.value;
+
+
+    const requiereCambio =
+      [
+        "CAMBIO_MONEDA",
+        "MONETIZACION_INTERCOMPANIA"
+      ]
+      .includes(
+        tipo
+      );
+
+
+    if (
+      !requiereCambio
+    ) {
+
+      resumen.style.display =
+        "none";
+
+      return;
+
+    }
+
+
+    const candidato =
+      transferenciaCandidatos.find(
+        item =>
+          item.movimiento_bancario_id ===
+          transferenciaContraparteSeleccionada
+      );
+
+
+    if (
+      !candidato
+    ) {
+
+      resumen.style.display =
+        "block";
+
+
+      resumen.innerHTML = `
+
+        <strong>
+          Operación con cambio de moneda
+        </strong>
+
+        <br>
+
+        Selecciona la contraparte bancaria para calcular automáticamente
+        el valor recibido y la tasa efectiva.
+
+      `;
+
+      return;
+
+    }
+
+
+    let origen;
+    let destino;
+
+
+    if (
+      movimientoSeleccionado.naturaleza ===
+      "DEBITO"
+    ) {
+
+      origen =
+        movimientoSeleccionado;
+
+
+      destino =
+        candidato;
+
+    }
+
+    else {
+
+      origen =
+        candidato;
+
+
+      destino =
+        movimientoSeleccionado;
+
+    }
+
+
+    const tasa =
+      Number(
+        document
+          .getElementById(
+            "transferExchangeRate"
+          )
+          .value ||
+        0
+      );
+
+
+    resumen.style.display =
+      "block";
+
+
+    resumen.innerHTML = `
+
+      <strong>
+        Conversión identificada
+      </strong>
+
+      <br>
+
+      ${
+        formatearValor(
+          origen.valor,
+          origen.moneda
+        )
+      }
+
+      →
+
+      ${
+        formatearValor(
+          destino.valor,
+          destino.moneda
+        )
+      }
+
+      <br>
+
+      Tasa:
+
+      <strong>
+
+        ${
+          tasa > 0
+          ?
+          tasa.toLocaleString(
+            "es-CO",
+            {
+              maximumFractionDigits: 6
+            }
+          )
+          :
+          "—"
+        }
+
+        ${
+          destino.moneda
+        }
+
+        /
+
+        ${
+          origen.moneda
+        }
+
+      </strong>
+
+      <br>
+
+      Impacto operativo:
+      <strong>
+        NO
+      </strong>
+
+    `;
+
+  }
+
+
+  transferType
+    .addEventListener(
+      "change",
+      () => {
+
+        actualizarConfiguracionTipoTransferencia();
+
+        renderizarCandidatosTransferencia();
+
+      }
+    );
+
+
+  transferCounterAccount
     .addEventListener(
       "change",
       event => {
@@ -3909,17 +5262,19 @@
           event.target.value;
 
 
+        actualizarEmpresaContraparte();
+
+
         if (
           transferenciaContraparteSeleccionada
         ) {
 
           const candidato =
-            transferenciaCandidatos
-              .find(
-                item =>
-                  item.movimiento_bancario_id ===
-                  transferenciaContraparteSeleccionada
-              );
+            transferenciaCandidatos.find(
+              item =>
+                item.movimiento_bancario_id ===
+                transferenciaContraparteSeleccionada
+            );
 
 
           if (
@@ -3943,15 +5298,33 @@
                   )
               );
 
+
+            document
+              .getElementById(
+                "transferExchangeRate"
+              )
+              .value =
+              "";
+
           }
 
         }
+
+
+        actualizarResumenCambio();
 
       }
     );
 
 
-  /* NUEVO BENEFICIARIO */
+  document
+    .getElementById(
+      "transferExchangeRate"
+    )
+    .addEventListener(
+      "input",
+      actualizarResumenCambio
+    );
 
 
   function abrirNuevoBeneficiario() {
@@ -4059,7 +5432,6 @@
 
       `;
 
-
       return;
 
     }
@@ -4110,8 +5482,7 @@
 
 
       const beneficiarioId =
-        data
-          ?.beneficiario_id;
+        data?.beneficiario_id;
 
 
       await recargarBeneficiarios(
@@ -4119,61 +5490,31 @@
       );
 
 
-      if (
-        data
-          ?.duplicado
-      ) {
+      message.innerHTML = `
 
-        message.innerHTML = `
+        <div class="${
+          data?.duplicado
+          ?
+          "warning-message"
+          :
+          "success-message"
+        }">
 
-          <div class="warning-message">
+          ${
+            data?.duplicado
+            ?
+            "Ya existía un beneficiario coincidente. Se utilizará el registro existente."
+            :
+            "Beneficiario creado correctamente."
+          }
 
-            Ya existe un beneficiario coincidente:
+        </div>
 
-            <strong>
-              ${
-                data.nombre
-              }
-            </strong>
-
-            <br><br>
-
-            No se creó un duplicado.
-            Se seleccionará el registro existente.
-
-          </div>
-
-        `;
-
-      }
-
-      else {
-
-        message.innerHTML = `
-
-          <div class="success-message">
-
-            Beneficiario creado correctamente:
-
-            <strong>
-              ${
-                data.nombre
-              }
-            </strong>
-
-          </div>
-
-        `;
-
-      }
+      `;
 
 
       setTimeout(
-        () => {
-
-          cerrarNuevoBeneficiario();
-
-        },
+        cerrarNuevoBeneficiario,
         900
       );
 
@@ -4219,9 +5560,7 @@
     if (
       !movimientoSeleccionado
     ) {
-
       return;
-
     }
 
 
@@ -4263,7 +5602,6 @@
         </div>
 
       `;
-
 
       return;
 
@@ -4335,17 +5673,44 @@
 
       }
 
+
       else if (
         clasificacion ===
         "TRANSFERENCIA"
       ) {
 
         const cuentaContraparteId =
+          transferCounterAccount.value;
+
+
+        const tipoTransferencia =
+          transferType.value;
+
+
+        const intermediarioId =
           document
             .getElementById(
-              "transferCounterAccount"
+              "transferIntermediary"
             )
             .value;
+
+
+        const tasaInput =
+          document
+            .getElementById(
+              "transferExchangeRate"
+            )
+            .value;
+
+
+        const tasa =
+          tasaInput
+          ?
+          Number(
+            tasaInput
+          )
+          :
+          null;
 
 
         if (
@@ -4359,12 +5724,30 @@
         }
 
 
+        if (
+          tasa !== null &&
+          (
+            !Number.isFinite(
+              tasa
+            )
+            ||
+            tasa <= 0
+          )
+        ) {
+
+          throw new Error(
+            "La tasa de cambio debe ser mayor a cero."
+          );
+
+        }
+
+
         const {
           error
         } =
           await supabaseClient
             .rpc(
-              "resolver_transferencia_interna",
+              "resolver_transferencia_interna_ampliada",
               {
 
                 p_movimiento_bancario_id:
@@ -4373,9 +5756,19 @@
                 p_cuenta_contraparte_id:
                   cuentaContraparteId,
 
+                p_tipo_transferencia:
+                  tipoTransferencia,
+
                 p_movimiento_contraparte_id:
                   transferenciaContraparteSeleccionada ||
                   null,
+
+                p_intermediario_beneficiario_id:
+                  intermediarioId ||
+                  null,
+
+                p_tasa_cambio:
+                  tasa,
 
                 p_comentario:
                   comentario ||
@@ -4392,6 +5785,7 @@
         }
 
       }
+
 
       else {
 
@@ -4555,7 +5949,7 @@
 
 
     generalMessage.innerHTML =
-      "Clasificando movimientos bancarios y buscando coincidencias...";
+      "Clasificando movimientos bancarios y buscando coincidencias, incluyendo pagos aprobados pendientes de registro...";
 
 
     try {
@@ -4659,29 +6053,32 @@
           <br><br>
 
           Movimientos bancarios clasificados automáticamente:
+
           <strong>
-            ${
-              clasificados
-            }
+            ${clasificados}
           </strong>
 
           <br>
 
           Conciliados directamente por regla bancaria:
+
           <strong>
-            ${
-              conciliadosRegla
-            }
+            ${conciliadosRegla}
           </strong>
 
           <br>
 
           Nuevas propuestas Banco ↔ Tesorería:
+
           <strong>
-            ${
-              propuestas
-            }
+            ${propuestas}
           </strong>
+
+          <br><br>
+
+          Las propuestas pueden incluir pagos que estaban
+          <strong>APROBADOS</strong>
+          pero todavía no habían sido registrados como pagados.
 
         </div>
 
@@ -4725,12 +6122,116 @@
 
 
   async function confirmarPropuesta(
-    conciliacionId
+    conciliacionId,
+    requiereRegistroPago = false
   ) {
+
+    const info =
+      buscarPropuestaPorId(
+        conciliacionId
+      );
+
+
+    let mensajeConfirmacion;
+
+
+    if (
+      requiereRegistroPago
+    ) {
+
+      const movimientoBanco =
+        info?.movimientoBanco;
+
+
+      const propuesta =
+        info?.propuesta;
+
+
+      const movimientoTesoreria =
+        propuesta
+          ?.movimientos_tesoreria;
+
+
+      mensajeConfirmacion =
+
+        "¿Confirmas que este débito bancario corresponde al pago aprobado?\n\n"
+        +
+        (
+          movimientoTesoreria
+            ?.beneficiarios
+            ?.nombre ||
+          "Sin beneficiario"
+        )
+        +
+        "\n"
+        +
+        (
+          movimientoTesoreria
+            ?.concepto ||
+          ""
+        )
+        +
+        "\n"
+        +
+        formatearValor(
+          movimientoTesoreria
+            ?.valor_original,
+          movimientoTesoreria
+            ?.moneda ||
+          movimientoBanco
+            ?.moneda
+        )
+        +
+        "\n\n"
+        +
+        "El sistema registrará automáticamente:\n"
+        +
+        "• Estado: PAGADO\n"
+        +
+        "• Fecha pago: "
+        +
+        formatearFecha(
+          movimientoBanco
+            ?.fecha_movimiento
+        )
+        +
+        "\n"
+        +
+        "• Cuenta: "
+        +
+        (
+          movimientoBanco
+            ?.cuentas_bancarias
+            ?.banco ||
+          ""
+        )
+        +
+        " "
+        +
+        (
+          movimientoBanco
+            ?.cuentas_bancarias
+            ?.numero_mask ||
+          ""
+        )
+        +
+        "\n\n"
+        +
+        "No tendrás que registrar fecha ni cuenta manualmente.";
+
+    }
+
+    else {
+
+      mensajeConfirmacion =
+        "¿Confirmas que el movimiento bancario corresponde a este movimiento de Tesorería?";
+
+    }
+
 
     const confirmar =
       confirm(
-        "¿Confirmas que el movimiento bancario corresponde a este movimiento de Tesorería?"
+        mensajeConfirmacion
       );
 
 
@@ -4744,6 +6245,7 @@
     try {
 
       const {
+        data,
         error
       } =
         await supabaseClient
@@ -4763,15 +6265,65 @@
       }
 
 
-      generalMessage.innerHTML = `
+      const pagoRegistrado =
+        data
+          ?.pago_registrado_desde_banco ===
+        true;
 
-        <div class="success-message">
 
-          Conciliación confirmada correctamente.
+      if (
+        pagoRegistrado
+      ) {
 
-        </div>
+        generalMessage.innerHTML = `
 
-      `;
+          <div class="success-message">
+
+            <strong>
+              ✓ Pago registrado y conciliado correctamente.
+            </strong>
+
+            <br><br>
+
+            Estado Tesorería:
+            <strong>
+              PAGADO
+            </strong>
+
+            <br>
+
+            Fecha efectiva:
+            <strong>
+              ${
+                formatearFecha(
+                  data.fecha_pago
+                )
+              }
+            </strong>
+
+            <br>
+
+            La cuenta bancaria fue tomada automáticamente del movimiento bancario.
+
+          </div>
+
+        `;
+
+      }
+
+      else {
+
+        generalMessage.innerHTML = `
+
+          <div class="success-message">
+
+            Conciliación confirmada correctamente.
+
+          </div>
+
+        `;
+
+      }
 
 
       await cargarMovimientos();
@@ -4998,5 +6550,7 @@
 
 </script>
 
+
 </body>
+
 </html>
