@@ -2495,9 +2495,25 @@
       ).length;
 
 
+    const ignorados =
+      todos.filter(
+        item =>
+          item.estado_conciliacion ===
+          "IGNORADO"
+      ).length;
+
+
     const pendientes =
-      total -
-      conciliados;
+      todos.filter(
+        item =>
+          item.estado_conciliacion ===
+          "PENDIENTE"
+      ).length;
+
+
+    const explicados =
+      conciliados +
+      ignorados;
 
 
     const cobertura =
@@ -2506,7 +2522,7 @@
         100
         :
         (
-          conciliados /
+          explicados /
           total
         ) *
         100;
