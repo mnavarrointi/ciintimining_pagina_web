@@ -616,7 +616,6 @@
           <input
             type="date"
             id="balanceDate"
-            value="2026-08-03"
           >
 
         </div>
@@ -3414,6 +3413,50 @@
   }
 
 
+  async function loadLatestReadyBalanceDate() {
+
+    const {
+      data,
+      error
+    } =
+      await supabaseClient
+        .rpc(
+          "obtener_ultima_fecha_balance_listo"
+        );
+
+
+    if(error) {
+
+      console.error(
+        "Error cargando la última fecha LISTO:",
+        error
+      );
+
+      throw error;
+
+    }
+
+
+    if(data) {
+
+      $("balanceDate")
+        .value =
+        data;
+
+      return;
+
+    }
+
+
+    $("balanceDate")
+      .value =
+      new Date()
+        .toISOString()
+        .slice(0,10);
+
+  }
+
+
   async function init() {
 
     const user =
@@ -3479,6 +3522,8 @@
 
       };
 
+
+    await loadLatestReadyBalanceDate();
 
     await loadBalance();
 
