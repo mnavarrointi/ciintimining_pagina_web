@@ -916,7 +916,11 @@
             </option>
 
             <option value="PAGO_EGRESO">
-              Pago / Egreso operativo
+              Pago / Egreso operativo (OPEX)
+            </option>
+
+            <option value="FLUJO_EXPORTACION">
+              Flujo de exportación (operativo, no PyG)
             </option>
 
             <option value="TRANSFERENCIA">
@@ -946,8 +950,8 @@
           </select>
 
           <div class="helper-text">
-            Las transferencias entre cuentas propias pueden ocurrir entre diferentes
-            empresas del grupo y también pueden incluir cambio de moneda.
+            Usa <strong>Flujo de exportación</strong> cuando el ingreso o egreso pertenezca
+            directamente a una operación específica y no deba tratarse como OPEX corporativo.
           </div>
 
         </div>
@@ -1018,6 +1022,82 @@
                 id="explainConcept"
                 placeholder="Describe qué ocurrió"
               >
+
+            </div>
+
+          </div>
+
+        </div>
+
+
+        <div
+          id="exportFlowFields"
+          class="modal-field-full"
+          style="display:none;"
+        >
+
+          <div class="transfer-section">
+
+            <h3 style="margin-top:0;">
+              Flujo directo de exportación
+            </h3>
+
+            <div class="helper-text" style="margin-bottom:14px;">
+              Este movimiento afecta caja y el resultado auxiliar de una exportación,
+              pero no impacta directamente el PyG corporativo.
+            </div>
+
+            <div class="modal-grid">
+
+              <div class="modal-field">
+                <label>Exportación *</label>
+                <select id="explainExport">
+                  <option value="">Seleccionar exportación</option>
+                </select>
+              </div>
+
+              <div class="modal-field">
+                <label>Rol dentro de la exportación *</label>
+                <select id="explainExportRole">
+                  <option value="">Seleccionar rol</option>
+                  <option value="PAGO_PROVEEDOR_METAL">Pago proveedor / material</option>
+                  <option value="COMPRA_METAL">Compra de metal</option>
+                  <option value="TRANSPORTE_SEGURIDAD">Transporte / seguridad</option>
+                  <option value="LABORATORIO">Laboratorio</option>
+                  <option value="ADUANA">Aduana</option>
+                  <option value="LOGISTICA">Logística</option>
+                  <option value="IMPUESTO_DIRECTO">Impuesto directo</option>
+                  <option value="COMISION">Comisión</option>
+                  <option value="OTRO_COSTO">Otro costo directo</option>
+                  <option value="ANTICIPO_CLIENTE">Anticipo cliente</option>
+                  <option value="SALDO_CLIENTE">Saldo cliente</option>
+                  <option value="COBRO_CLIENTE">Cobro cliente</option>
+                  <option value="OTRO_INGRESO">Otro ingreso directo</option>
+                </select>
+              </div>
+
+              <div
+                id="exportPayableField"
+                class="modal-field modal-field-full"
+                style="display:none;"
+              >
+                <label>Cuenta por pagar que se amortiza *</label>
+                <select id="explainExportPayable">
+                  <option value="">Seleccionar cuenta por pagar</option>
+                </select>
+                <div class="helper-text">
+                  Para pagos de material, el pago disminuirá automáticamente la CxP y el rubro correspondiente del Balance.
+                </div>
+              </div>
+
+              <div class="modal-field modal-field-full">
+                <label>Concepto *</label>
+                <input
+                  type="text"
+                  id="explainExportConcept"
+                  placeholder="Ej. Pago factura material AXP-025"
+                >
+              </div>
 
             </div>
 
@@ -1623,6 +1703,26 @@
 
   const operationalFields =
     document.getElementById("operationalFields");
+
+
+  const exportFlowFields =
+    document.getElementById("exportFlowFields");
+
+
+  const explainExport =
+    document.getElementById("explainExport");
+
+
+  const explainExportRole =
+    document.getElementById("explainExportRole");
+
+
+  const exportPayableField =
+    document.getElementById("exportPayableField");
+
+
+  const explainExportPayable =
+    document.getElementById("explainExportPayable");
 
 
   const transferFields =
@@ -3751,6 +3851,14 @@
       "none";
 
 
+    exportFlowFields.style.display =
+      "none";
+
+
+    exportPayableField.style.display =
+      "none";
+
+
     transferFields.style.display =
       "none";
 
@@ -3953,6 +4061,116 @@
   }
 
 
+  async function cargarCuentasPorPagarExportacion() {
+
+    const exportacionId =
+      explainExport.value;
+
+    const rol =
+      explainExportRole.value;
+
+    const requiereCxp =
+      rol === "PAGO_PROVEEDOR_METAL";
+
+    exportPayableField.style.display =
+      requiereCxp
+      ?
+      "block"
+      :
+      "none";
+
+    explainExportPayable.innerHTML =
+      '<option value="">Seleccionar cuenta por pagar</option>';
+
+    if (
+      !requiereCxp ||
+      !exportacionId
+    ) {
+      return;
+    }
+
+    const {
+      data,
+      error
+    } =
+      await supabaseClient
+        .from("cuentas_por_pagar_exportacion")
+        .select("id,codigo,nombre,moneda,estado")
+        .eq("exportacion_id",exportacionId)
+        .eq("estado","ABIERTA")
+        .eq("moneda",movimientoSeleccionado?.moneda || "PEN")
+        .order("codigo",{ascending:true});
+
+    if (error) {
+      throw error;
+    }
+
+    (data || []).forEach(
+      row => {
+        const option =
+          document.createElement("option");
+        option.value = row.id;
+        option.textContent =
+          `${row.nombre} · ${row.moneda}`;
+        explainExportPayable.appendChild(option);
+      }
+    );
+
+  }
+
+
+  async function prepararFlujoExportacion() {
+
+    explainExport.innerHTML =
+      '<option value="">Seleccionar exportación</option>';
+
+    explainExportRole.value = "";
+    explainExportPayable.innerHTML =
+      '<option value="">Seleccionar cuenta por pagar</option>';
+    exportPayableField.style.display = "none";
+
+    const {
+      data,
+      error
+    } =
+      await supabaseClient
+        .from("exportaciones")
+        .select("id,codigo,descripcion,estado,fecha_inicio")
+        .in("estado",["EN_CURSO","CERRADA"])
+        .order("fecha_inicio",{ascending:false});
+
+    if (error) {
+      throw error;
+    }
+
+    (data || []).forEach(
+      row => {
+        const option =
+          document.createElement("option");
+        option.value = row.id;
+        option.textContent =
+          `${row.codigo}${row.descripcion ? " · " + row.descripcion : ""}`;
+        explainExport.appendChild(option);
+      }
+    );
+
+  }
+
+
+  explainExport
+    .addEventListener(
+      "change",
+      cargarCuentasPorPagarExportacion
+    );
+
+
+  explainExportRole
+    .addEventListener(
+      "change",
+      cargarCuentasPorPagarExportacion
+    );
+
+
   explainClassification
     .addEventListener(
       "change",
@@ -3988,16 +4206,30 @@
           "TRANSFERENCIA_OPERATIVA";
 
 
+        const esFlujoExportacion =
+          clasificacion ===
+          "FLUJO_EXPORTACION";
+
+
           operationalFields.style.display =
             (
               clasificacion &&
               !esClasificacionBancaria &&
-              !esTransferenciaInterna
+              !esTransferenciaInterna &&
+              !esFlujoExportacion
             )
             ?
             "block"
             :
             "none";
+
+
+        exportFlowFields.style.display =
+          esFlujoExportacion
+          ?
+          "block"
+          :
+          "none";
 
 
         transferFields.style.display =
@@ -4014,6 +4246,15 @@
           "block"
           :
           "none";
+
+
+        if (
+          esFlujoExportacion
+        ) {
+
+          await prepararFlujoExportacion();
+
+        }
 
 
         if (
@@ -5797,6 +6038,86 @@
         if (
           error
         ) {
+          throw error;
+        }
+
+      }
+
+
+      else if (
+        clasificacion ===
+        "FLUJO_EXPORTACION"
+      ) {
+
+        const exportacionId =
+          explainExport.value;
+
+        const rolExportacion =
+          explainExportRole.value;
+
+        const concepto =
+          document
+            .getElementById("explainExportConcept")
+            .value
+            .trim();
+
+        const cuentaPorPagarId =
+          rolExportacion === "PAGO_PROVEEDOR_METAL"
+          ?
+          explainExportPayable.value
+          :
+          null;
+
+        if (!exportacionId) {
+          throw new Error(
+            "Debes seleccionar la exportación."
+          );
+        }
+
+        if (!rolExportacion) {
+          throw new Error(
+            "Debes seleccionar el rol dentro de la exportación."
+          );
+        }
+
+        if (!concepto) {
+          throw new Error(
+            "Debes ingresar un concepto."
+          );
+        }
+
+        if (
+          rolExportacion === "PAGO_PROVEEDOR_METAL" &&
+          !cuentaPorPagarId
+        ) {
+          throw new Error(
+            "Debes seleccionar la cuenta por pagar de material que se amortiza."
+          );
+        }
+
+        const {
+          error
+        } =
+          await supabaseClient
+            .rpc(
+              "resolver_movimiento_bancario_flujo_exportacion",
+              {
+                p_movimiento_bancario_id:
+                  movimientoSeleccionado.id,
+                p_exportacion_id:
+                  exportacionId,
+                p_rol_exportacion:
+                  rolExportacion,
+                p_concepto:
+                  concepto,
+                p_cuenta_por_pagar_id:
+                  cuentaPorPagarId || null,
+                p_comentario:
+                  comentario || null
+              }
+            );
+
+        if (error) {
           throw error;
         }
 
