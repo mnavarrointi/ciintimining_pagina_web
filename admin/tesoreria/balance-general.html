@@ -2525,7 +2525,7 @@
       else if(row.tipo_movimiento==="EGRESO") group.outgoing-=value;
       else {group.missing++;unconverted++;}
     }
-    const rows=[...Object.entries(PATRIMONIAL_NATURES)].filter(([key])=>groups.has(key)||key==="NO_DETERMINADO");
+    const rows=Object.entries(PATRIMONIAL_NATURES).filter(([key])=>key!=="DIFERENCIA_CAMBIARIA");
     const operational=rows.reduce((sum,[key])=>{const g=groups.get(key);return sum+(g?g.incoming+g.outgoing:0)},0);
     const total=operational+fx;
     const gap=flow-operational;
