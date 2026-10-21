@@ -351,6 +351,19 @@
           </div>
 
           <div>
+            <label>Naturaleza económica</label>
+            <select id="naturalezaEconomica">
+              <option value="">Pendiente de clasificar</option>
+              <option value="OPEX">Gasto OPEX</option>
+              <option value="EXTRAORDINARIO">Gasto extraordinario</option>
+              <option value="EXPORTACION">Flujo de exportación</option>
+              <option value="TRANSFERENCIA_INTERNA">Transferencia interna</option>
+              <option value="TRANSFERENCIA_NO_OPERATIVA">Préstamo externo / devolución</option>
+              <option value="OPERACION_SIN_PYG">Operación sin impacto directo en PyG</option>
+            </select>
+          </div>
+
+          <div>
             <label>Concepto *</label>
 
             <input
@@ -473,6 +486,7 @@
               <th>Beneficiario</th>
               <th>Concepto</th>
               <th>Categoría</th>
+              <th>Naturaleza económica</th>
               <th>Origen</th>
               <th>Moneda</th>
               <th>Valor</th>
@@ -769,6 +783,7 @@
             empresa_id,
             beneficiario_id,
             categoria_id,
+            naturaleza_economica,
             concepto,
             moneda,
             valor,
@@ -943,6 +958,8 @@
                   ?.nombre || ""
               }
             </td>
+
+            <td>${item.naturaleza_economica || "Pendiente"}</td>
 
             <td>
               ${
@@ -1485,6 +1502,8 @@
         editingApprovedItem =
           aprobado;
 
+        document.getElementById("naturalezaEconomica").disabled = aprobado;
+
         document
           .getElementById(
             "paymentFormTitle"
@@ -1523,6 +1542,8 @@
           )
           .value =
           item.categoria_id || "";
+
+        document.getElementById("naturalezaEconomica").value = item.naturaleza_economica || "";
 
         document
           .getElementById(
@@ -1765,6 +1786,7 @@
             await cargarCatalogos();
 
             paymentForm.reset();
+            document.getElementById("naturalezaEconomica").disabled = false;
 
             document
               .getElementById(
@@ -1865,6 +1887,8 @@
                 "categoriaId"
               )
               .value || null;
+
+          const naturalezaEconomica = document.getElementById("naturalezaEconomica").value || null;
 
           const concepto =
             document
@@ -2017,6 +2041,8 @@
               cuenta_contable_ref:
                 cuentaContableRef,
 
+              naturaleza_economica: naturalezaEconomica,
+
               comentario:
                 comentario,
 
@@ -2108,6 +2134,8 @@
 
               cuenta_contable_ref:
                 cuentaContableRef,
+
+              naturaleza_economica: naturalezaEconomica,
 
               comentario:
                 comentario,
