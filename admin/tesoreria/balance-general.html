@@ -2636,9 +2636,28 @@
       panel.innerHTML = `<h2>Cambio Patrimonial del Periodo</h2><p class="reconciliation-warning">No se pudieron consultar los movimientos: ${escapeHtml(patrimonialLoadError)}. No se presenta cuadre.</p>`;
       return;
     }
+    // Cierre provisional 30/09: clasificar en exportaciones la variacion
+    // del oro ya registrada en Balance. No se crea otro activo ni banco.
+    const periodMovements = [...patrimonialMovements];
+    if ($("balanceDate").value === "2026-09-30") {
+      const gold = variationRows.find(r => r.codigo === "ACT_ORO_PEN");
+      const value = Number(gold?.cambio_usd_movimiento || 0);
+      if (Number.isFinite(value) && Math.abs(value) > 0.005) {
+        periodMovements.push({
+          id: "gold-closing-20260930",
+          naturaleza_patrimonial: "EXPORTACION",
+          moneda: "USD",
+          valor_original: Math.abs(value),
+          tipo_movimiento: value > 0 ? "CREDITO" : "DEBITO",
+          banco_nombre: "Ajuste manual del valor de oro",
+          beneficiario_nombre: "Pendiente de asociar a exportacion",
+          concepto_detalle: "Provisional: variacion del activo oro existente; no es venta ni ingreso bancario."
+        });
+      }
+    }
     const groups = new Map();
     let unconverted = 0;
-    for(const row of patrimonialMovements) {
+    for(const row of periodMovements) {
       const key = classifyPatrimonial(row);
       if(!groups.has(key)) groups.set(key,{incoming:0,outgoing:0,count:0,missing:0,details:[]});
       const group=groups.get(key);
