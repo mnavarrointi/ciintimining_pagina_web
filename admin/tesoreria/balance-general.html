@@ -2485,7 +2485,7 @@
     // El extracto bancario es la fuente primaria; no sumar otra vez tesoreria.
     const {data:banks,error} = await supabaseClient
       .from("movimientos_bancarios")
-      .select("id,fecha_movimiento,fecha_valor,descripcion_original,referencia,naturaleza,valor,moneda,categoria_bancaria,estado_conciliacion")
+      .select("id,cuenta_bancaria_id,fecha_movimiento,fecha_valor,descripcion_original,referencia,naturaleza,valor,moneda,categoria_bancaria,estado_conciliacion")
       .eq("fecha_movimiento",date)
       .order("id");
     if(error) {patrimonialLoadError = error.message;return;}
