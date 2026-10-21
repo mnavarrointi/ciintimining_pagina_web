@@ -297,6 +297,14 @@
     ];
 
 
+    const TESORERIA_PAGOS_MODULES = [
+      {
+        title: "Solicitudes de Pago",
+        description: "Crear, editar y aprobar solicitudes de pago.",
+        href: "tesoreria/solicitudes.html"
+      }
+    ];
+
     function renderModules(modules) {
 
       const grid =
@@ -379,7 +387,13 @@
             : authorizedUser.rol;
 
 
-        if (isConsulta) {
+        if (authorizedUser.rol === "tesoreria_pagos") {
+          document.getElementById("panelTitle").textContent = "Panel de Tesorería";
+          document.getElementById("sectionTitle").textContent = "Solicitudes de Pago";
+          document.getElementById("sectionDescription").textContent =
+            "Crear, editar y aprobar solicitudes de pago.";
+          renderModules(TESORERIA_PAGOS_MODULES);
+        } else if (isConsulta) {
 
           document
             .getElementById(
