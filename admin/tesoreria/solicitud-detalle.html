@@ -345,22 +345,21 @@
           </div>
 
           <div>
-            <label>Categoría</label>
-
-            <select id="categoriaId"></select>
-          </div>
-
-          <div>
             <label>Naturaleza económica</label>
             <select id="naturalezaEconomica">
               <option value="">Pendiente de clasificar</option>
               <option value="OPEX">Gasto OPEX</option>
-              <option value="EXTRAORDINARIO">Gasto extraordinario</option>
+              <option value="IMPUESTOS">Impuestos</option>
               <option value="EXPORTACION">Flujo de exportación</option>
               <option value="TRANSFERENCIA_INTERNA">Transferencia interna</option>
               <option value="TRANSFERENCIA_NO_OPERATIVA">Préstamo externo / devolución</option>
               <option value="OPERACION_SIN_PYG">Operación sin impacto directo en PyG</option>
             </select>
+          </div>
+
+          <div id="categoriaOpexContainer" style="display:none">
+            <label>Categoría OPEX</label>
+            <select id="categoriaId"></select>
           </div>
 
           <div>
@@ -1388,7 +1387,7 @@
 
       llenarSelect(
         "categoriaId",
-        categoriasResult.data,
+        (categoriasResult.data || []).filter(c => c.nombre !== "IMPUESTOS"),
         "nombre",
         "Sin categoría"
       );
@@ -1444,6 +1443,21 @@
       );
 
     }
+
+    function actualizarVisibilidadCategoria() {
+      const naturaleza = document.getElementById("naturalezaEconomica").value;
+      const categoriaContainer = document.getElementById("categoriaOpexContainer");
+      const categoriaSelect = document.getElementById("categoriaId");
+      const esOpex = naturaleza === "OPEX";
+      categoriaContainer.style.display = esOpex ? "" : "none";
+      categoriaSelect.disabled = !esOpex;
+      if (!esOpex) categoriaSelect.value = "";
+    }
+
+    document.getElementById("naturalezaEconomica").addEventListener(
+      "change",
+      actualizarVisibilidadCategoria
+    );
 
     async function editarItem(
       itemId,
@@ -1543,7 +1557,10 @@
           .value =
           item.categoria_id || "";
 
-        document.getElementById("naturalezaEconomica").value = item.naturaleza_economica || "";
+        document.getElementById("naturalezaEconomica").value =
+          item.naturaleza_economica === "EXTRAORDINARIO" ? "OPEX" :
+          item.naturaleza_economica || "";
+        actualizarVisibilidadCategoria();
 
         document
           .getElementById(
@@ -1787,6 +1804,7 @@
 
             paymentForm.reset();
             document.getElementById("naturalezaEconomica").disabled = false;
+            actualizarVisibilidadCategoria();
 
             document
               .getElementById(
@@ -1882,11 +1900,9 @@
               .value;
 
           const categoriaId =
-            document
-              .getElementById(
-                "categoriaId"
-              )
-              .value || null;
+            document.getElementById("naturalezaEconomica").value === "OPEX"
+              ? (document.getElementById("categoriaId").value || null)
+              : null;
 
           const naturalezaEconomica = document.getElementById("naturalezaEconomica").value || null;
 
