@@ -2504,7 +2504,7 @@
     if(treasuryIds.length) {
       const {data:treasury,error:tError}=await supabaseClient
         .from("movimientos_tesoreria")
-        .select("id,clasificacion_operativa,exportacion_id,solicitud_item_id")
+        .select("id,concepto,beneficiario_id,clasificacion_operativa,exportacion_id,solicitud_item_id")
         .in("id",treasuryIds);
       if(tError){patrimonialLoadError=tError.message;return;}
       (treasury||[]).forEach(x=>treasuryById.set(x.id,x));
@@ -2517,10 +2517,24 @@
       if(iError){patrimonialLoadError=iError.message;return;}
       (items||[]).forEach(x=>itemById.set(x.id,x.naturaleza_economica));
     }
+    const beneficiaryIds=[...new Set([...treasuryById.values()].map(x=>x.beneficiario_id).filter(Boolean))];
+    const beneficiaryById=new Map();
+    if(beneficiaryIds.length) {
+      const {data,error}=await supabaseClient.from("beneficiarios").select("id,nombre").in("id",beneficiaryIds);
+      if(error){patrimonialLoadError=error.message;return;}
+      (data||[]).forEach(x=>beneficiaryById.set(x.id,x.nombre));
+    }
+    const accountIds=[...new Set(bankRows.map(x=>x.cuenta_bancaria_id).filter(Boolean))];
+    const bankByAccount=new Map();
+    if(accountIds.length) {
+      const {data,error}=await supabaseClient.from("cuentas_bancarias").select("id,banco").in("id",accountIds);
+      if(error){patrimonialLoadError=error.message;return;}
+      (data||[]).forEach(x=>bankByAccount.set(x.id,x.banco));
+    }
     patrimonialMovements=bankRows.map(b=>{
       const treasury=treasuryById.get(linkByBank.get(b.id))||{};
       return {...b,...treasury,id:b.id,valor_original:b.valor,
-        moneda:b.moneda,naturaleza_economica:itemById.get(treasury.solicitud_item_id)||null,
+        moneda:b.moneda,banco_nombre:bankByAccount.get(b.cuenta_bancaria_id)||null,beneficiario_nombre:beneficiaryById.get(treasury.beneficiario_id)||null,concepto_detalle:treasury.concepto||null,naturaleza_economica:itemById.get(treasury.solicitud_item_id)||null,
         tipo_movimiento:String(b.naturaleza||"").toUpperCase()};
     });
   }
