@@ -2457,7 +2457,6 @@
     GMF:"GMF / impuestos bancarios",
     RENDIMIENTO:"Rendimientos financieros",
     EXPORTACION:"Flujos de operación (Exportación)",
-    INGRESO:"Ingresos",
     IMPUESTOS:"Impuestos",
     DIFERENCIA_CAMBIARIA:"Diferencia cambiaria",
     NO_DETERMINADO:"No determinado"
@@ -2470,7 +2469,7 @@
     if(nature === "TRANSFERENCIA_INTERNA" || classification === "TRANSFERENCIA" || classification === "TRANSFERENCIA_OPERATIVA") return "TRANSFERENCIA_INTERNA";
     if(nature === "TRANSFERENCIA_NO_OPERATIVA" || classification === "TRANSFERENCIA_NO_OPERATIVA") return "TRANSFERENCIA_NO_OPERATIVA";
     if(nature === "EXPORTACION" || classification === "FLUJO_EXPORTACION" || row.exportacion_id) return "EXPORTACION";
-    if(classification === "INGRESO") return "INGRESO";
+    if(classification === "INGRESO") return row.exportacion_id ? "EXPORTACION" : "NO_DETERMINADO";
     if(classification === "PAGO_EGRESO" && row.impacto_pyg_directo === true) return "OPEX";
     return "NO_DETERMINADO";
   }
