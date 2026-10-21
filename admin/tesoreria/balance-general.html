@@ -2630,8 +2630,46 @@
       else if(direction==="DEBITO" || direction==="DÉBITO" || direction==="EGRESO" || direction==="SALIDA") {group.outgoing-=value;group.details.push({row,impact:-value});}
       else {group.missing++;unconverted++;group.details.push({row,impact:null});}
     }
+    // Reclasificar diferencias solo en transferencias confirmadas con dos lados visibles.
+    // No se generan movimientos bancarios ni se altera el total consolidado.
+    const transfers=groups.get("TRANSFERENCIA_INTERNA");
+    if(transfers){
+      const byPair=new Map();
+      for(const item of transfers.details){
+        const id=item.row.pareja_transferencia_id;
+        if(!id||item.impact===null) continue;
+        if(!byPair.has(id)) byPair.set(id,[]);
+        byPair.get(id).push(item);
+      }
+      transfers.fxDifference=0;
+      for(const entries of byPair.values()){
+        if(!entries.some(x=>x.impact>0)||!entries.some(x=>x.impact<0)) continue;
+        const net=entries.reduce((n,x)=>n+x.impact,0);
+        if(Math.abs(net)<0.005) continue;
+        const currencies=new Set(entries.map(x=>String(x.row.moneda||"").trim()));
+        if(currencies.size===1 && net<0){
+          // Diferencia negativa de la misma moneda: gasto bancario.
+          transfers.incoming+=-net;
+          if(!groups.has("COSTO_BANCARIO")) groups.set("COSTO_BANCARIO",{incoming:0,outgoing:0,count:0,missing:0,details:[]});
+          const cost=groups.get("COSTO_BANCARIO");
+          cost.outgoing+=net;
+          cost.count++;
+          const source=entries.find(x=>x.impact>0).row;
+          cost.details.push({row:{...source,id:"bank-fee:"+source.pareja_transferencia_id,
+            moneda:"USD",valor_original:-net,tipo_movimiento:"DEBITO",
+            banco_nombre:"Diferencia de transferencia interna",
+            concepto_detalle:"Costo bancario derivado de transferencia emparejada",
+            pareja_transferencia_id:null},impact:net});
+        }else if(currencies.size>1){
+          // Conversión/monetización: mostrar diferencia en columna FX de la misma naturaleza.
+          transfers.fxDifference+=net;
+          if(net>0) transfers.incoming-=net;
+          else transfers.outgoing-=net;
+        }
+      }
+    }
     const rows=Object.entries(PATRIMONIAL_NATURES).filter(([key])=>key!=="DIFERENCIA_CAMBIARIA");
-    const operational=rows.reduce((sum,[key])=>{const g=groups.get(key);return sum+(g?g.incoming+g.outgoing:0)},0);
+    const operational=rows.reduce((sum,[key])=>{const g=groups.get(key);return sum+(g?g.incoming+g.outgoing+(g.fxDifference||0):0)},0);
     const total=unconverted===0?operational+fx:null;
     const gap=unconverted===0?flow-operational:null;
     const fmt=v=>v===null?"Pendiente":signedMoney(v,"USD");
@@ -2664,7 +2702,7 @@
           <td style="vertical-align:top;width:40%">${cell(negatives)}</td>
           <td class="number" style="vertical-align:top"><strong>${net===null?"Pendiente":fmt(net)}</strong><div class="muted" style="font-size:11px">${escapeHtml(unknown.length?"Valoración pendiente":status)}</div></td></tr>`;
       }).join("");
-      return `<tr><td><details class="patrimonial-accordion"><summary style="cursor:pointer"><strong>${escapeHtml(label)}</strong> <span class="muted">(${g.count})</span></summary></details></td><td class="number">${fmt(g.incoming)}</td><td class="number">${fmt(g.outgoing)}</td><td class="number">—</td><td class="number"><strong>${fmt(g.incoming+g.outgoing)}</strong></td></tr>
+      return `<tr><td><details class="patrimonial-accordion"><summary style="cursor:pointer"><strong>${escapeHtml(label)}</strong> <span class="muted">(${g.count})</span></summary></details></td><td class="number">${fmt(g.incoming)}</td><td class="number">${fmt(g.outgoing)}</td><td class="number">${g.fxDifference?fmt(g.fxDifference):"—"}</td><td class="number"><strong>${fmt(g.incoming+g.outgoing+(g.fxDifference||0))}</strong></td></tr>
       <tr class="patrimonial-detail-container" style="display:none"><td colspan="5"><table style="width:100%"><thead><tr><th>Ingreso (+) · monto, banco, beneficiario y concepto</th><th>Egreso (−) · monto, banco, beneficiario y concepto</th><th class="number">Impacto USD</th></tr></thead><tbody>${detail||'<tr><td colspan="3">Sin movimientos asociados.</td></tr>'}</tbody></table></td></tr>`;
     }).join("");
     panel.innerHTML=`
