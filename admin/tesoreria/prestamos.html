@@ -4,7 +4,7 @@
 const status=document.getElementById('status'),app=document.getElementById('app');let loans=[];
 try{
  const {data:{user},error:authError}=await supabaseClient.auth.getUser();if(authError||!user)throw Error('Inicia sesión desde el panel.');
- const {data:profile,error:profileError}=await supabaseClient.from('usuarios_app').select('rol,activo').eq('auth_user_id',user.id).single();
+ const {data:profile,error:profileError}=await supabaseClient.from('usuarios_app').select('rol,activo').eq('user_id',user.id).single();
  if(profileError||!profile?.activo||!['admin','consulta'].includes(profile.rol))throw Error('Acceso no autorizado.');
  app.hidden=false;status.textContent='';if(profile.rol!=='admin'){document.getElementById('createPanel').hidden=true;document.getElementById('repayPanel').hidden=true;}
  async function load(){
