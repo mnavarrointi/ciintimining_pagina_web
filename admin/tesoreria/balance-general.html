@@ -2463,10 +2463,14 @@
   };
 
   function classifyPatrimonial(row) {
+    const stored = String(row.naturaleza_patrimonial || "").toUpperCase();
+    if(stored && stored !== "NO_DETERMINADO") return stored;
     const bank = String(row.categoria_bancaria || "").toUpperCase();
     const op = String(row.clasificacion_operativa || "").toUpperCase();
     const nature = String(row.naturaleza_economica || "").toUpperCase();
     const kind = bank || op;
+    // La categoria bancaria prevalece: naturaleza en movimientos_bancarios indica DEBITO/CREDITO.
+    if(bank === "COSTOS_BANCARIOS" || bank === "GASTOS_BANCARIOS" || bank === "COSTO_BANCARIO" || bank === "GASTO_BANCARIO") return "COSTO_BANCARIO";
     if(nature === "OPEX" || nature === "IMPUESTOS") return nature;
     if(nature.includes("EXPORTACION") || kind === "FLUJO_EXPORTACION" || row.exportacion_id) return "EXPORTACION";
     if(kind === "GASTO_BANCARIO" || kind === "COSTO_BANCARIO") return "COSTO_BANCARIO";
@@ -2485,7 +2489,7 @@
     // El extracto bancario es la fuente primaria; no sumar otra vez tesoreria.
     const {data:banks,error} = await supabaseClient
       .from("movimientos_bancarios")
-      .select("id,fecha_movimiento,fecha_valor,descripcion_original,naturaleza,valor,moneda,categoria_bancaria,estado_conciliacion")
+      .select("id,cuenta_bancaria_id,fecha_movimiento,fecha_valor,descripcion_original,referencia,naturaleza,valor,moneda,categoria_bancaria,naturaleza_patrimonial,estado_conciliacion")
       .eq("fecha_movimiento",date)
       .order("id");
     if(error) {patrimonialLoadError = error.message;return;}
@@ -2504,7 +2508,7 @@
     if(treasuryIds.length) {
       const {data:treasury,error:tError}=await supabaseClient
         .from("movimientos_tesoreria")
-        .select("id,clasificacion_operativa,exportacion_id,solicitud_item_id")
+        .select("id,concepto,beneficiario_id,clasificacion_operativa,exportacion_id,solicitud_item_id")
         .in("id",treasuryIds);
       if(tError){patrimonialLoadError=tError.message;return;}
       (treasury||[]).forEach(x=>treasuryById.set(x.id,x));
@@ -2517,10 +2521,32 @@
       if(iError){patrimonialLoadError=iError.message;return;}
       (items||[]).forEach(x=>itemById.set(x.id,x.naturaleza_economica));
     }
+    // Algunas solicitudes aprobadas tienen beneficiario y concepto en el item.
+    const itemDetailById=new Map();
+    if(itemIds.length) {
+      const {data:detailItems,error:detailError}=await supabaseClient.from("solicitud_pago_items")
+        .select("id,concepto,beneficiario_id").in("id",itemIds);
+      if(detailError){patrimonialLoadError=detailError.message;return;}
+      (detailItems||[]).forEach(x=>itemDetailById.set(x.id,x));
+    }
+    const beneficiaryIds=[...new Set([...treasuryById.values()].flatMap(x=>[x.beneficiario_id,itemDetailById.get(x.solicitud_item_id)?.beneficiario_id]).filter(Boolean))];
+    const beneficiaryById=new Map();
+    if(beneficiaryIds.length) {
+      const {data,error}=await supabaseClient.from("beneficiarios").select("id,nombre").in("id",beneficiaryIds);
+      if(error){patrimonialLoadError=error.message;return;}
+      (data||[]).forEach(x=>beneficiaryById.set(x.id,x.nombre));
+    }
+    const accountIds=[...new Set(bankRows.map(x=>x.cuenta_bancaria_id).filter(Boolean))];
+    const bankByAccount=new Map();
+    if(accountIds.length) {
+      const {data,error}=await supabaseClient.from("cuentas_bancarias").select("id,banco").in("id",accountIds);
+      if(error){patrimonialLoadError=error.message;return;}
+      (data||[]).forEach(x=>bankByAccount.set(x.id,x.banco));
+    }
     patrimonialMovements=bankRows.map(b=>{
       const treasury=treasuryById.get(linkByBank.get(b.id))||{};
       return {...b,...treasury,id:b.id,valor_original:b.valor,
-        moneda:b.moneda,naturaleza_economica:itemById.get(treasury.solicitud_item_id)||null,
+        moneda:b.moneda,banco_nombre:bankByAccount.get(b.cuenta_bancaria_id)||null,beneficiario_nombre:beneficiaryById.get(treasury.beneficiario_id||itemDetailById.get(treasury.solicitud_item_id)?.beneficiario_id)||null,concepto_detalle:treasury.concepto||itemDetailById.get(treasury.solicitud_item_id)?.concepto||null,naturaleza_economica:itemById.get(treasury.solicitud_item_id)||null,
         tipo_movimiento:String(b.naturaleza||"").toUpperCase()};
     });
   }
@@ -2538,21 +2564,21 @@
     let unconverted = 0;
     for(const row of patrimonialMovements) {
       const key = classifyPatrimonial(row);
-      if(!groups.has(key)) groups.set(key,{incoming:0,outgoing:0,count:0,missing:0});
+      if(!groups.has(key)) groups.set(key,{incoming:0,outgoing:0,count:0,missing:0,details:[]});
       const group=groups.get(key);
       group.count++;
       const currency=String(row.moneda||"").trim();
       const original=Number(row.valor_original);
       const rate=currency==="USD"?1:rateToUsd(currency);
       if(!Number.isFinite(original)||!Number.isFinite(rate)||rate<=0) {
-        group.missing++;unconverted++;continue;
+        group.missing++;unconverted++;group.details.push({row,impact:null});continue;
       }
       const value=Math.abs(original)/(currency==="USD"?1:rate);
       // Los extractos registran el valor como magnitud positiva: la naturaleza indica el sentido.
       const direction=String(row.tipo_movimiento||"").trim().toUpperCase();
-      if(direction==="CREDITO" || direction==="CRÉDITO" || direction==="INGRESO") group.incoming+=value;
-      else if(direction==="DEBITO" || direction==="DÉBITO" || direction==="EGRESO" || direction==="SALIDA") group.outgoing-=value;
-      else {group.missing++;unconverted++;}
+      if(direction==="CREDITO" || direction==="CRÉDITO" || direction==="INGRESO") {group.incoming+=value;group.details.push({row,impact:value});}
+      else if(direction==="DEBITO" || direction==="DÉBITO" || direction==="EGRESO" || direction==="SALIDA") {group.outgoing-=value;group.details.push({row,impact:-value});}
+      else {group.missing++;unconverted++;group.details.push({row,impact:null});}
     }
     const rows=Object.entries(PATRIMONIAL_NATURES).filter(([key])=>key!=="DIFERENCIA_CAMBIARIA");
     const operational=rows.reduce((sum,[key])=>{const g=groups.get(key);return sum+(g?g.incoming+g.outgoing:0)},0);
@@ -2560,8 +2586,10 @@
     const gap=unconverted===0?flow-operational:null;
     const fmt=v=>v===null?"Pendiente":signedMoney(v,"USD");
     const cells=rows.map(([key,label])=>{
-      const g=groups.get(key)||{incoming:0,outgoing:0,count:0,missing:0};
-      return `<tr><td>${escapeHtml(label)} <span class="muted">(${g.count})</span></td><td class="number">${fmt(g.incoming)}</td><td class="number">${fmt(g.outgoing)}</td><td class="number">—</td><td class="number"><strong>${fmt(g.incoming+g.outgoing)}</strong></td></tr>`;
+      const g=groups.get(key)||{incoming:0,outgoing:0,count:0,missing:0,details:[]};
+      const detail=(g.details||[]).map(({row,impact})=>`<tr><td>${escapeHtml(row.moneda||"")} ${formatNumber(row.valor_original)}</td><td>${escapeHtml(row.banco_nombre||"Por identificar")}</td><td>${escapeHtml(row.beneficiario_nombre||"Por identificar")}</td><td>${escapeHtml(row.concepto_detalle||"Por identificar")}</td><td class="number">${impact===null?"Pendiente":fmt(impact)}</td></tr>`).join("");
+      return `<tr><td><details class="patrimonial-accordion"><summary style="cursor:pointer"><strong>${escapeHtml(label)}</strong> <span class="muted">(${g.count})</span></summary></details></td><td class="number">${fmt(g.incoming)}</td><td class="number">${fmt(g.outgoing)}</td><td class="number">—</td><td class="number"><strong>${fmt(g.incoming+g.outgoing)}</strong></td></tr>
+      <tr class="patrimonial-detail-container" style="display:none"><td colspan="5"><table style="width:100%"><thead><tr><th>Monto original</th><th>Banco</th><th>Beneficiario</th><th>Concepto</th><th class="number">Impacto USD</th></tr></thead><tbody>${detail||'<tr><td colspan="5">Sin movimientos asociados.</td></tr>'}</tbody></table></td></tr>`;
     }).join("");
     panel.innerHTML=`
       <div class="variation-header"><div><div class="variation-title">Cambio Patrimonial del Periodo</div>
@@ -2576,6 +2604,10 @@
       </tbody></table></div>
       <p class="muted">Comparación contra cambio por flujos del Balance: ${fmt(flow)}. Diferencia sin explicar en flujos: <strong>${fmt(gap)}</strong>.</p>
       <div class="reconciliation-warning">Vista de diagnóstico en lectura, no conciliada: se incluyen movimientos bancarios del día, clasificados por categoría bancaria o conciliación confirmada, sin duplicar movimientos de tesorería. ${unconverted} registros tienen moneda, tasa o sentido bancario sin resolver. Faltan los movimientos bancarios no asociados, costos bancarios y posibles operaciones pendientes de causación. Las transferencias no se fuerzan artificialmente a cero: deben verificarse ambas contrapartes antes de aprobar el día.</div>`;
+    panel.querySelectorAll(".patrimonial-accordion").forEach(node=>node.addEventListener("toggle",()=>{
+      const detail=node.closest("tr").nextElementSibling;
+      if(detail) detail.style.display=node.open?"table-row":"none";
+    }));
   }
 
   async function loadBalance() {
