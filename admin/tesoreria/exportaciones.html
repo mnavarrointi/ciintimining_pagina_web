@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Exportaciones | Inti Mining</title><link rel="stylesheet" href="../../styles.css">
+<style>
+body{margin:0;background:#f5f6f8;color:#222;font-family:Arial,sans-serif}main{max-width:1100px;margin:30px auto;padding:0 20px}.card{background:white;border:1px solid #e1e4e8;border-radius:12px;padding:22px;margin:16px 0}.top{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}.tile{border:1px solid #ddd;border-radius:9px;padding:18px;cursor:pointer;text-align:left;background:white;color:#222}.tile:hover{border-color:#333}.tile strong{font-size:20px}.muted{color:#666;font-size:13px}button{padding:11px 16px;border-radius:7px;border:0;background:#20252b;color:white;cursor:pointer}button:disabled{opacity:.5}table{border-collapse:collapse;width:100%}td,th{padding:12px;border-bottom:1px solid #eee;text-align:left}td:last-child,th:last-child{text-align:right}.error{color:#ad2727}.summary{font-weight:bold;background:#f7f8fa}a{color:#222}
+</style></head><body><main><p><a href="../index.html">← Panel administrativo</a></p><div class="top"><div><h1>Exportaciones</h1><p class="muted">Seguimiento de costos, ventas y utilidad por operación AXP.</p></div><button id="create" hidden>+ Nueva exportación</button></div><p id="status">Verificando acceso…</p><section id="app" hidden><div id="list" class="grid"></div><div id="detail" class="card" hidden></div></section></main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="../../js/supabase-config.js"></script><script src="../../js/auth.js"></script><script>
+const RUBROS=["COMPRA DE MATERIAL","TRANSPORTE (LOGÍSTICA)","TIQUETES","VIÁTICOS","ASESORÍA ADUANA (JONATHAN)","COSTO DG","LABORATORIO","ADUANA IMPO","COMISIÓN FREDY MURILLO","TRANSPORTE ALFREDO","TRANSPORTE TERRESTRE","GASTOS BANCARIOS","DIFERENCIA EN TASA","OTROS"];
+const escapeHtml=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+(async()=>{
+ const status=document.getElementById("status"),app=document.getElementById("app"),list=document.getElementById("list"),detail=document.getElementById("detail"),create=document.getElementById("create");
+ try{
+  const {data:{user},error:authError}=await supabaseClient.auth.getUser();if(authError||!user)throw Error("Debes iniciar sesión.");
+  const {data:profile,error:profileError}=await supabaseClient.from("usuarios_app").select("rol,activo").eq("user_id",user.id).single();
+  if(profileError||!profile?.activo||!["admin","consulta"].includes(profile.rol))throw Error("Acceso no autorizado.");
+  create.hidden=profile.rol!=="admin";app.hidden=false;status.textContent="";
+  let exports=[];
+  function show(exp){
+   detail.hidden=false;
+   const date=exp.created_at?.slice(0,10)||"Sin fecha";
+   const rows=RUBROS.map(name=>'<tr><td>'+escapeHtml(name)+'</td><td class="muted">Pendiente de asignación</td></tr>').join("");
+   detail.innerHTML='<div class="top"><h2>'+escapeHtml(exp.codigo)+'</h2><span class="muted">Fecha de creación: '+escapeHtml(date)+'</span></div><p class="muted">Estado: '+escapeHtml(exp.estado)+' · Moneda de resultado: USD</p><table><thead><tr><th>Rubro</th><th>Valor</th></tr></thead><tbody>'+rows+
+   '<tr class="summary"><td>COSTO TOTAL</td><td>Pendiente</td></tr><tr><td>VENTA — venta real pagada</td><td>Pendiente</td></tr><tr class="summary"><td>UTILIDAD BRUTA</td><td>Pendiente</td></tr><tr><td>COMISIÓN TEO — sobre utilidad bruta</td><td>Pendiente</td></tr><tr class="summary"><td>UTILIDAD NETA</td><td>Pendiente</td></tr></tbody></table><p class="muted">Primera etapa: estructura de rubros. Los importes, la diferencia en tasa y la comisión TEO se definirán y vincularán progresivamente. No se contabilizan valores sin soporte.</p>';
+   detail.scrollIntoView({behavior:"smooth",block:"start"});
+  }
+  async function load(){
+   const {data,error}=await supabaseClient.from("exportaciones").select("id,codigo,estado,fecha_inicio,created_at,moneda_resultado").order("codigo");
+   if(error)throw error;exports=data||[];list.replaceChildren();
+   for(const exp of exports){const btn=document.createElement("button");btn.className="tile";btn.innerHTML='<strong>'+escapeHtml(exp.codigo)+'</strong><p class="muted">Creada: '+escapeHtml(exp.created_at?.slice(0,10)||"—")+'</p><span class="muted">'+escapeHtml(exp.estado)+'</span>';btn.addEventListener("click",()=>show(exp));list.append(btn);}
+   if(!exports.length)list.textContent="No hay exportaciones registradas.";
+  }
+  create.addEventListener("click",async()=>{create.disabled=true;status.textContent="Creando exportación…";try{const {data,error}=await supabaseClient.rpc("crear_exportacion_axp");if(error)throw error;await load();const created=exports.find(x=>x.id===data.id);if(created)show(created);status.textContent="Exportación "+data.codigo+" creada correctamente.";}catch(e){status.textContent=e.message;status.className="error";}finally{create.disabled=false;}});
+  await load();
+ }catch(e){status.textContent=e.message;status.className="error";}
+})();
+</script></body></html>
