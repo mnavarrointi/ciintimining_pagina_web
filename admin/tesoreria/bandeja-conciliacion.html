@@ -1123,6 +1123,18 @@
               class="nonoperating-direction"
             ></div>
 
+            <div class="modal-grid" style="margin-top:12px">
+              <div class="modal-field">
+                <label>Categoría no operativa *</label>
+                <select id="nonOperatingCategory">
+                  <option value="">Seleccionar categoría</option>
+                </select>
+              </div>
+              <div class="modal-field" id="nonOperatingLoanBox" style="display:none">
+                <label>Préstamo al que se abonará *</label>
+                <select id="nonOperatingLoan"><option value="">Seleccionar préstamo</option></select>
+              </div>
+            </div>
             <div class="helper-text">
 
               Este movimiento será conciliado con
@@ -4283,6 +4295,25 @@
     );
 
 
+  async function actualizarCategoriaNoOperativa(){
+    const cat=document.getElementById("nonOperatingCategory").value;
+    const repayment=cat==="DEVOLUCION_DE_TERCERO"||cat==="DEVOLUCION_A_TERCERO";
+    document.getElementById("nonOperatingLoanBox").style.display=repayment?"block":"none";
+    const selector=document.getElementById("nonOperatingLoan");
+    selector.required=repayment;
+    if(!repayment)return;
+    const tipo=cat==="DEVOLUCION_DE_TERCERO"?"POR_COBRAR":"POR_PAGAR";
+    const {data,error}=await supabaseClient.from("prestamos_grupo").select("id,tercero,moneda,capital_inicial").eq("tipo",tipo);
+    if(error){console.error(error);return;}
+    const ids=(data||[]).map(p=>p.id);
+    const {data:applications}=ids.length?await supabaseClient.from("prestamos_aplicaciones").select("prestamo_id,valor_capital").in("prestamo_id",ids):{data:[]};
+    selector.replaceChildren(new Option("Seleccionar préstamo",""));
+    for(const p of data||[]){
+      const balance=Number(p.capital_inicial)-(applications||[]).filter(a=>a.prestamo_id===p.id).reduce((v,a)=>v+Number(a.valor_capital),0);
+      if(balance>0)selector.add(new Option(p.tercero+" — "+p.moneda+" "+balance.toLocaleString("es-CO"),p.id));
+    }
+  }
+  document.getElementById("nonOperatingCategory").addEventListener("change",actualizarCategoriaNoOperativa);
   function prepararTransferenciaNoOperativa() {
 
     if (
@@ -4309,6 +4340,15 @@
       :
       "SALIDA NO OPERATIVA: los recursos salieron de la compañía, pero no constituyen un gasto operativo.";
 
+
+    const category=document.getElementById("nonOperatingCategory");
+    category.replaceChildren(new Option("Seleccionar categoría",""));
+    const choices=esIngreso
+      ?[["PRESTAMO_DE_TERCERO","Préstamo de tercero"],["DEVOLUCION_DE_TERCERO","Devolución de tercero"]]
+      :[["DEVOLUCION_A_TERCERO","Devolución a tercero"],["PRESTAMO_A_TERCERO","Préstamo a tercero"]];
+    choices.forEach(([value,label])=>category.add(new Option(label,value)));
+    category.required=true;
+    document.getElementById("nonOperatingLoanBox").style.display="none";
 
     const suggestedCompanyId =
       movimientoSeleccionado
@@ -5832,6 +5872,16 @@
         )
         .value
         .trim();
+    const nonOpCategory=clasificacion==="TRANSFERENCIA_NO_OPERATIVA"?document.getElementById("nonOperatingCategory").value:null;
+    const nonOpLoan=nonOpCategory&&nonOpCategory.startsWith("DEVOLUCION")?document.getElementById("nonOperatingLoan").value:null;
+    if(clasificacion==="TRANSFERENCIA_NO_OPERATIVA"&&(!nonOpCategory||(nonOpCategory.startsWith("DEVOLUCION")&&!nonOpLoan))){
+      document.getElementById("explainFormMessage").textContent="Selecciona la categoría y, si es devolución, el préstamo correspondiente.";
+      return;
+    }
+    const comentarioNoOperativo=clasificacion==="TRANSFERENCIA_NO_OPERATIVA"
+      ?[comentario,"Categoría no operativa: "+nonOpCategory,nonOpLoan?"Préstamo: "+nonOpLoan:""].filter(Boolean).join(" | ")
+      :comentario;
+
 
 
     const message =
@@ -5915,7 +5965,7 @@
                   ],
 
                 p_comentario:
-                  comentario ||
+                  comentarioNoOperativo ||
                   null
 
               }
@@ -6028,7 +6078,7 @@
                   tasa,
 
                 p_comentario:
-                  comentario ||
+                  comentarioNoOperativo ||
                   null
 
               }
@@ -6113,7 +6163,7 @@
                 p_cuenta_por_pagar_id:
                   cuentaPorPagarId || null,
                 p_comentario:
-                  comentario || null
+                  comentarioNoOperativo || null
               }
             );
 
@@ -6198,7 +6248,7 @@
                   concepto,
 
                 p_comentario:
-                  comentario ||
+                  comentarioNoOperativo ||
                   null
 
               }
