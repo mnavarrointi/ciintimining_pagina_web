@@ -2463,39 +2463,66 @@
   };
 
   function classifyPatrimonial(row) {
+    const bank = String(row.categoria_bancaria || "").toUpperCase();
+    const op = String(row.clasificacion_operativa || "").toUpperCase();
     const nature = String(row.naturaleza_economica || "").toUpperCase();
-    const classification = String(row.clasificacion_operativa || "").toUpperCase();
+    const kind = bank || op;
     if(nature === "OPEX" || nature === "IMPUESTOS") return nature;
-    if(nature === "TRANSFERENCIA_INTERNA" || classification === "TRANSFERENCIA" || classification === "TRANSFERENCIA_OPERATIVA") return "TRANSFERENCIA_INTERNA";
-    if(nature === "TRANSFERENCIA_NO_OPERATIVA" || classification === "TRANSFERENCIA_NO_OPERATIVA") return "TRANSFERENCIA_NO_OPERATIVA";
-    if(nature === "EXPORTACION" || classification === "FLUJO_EXPORTACION" || row.exportacion_id) return "EXPORTACION";
-    if(classification === "INGRESO") return row.exportacion_id ? "EXPORTACION" : "NO_DETERMINADO";
-    if(classification === "PAGO_EGRESO" && row.impacto_pyg_directo === true) return "OPEX";
+    if(nature.includes("EXPORTACION") || kind === "FLUJO_EXPORTACION" || row.exportacion_id) return "EXPORTACION";
+    if(kind === "GASTO_BANCARIO" || kind === "COSTO_BANCARIO") return "COSTO_BANCARIO";
+    if(kind === "GMF") return "GMF";
+    if(kind === "IMPUESTOS") return "IMPUESTOS";
+    if(kind === "RENDIMIENTOS" || kind === "RENDIMIENTO") return "RENDIMIENTO";
+    if(kind === "TRANSFERENCIA_NO_OPERATIVA") return "TRANSFERENCIA_NO_OPERATIVA";
+    if(kind === "TRANSFERENCIA" || kind === "TRANSFERENCIA_OPERATIVA" || kind === "TRANSFERENCIA_INTERNA") return "TRANSFERENCIA_INTERNA";
+    if(kind === "PAGO_EGRESO") return "OPEX";
     return "NO_DETERMINADO";
   }
 
   async function loadPatrimonialPeriod(date) {
     patrimonialLoadError = "";
     patrimonialMovements = [];
-    // Lectura exclusiva: ninguna clasificacion se modifica en la base.
-    const {data,error} = await supabaseClient
-      .from("movimientos_tesoreria")
-      .select("id,fecha_causacion,fecha_pago,concepto,tipo_movimiento,valor_original,moneda,valor_base,moneda_base,clasificacion_operativa,impacto_pyg_directo,exportacion_id,solicitud_item_id")
-      .or(`fecha_pago.eq.${date},and(fecha_pago.is.null,fecha_causacion.eq.${date})`)
-      .neq("estado","ANULADO");
-    if(error) {patrimonialLoadError = error.message; return;}
-    patrimonialMovements = data || [];
-    // La naturaleza aprobada en la solicitud prevalece sobre la inferencia.
-    const ids = [...new Set(patrimonialMovements.map(x=>x.solicitud_item_id).filter(Boolean))];
-    if(ids.length) {
-      const {data:items,error:itemError} = await supabaseClient
-        .from("solicitud_pago_items")
-        .select("id,naturaleza_economica")
-        .in("id",ids);
-      if(itemError) {patrimonialLoadError = itemError.message; return;}
-      const lookup = new Map((items||[]).map(x=>[x.id,x.naturaleza_economica]));
-      patrimonialMovements.forEach(x=>x.naturaleza_economica = lookup.get(x.solicitud_item_id)||null);
+    // El extracto bancario es la fuente primaria; no sumar otra vez tesoreria.
+    const {data:banks,error} = await supabaseClient
+      .from("movimientos_bancarios")
+      .select("id,fecha_movimiento,fecha_valor,descripcion_original,naturaleza,valor,moneda,categoria_bancaria,estado_conciliacion")
+      .eq("fecha_movimiento",date)
+      .order("id");
+    if(error) {patrimonialLoadError = error.message;return;}
+    const bankRows = banks || [];
+    if(!bankRows.length) return;
+    const bankIds=bankRows.map(x=>x.id);
+    const {data:links,error:linkError}=await supabaseClient
+      .from("conciliaciones")
+      .select("movimiento_bancario_id,movimiento_tesoreria_id,estado")
+      .in("movimiento_bancario_id",bankIds);
+    if(linkError) {patrimonialLoadError=linkError.message;return;}
+    const confirmed=(links||[]).filter(x=>String(x.estado||"").toUpperCase()==="CONFIRMADA");
+    const linkByBank=new Map(confirmed.map(x=>[x.movimiento_bancario_id,x.movimiento_tesoreria_id]));
+    const treasuryIds=[...new Set(confirmed.map(x=>x.movimiento_tesoreria_id).filter(Boolean))];
+    const treasuryById=new Map();
+    if(treasuryIds.length) {
+      const {data:treasury,error:tError}=await supabaseClient
+        .from("movimientos_tesoreria")
+        .select("id,clasificacion_operativa,exportacion_id,solicitud_item_id")
+        .in("id",treasuryIds);
+      if(tError){patrimonialLoadError=tError.message;return;}
+      (treasury||[]).forEach(x=>treasuryById.set(x.id,x));
     }
+    const itemIds=[...new Set([...treasuryById.values()].map(x=>x.solicitud_item_id).filter(Boolean))];
+    const itemById=new Map();
+    if(itemIds.length){
+      const {data:items,error:iError}=await supabaseClient.from("solicitud_pago_items")
+        .select("id,naturaleza_economica").in("id",itemIds);
+      if(iError){patrimonialLoadError=iError.message;return;}
+      (items||[]).forEach(x=>itemById.set(x.id,x.naturaleza_economica));
+    }
+    patrimonialMovements=bankRows.map(b=>{
+      const treasury=treasuryById.get(linkByBank.get(b.id))||{};
+      return {...b,...treasury,id:b.id,valor_original:b.valor,
+        moneda:b.moneda,naturaleza_economica:itemById.get(treasury.solicitud_item_id)||null,
+        tipo_movimiento:String(b.naturaleza||"").toUpperCase()};
+    });
   }
 
   function renderPatrimonialPeriod() {
@@ -2514,13 +2541,17 @@
       if(!groups.has(key)) groups.set(key,{incoming:0,outgoing:0,count:0,missing:0});
       const group=groups.get(key);
       group.count++;
-      const currency=String(row.moneda_base||row.moneda||"").trim();
-      let value=Number(row.valor_base);
-      if(!(row.valor_base!==null && row.valor_base!==undefined && Number.isFinite(value)&&value>=0&&currency==="USD")) {
-        if(String(row.moneda||"").trim()==="USD" && row.valor_original!==null && row.valor_original!==undefined) value=Number(row.valor_original);
-        else {group.missing++;unconverted++;continue;}
+      const currency=String(row.moneda||"").trim();
+      const original=Number(row.valor_original);
+      const rate=currency==="USD"?1:rateToUsd(currency);
+      if(!Number.isFinite(original)||!Number.isFinite(rate)||rate<=0) {
+        group.missing++;unconverted++;continue;
       }
-      if(row.tipo_movimiento==="INGRESO") group.incoming+=value;
+      const value=Math.abs(original)/(currency==="USD"?1:rate);
+      // El signo bancario tiene prioridad: egresos negativos, ingresos positivos.
+      if(original>0) group.incoming+=value;
+      else if(original<0) group.outgoing-=value;
+      else if(row.tipo_movimiento==="INGRESO") group.incoming+=value;
       else if(row.tipo_movimiento==="EGRESO") group.outgoing-=value;
       else {group.missing++;unconverted++;}
     }
@@ -2545,7 +2576,7 @@
       <tr><td><strong>Cambio patrimonial del período</strong></td><td></td><td></td><td class="number"><strong>${fmt(fx)}</strong></td><td class="number"><strong>${fmt(total)}</strong></td></tr>
       </tbody></table></div>
       <p class="muted">Comparación contra cambio por flujos del Balance: ${fmt(flow)}. Diferencia sin explicar en flujos: <strong>${fmt(gap)}</strong>.</p>
-      <div class="reconciliation-warning">Vista de diagnóstico en lectura, no conciliada: solo se incluyen movimientos de tesorería consultables y montos USD verificables. ${unconverted} registros no tienen conversión USD utilizable. Faltan los movimientos bancarios no asociados, costos bancarios y posibles operaciones pendientes de causación. Las transferencias no se fuerzan artificialmente a cero: deben verificarse ambas contrapartes antes de aprobar el día.</div>`;
+      <div class="reconciliation-warning">Vista de diagnóstico en lectura, no conciliada: se incluyen movimientos bancarios del día, clasificados por categoría bancaria o conciliación confirmada, sin duplicar movimientos de tesorería. ${unconverted} registros no tienen conversión USD utilizable. Faltan los movimientos bancarios no asociados, costos bancarios y posibles operaciones pendientes de causación. Las transferencias no se fuerzan artificialmente a cero: deben verificarse ambas contrapartes antes de aprobar el día.</div>`;
   }
 
   async function loadBalance() {
