@@ -2548,18 +2548,17 @@
         group.missing++;unconverted++;continue;
       }
       const value=Math.abs(original)/(currency==="USD"?1:rate);
-      // El signo bancario tiene prioridad: egresos negativos, ingresos positivos.
-      if(original>0) group.incoming+=value;
-      else if(original<0) group.outgoing-=value;
-      else if(row.tipo_movimiento==="INGRESO") group.incoming+=value;
-      else if(row.tipo_movimiento==="EGRESO") group.outgoing-=value;
+      // Los extractos registran el valor como magnitud positiva: la naturaleza indica el sentido.
+      const direction=String(row.tipo_movimiento||"").trim().toUpperCase();
+      if(direction==="CREDITO" || direction==="CRÉDITO" || direction==="INGRESO") group.incoming+=value;
+      else if(direction==="DEBITO" || direction==="DÉBITO" || direction==="EGRESO" || direction==="SALIDA") group.outgoing-=value;
       else {group.missing++;unconverted++;}
     }
     const rows=Object.entries(PATRIMONIAL_NATURES).filter(([key])=>key!=="DIFERENCIA_CAMBIARIA");
     const operational=rows.reduce((sum,[key])=>{const g=groups.get(key);return sum+(g?g.incoming+g.outgoing:0)},0);
-    const total=operational+fx;
-    const gap=flow-operational;
-    const fmt=v=>signedMoney(v,"USD");
+    const total=unconverted===0?operational+fx:null;
+    const gap=unconverted===0?flow-operational:null;
+    const fmt=v=>v===null?"Pendiente":signedMoney(v,"USD");
     const cells=rows.map(([key,label])=>{
       const g=groups.get(key)||{incoming:0,outgoing:0,count:0,missing:0};
       return `<tr><td>${escapeHtml(label)} <span class="muted">(${g.count})</span></td><td class="number">${fmt(g.incoming)}</td><td class="number">${fmt(g.outgoing)}</td><td class="number">—</td><td class="number"><strong>${fmt(g.incoming+g.outgoing)}</strong></td></tr>`;
@@ -2567,7 +2566,7 @@
     panel.innerHTML=`
       <div class="variation-header"><div><div class="variation-title">Cambio Patrimonial del Periodo</div>
       <div class="muted">Naturalezas de los movimientos · ${escapeHtml(formatDate($("balanceDate").value))}</div></div>
-      <div class="variation-value ${variationClass(total)}">${fmt(total)}</div></div>
+      <div class="variation-value ${total===null?"variation-neutral":variationClass(total)}">${fmt(total)}</div></div>
       <div class="table-wrap"><table class="variation-table"><thead><tr>
       <th>Naturaleza</th><th class="number">Ingresos (+)</th><th class="number">Egresos (−)</th>
       <th class="number">Diferencia cambiaria</th><th class="number">Total USD</th>
@@ -2576,7 +2575,7 @@
       <tr><td><strong>Cambio patrimonial del período</strong></td><td></td><td></td><td class="number"><strong>${fmt(fx)}</strong></td><td class="number"><strong>${fmt(total)}</strong></td></tr>
       </tbody></table></div>
       <p class="muted">Comparación contra cambio por flujos del Balance: ${fmt(flow)}. Diferencia sin explicar en flujos: <strong>${fmt(gap)}</strong>.</p>
-      <div class="reconciliation-warning">Vista de diagnóstico en lectura, no conciliada: se incluyen movimientos bancarios del día, clasificados por categoría bancaria o conciliación confirmada, sin duplicar movimientos de tesorería. ${unconverted} registros no tienen conversión USD utilizable. Faltan los movimientos bancarios no asociados, costos bancarios y posibles operaciones pendientes de causación. Las transferencias no se fuerzan artificialmente a cero: deben verificarse ambas contrapartes antes de aprobar el día.</div>`;
+      <div class="reconciliation-warning">Vista de diagnóstico en lectura, no conciliada: se incluyen movimientos bancarios del día, clasificados por categoría bancaria o conciliación confirmada, sin duplicar movimientos de tesorería. ${unconverted} registros tienen moneda, tasa o sentido bancario sin resolver. Faltan los movimientos bancarios no asociados, costos bancarios y posibles operaciones pendientes de causación. Las transferencias no se fuerzan artificialmente a cero: deben verificarse ambas contrapartes antes de aprobar el día.</div>`;
   }
 
   async function loadBalance() {
