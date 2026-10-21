@@ -899,58 +899,21 @@
               Seleccionar
             </option>
 
-            <option value="GASTO_BANCARIO">
-              Gasto Bancario
-            </option>
-
-            <option value="GMF">
-              GMF
-            </option>
-
-            <option value="IMPUESTOS">
-              Impuestos
-            </option>
-
-            <option value="RENDIMIENTOS">
-              Rendimientos
-            </option>
-
-            <option value="PAGO_EGRESO">
-              Pago / Egreso operativo (OPEX)
-            </option>
-
-            <option value="FLUJO_EXPORTACION">
-              Flujo de exportación (operativo, no PyG)
-            </option>
-
-            <option value="TRANSFERENCIA">
-              Transferencia entre cuentas propias
-            </option>
-
-            <option value="TRANSFERENCIA_NO_OPERATIVA">
-              Transferencia no operativa
-            </option>
-
-            <option value="TRANSFERENCIA_OPERATIVA">
-              Transferencia Operativa (no clasifica para el PyG)
-            </option>
-
-            <option value="INGRESO">
-              Ingreso operativo
-            </option>
-
-            <option value="ERROR_HUMANO">
-              Error humano
-            </option>
-
-            <option value="OTRO">
-              Otro
-            </option>
+            <option value="PAGO_EGRESO">OPEX</option>
+            <option value="TRANSFERENCIA">Transacciones entre cuentas</option>
+            <option value="TRANSFERENCIA_NO_OPERATIVA">Transferencias no operativas</option>
+            <option value="GASTO_BANCARIO">Gastos bancarios</option>
+            <option value="GMF">GMF / impuestos bancarios</option>
+            <option value="RENDIMIENTOS">Rendimientos financieros</option>
+            <option value="FLUJO_EXPORTACION">Flujos de operación (Exportación)</option>
+            <option value="IMPUESTOS">Impuestos</option>
+            <option value="DIFERENCIA_CAMBIARIA" disabled>Diferencia cambiaria (clasificación automática)</option>
+            <option value="NO_DETERMINADO" disabled>No determinado (pendiente de clasificación)</option>
 
           </select>
 
           <div class="helper-text">
-            Usa <strong>Flujo de exportación</strong> cuando el ingreso o egreso pertenezca
+            Usa <strong>Flujos de operación (Exportación)</strong> cuando el ingreso o egreso pertenezca
             directamente a una operación específica y no deba tratarse como OPEX corporativo.
           </div>
 
