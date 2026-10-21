@@ -2600,28 +2600,34 @@
     const cells=rows.map(([key,label])=>{
       const g=groups.get(key)||{incoming:0,outgoing:0,count:0,missing:0,details:[]};
       const entries=g.details||[];
-      const byPair=new Map();
-      for(const entry of entries) if(entry.row.pareja_transferencia_id) {
-        const id=entry.row.pareja_transferencia_id;
-        if(!byPair.has(id)) byPair.set(id,[]);
-        byPair.get(id).push(entry);
+      const groupsByOperation=new Map();
+      for(const entry of entries) {
+        const id=entry.row.pareja_transferencia_id
+          ? "transfer:"+entry.row.pareja_transferencia_id
+          : "single:"+entry.row.id;
+        if(!groupsByOperation.has(id)) groupsByOperation.set(id,[]);
+        groupsByOperation.get(id).push(entry);
       }
-      const displayed=new Set();
-      const detail=entries.map(entry=>{
-        const pairId=entry.row.pareja_transferencia_id;
-        if(pairId && displayed.has(pairId)) return "";
-        if(pairId) displayed.add(pairId);
-        const peers=pairId?(byPair.get(pairId)||[]):[];
-        const complete=peers.length===2 && peers.every(x=>x.impact!==null) && peers.some(x=>x.impact>0) && peers.some(x=>x.impact<0);
-        const renderLine=({row,impact})=>`<tr><td>${escapeHtml(row.moneda||"")} ${formatNumber(row.valor_original)}</td><td>${escapeHtml(row.banco_nombre||"Por identificar")}</td><td>${escapeHtml(row.beneficiario_nombre||"Por identificar")}</td><td>${escapeHtml(row.concepto_detalle||"Por identificar")}</td><td class="number">${impact===null?"Pendiente":fmt(impact)}</td></tr>`;
-        if(!complete) return renderLine(entry);
-        const net=peers.reduce((sum,x)=>sum+x.impact,0);
-        const zero=Math.abs(net)<0.005;
-        return peers.sort((a,b)=>a.impact-b.impact).map(renderLine).join("")+
-          `<tr style="font-weight:700;background:rgba(127,127,127,.08)"><td colspan="4">↳ Contrapartes emparejadas · ${zero?"Impacto neto 0":"Diferencia de valoración"}</td><td class="number">${fmt(net)}</td></tr>`;
+      const renderMovement=({row,impact})=>`<div style="padding:6px 0;border-bottom:1px solid rgba(127,127,127,.15)">
+        <strong>${escapeHtml(row.moneda||"")} ${formatNumber(row.valor_original)}</strong>
+        <div>${escapeHtml(row.banco_nombre||"Por identificar")}</div>
+        <div>${escapeHtml(row.beneficiario_nombre||"Por identificar")}</div>
+        <div class="muted">${escapeHtml(row.concepto_detalle||row.descripcion_original||"Por identificar")}</div>
+      </div>`;
+      const detail=[...groupsByOperation.entries()].map(([id,movements])=>{
+        const positives=movements.filter(x=>x.impact!==null&&x.impact>=0);
+        const negatives=movements.filter(x=>x.impact!==null&&x.impact<0);
+        const unknown=movements.filter(x=>x.impact===null);
+        const net=unknown.length?null:movements.reduce((sum,x)=>sum+x.impact,0);
+        const paired=id.startsWith("transfer:")&&positives.length>0&&negatives.length>0;
+        const status=paired?(Math.abs(net||0)<0.005?"Emparejada · neto 0":"Emparejada · diferencia"):"Sin contraparte en este día";
+        const cell=list=>list.length?list.map(renderMovement).join(""):"<span class='muted'>—</span>";
+        return `<tr><td style="vertical-align:top;width:40%">${cell(positives)}</td>
+          <td style="vertical-align:top;width:40%">${cell(negatives)}</td>
+          <td class="number" style="vertical-align:top"><strong>${net===null?"Pendiente":fmt(net)}</strong><div class="muted" style="font-size:11px">${escapeHtml(unknown.length?"Valoración pendiente":status)}</div></td></tr>`;
       }).join("");
       return `<tr><td><details class="patrimonial-accordion"><summary style="cursor:pointer"><strong>${escapeHtml(label)}</strong> <span class="muted">(${g.count})</span></summary></details></td><td class="number">${fmt(g.incoming)}</td><td class="number">${fmt(g.outgoing)}</td><td class="number">—</td><td class="number"><strong>${fmt(g.incoming+g.outgoing)}</strong></td></tr>
-      <tr class="patrimonial-detail-container" style="display:none"><td colspan="5"><table style="width:100%"><thead><tr><th>Monto original</th><th>Banco</th><th>Beneficiario</th><th>Concepto</th><th class="number">Impacto USD</th></tr></thead><tbody>${detail||'<tr><td colspan="5">Sin movimientos asociados.</td></tr>'}</tbody></table></td></tr>`;
+      <tr class="patrimonial-detail-container" style="display:none"><td colspan="5"><table style="width:100%"><thead><tr><th>Ingreso (+) · monto, banco, beneficiario y concepto</th><th>Egreso (−) · monto, banco, beneficiario y concepto</th><th class="number">Impacto USD</th></tr></thead><tbody>${detail||'<tr><td colspan="3">Sin movimientos asociados.</td></tr>'}</tbody></table></td></tr>`;
     }).join("");
     panel.innerHTML=`
       <div class="variation-header"><div><div class="variation-title">Cambio Patrimonial del Periodo</div>
