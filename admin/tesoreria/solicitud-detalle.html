@@ -356,6 +356,19 @@
             </select>
           </div>
 
+          <div id="noOperativaSolicitudFields" style="display:none;grid-column:1/-1;padding:12px;border:1px solid #ddd;border-radius:8px">
+            <label>Categoría de transferencia no operativa *</label>
+            <select id="noOperativaSolicitudTipo">
+              <option value="">Seleccionar categoría</option>
+              <option value="PRESTAMO_A_TERCERO">Préstamo a tercero</option>
+              <option value="DEVOLUCION_A_TERCERO">Devolución a tercero</option>
+            </select>
+            <div id="noOperativaSolicitudPrestamoBox" style="display:none;margin-top:10px">
+              <label>Préstamo por pagar al que se abonará *</label>
+              <select id="noOperativaSolicitudPrestamo"><option value="">Seleccionar préstamo</option></select>
+            </div>
+            <small>El registro contable se efectuará cuando se confirme el movimiento bancario, no al crear la solicitud.</small>
+          </div>
           <div id="categoriaOpexContainer" style="display:none">
             <label>Categoría OPEX</label>
             <select id="categoriaId"></select>
@@ -1444,7 +1457,31 @@
     }
 
     function actualizarVisibilidadCategoria() {
-      const naturaleza = document.getElementById("naturalezaEconomica").value;
+      // Campos específicos de giros no operativos (solo salidas).
+    const noOpNature=document.getElementById("naturalezaEconomica");
+    const noOpFields=document.getElementById("noOperativaSolicitudFields");
+    const noOpTipo=document.getElementById("noOperativaSolicitudTipo");
+    const noOpLoan=document.getElementById("noOperativaSolicitudPrestamo");
+    async function updateNoOpSolicitud(){
+      noOpFields.style.display=noOpNature.value==="TRANSFERENCIA_NO_OPERATIVA"?"block":"none";
+      noOpTipo.required=noOpNature.value==="TRANSFERENCIA_NO_OPERATIVA";
+      const repayment=noOpTipo.value==="DEVOLUCION_A_TERCERO" && noOpTipo.required;
+      document.getElementById("noOperativaSolicitudPrestamoBox").style.display=repayment?"block":"none";
+      noOpLoan.required=repayment;
+      if(!repayment)return;
+      const {data,error}=await supabaseClient.from("prestamos_grupo").select("id,tercero,moneda,capital_inicial,tipo").eq("tipo","POR_PAGAR");
+      if(error){console.error(error);return;}
+      const ids=(data||[]).map(p=>p.id);
+      const {data:apps}=ids.length?await supabaseClient.from("prestamos_aplicaciones").select("prestamo_id,valor_capital").in("prestamo_id",ids):{data:[]};
+      noOpLoan.replaceChildren(new Option("Seleccionar préstamo",""));
+      for(const p of data||[]){
+        const saldo=Number(p.capital_inicial)-(apps||[]).filter(a=>a.prestamo_id===p.id).reduce((v,a)=>v+Number(a.valor_capital),0);
+        if(saldo>0)noOpLoan.add(new Option(p.tercero+" — "+p.moneda+" "+saldo.toLocaleString("es-CO"),p.id));
+      }
+    }
+    noOpNature.addEventListener("change",updateNoOpSolicitud);
+    noOpTipo.addEventListener("change",updateNoOpSolicitud);
+    const naturaleza = document.getElementById("naturalezaEconomica").value;
       const categoriaContainer = document.getElementById("categoriaOpexContainer");
       const categoriaSelect = document.getElementById("categoriaId");
       const esOpex = naturaleza === "OPEX";
@@ -1904,6 +1941,10 @@
               : null;
 
           const naturalezaEconomica = document.getElementById("naturalezaEconomica").value || null;
+          const noOpCategory=naturalezaEconomica==="TRANSFERENCIA_NO_OPERATIVA"?noOpTipo.value:null;
+          const noOpLoanId=noOpCategory==="DEVOLUCION_A_TERCERO"?noOpLoan.value:null;
+          if(naturalezaEconomica==="TRANSFERENCIA_NO_OPERATIVA"&&(!noOpCategory||(noOpCategory==="DEVOLUCION_A_TERCERO"&&!noOpLoanId)))throw Error("Completa la categoría y el préstamo correspondiente.");
+
 
           const concepto =
             document
@@ -2059,7 +2100,7 @@
               naturaleza_economica: naturalezaEconomica,
 
               comentario:
-                comentario,
+                naturalezaEconomica==="TRANSFERENCIA_NO_OPERATIVA"?[comentario,"Categoría no operativa: "+noOpCategory,noOpLoanId?"Préstamo: "+noOpLoanId:""].filter(Boolean).join(" | "):comentario,
 
               updated_by:
                 usuarioActual.user_id
@@ -2153,7 +2194,7 @@
               naturaleza_economica: naturalezaEconomica,
 
               comentario:
-                comentario,
+                naturalezaEconomica==="TRANSFERENCIA_NO_OPERATIVA"?[comentario,"Categoría no operativa: "+noOpCategory,noOpLoanId?"Préstamo: "+noOpLoanId:""].filter(Boolean).join(" | "):comentario,
 
               estado:
                 "BORRADOR",
