@@ -2576,7 +2576,7 @@
             <span>${fmt(g.incoming)} ingresos · ${fmt(g.outgoing)} egresos · <strong>${fmt(g.incoming+g.outgoing)} neto</strong></span>
           </summary>
           <table style="width:100%;margin-top:10px"><thead><tr><th colspan="2">Movimiento</th><th class="number">Ingreso USD</th><th class="number">Egreso USD</th><th class="number">Neto USD</th></tr></thead>
-          <tbody>${details||'<tr><td colspan="5" class="muted">Sin movimientos asociados.</td></tr>'}</tbody></table>
+          <tbody>${details||'<tr><td colspan="5" class="muted">No hay movimientos para esta naturaleza.</td></tr>'}</tbody></table>
         </details></td></tr>`;
     }).join("");
     panel.innerHTML=`
