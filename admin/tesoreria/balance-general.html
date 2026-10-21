@@ -2516,8 +2516,8 @@
       group.count++;
       const currency=String(row.moneda_base||row.moneda||"").trim();
       let value=Number(row.valor_base);
-      if(!(Number.isFinite(value)&&value>0&&currency==="USD")) {
-        if(String(row.moneda||"").trim()==="USD") value=Number(row.valor_original);
+      if(!(row.valor_base!==null && row.valor_base!==undefined && Number.isFinite(value)&&value>=0&&currency==="USD")) {
+        if(String(row.moneda||"").trim()==="USD" && row.valor_original!==null && row.valor_original!==undefined) value=Number(row.valor_original);
         else {group.missing++;unconverted++;continue;}
       }
       if(row.tipo_movimiento==="INGRESO") group.incoming+=value;
@@ -2545,7 +2545,7 @@
       <tr><td><strong>Cambio patrimonial del período</strong></td><td></td><td></td><td class="number"><strong>${fmt(fx)}</strong></td><td class="number"><strong>${fmt(total)}</strong></td></tr>
       </tbody></table></div>
       <p class="muted">Comparación contra cambio por flujos del Balance: ${fmt(flow)}. Diferencia sin explicar en flujos: <strong>${fmt(gap)}</strong>.</p>
-      <div class="reconciliation-warning">Cuadro preliminar, no conciliado: solo se incluyen movimientos de tesorería consultables y montos USD verificables. ${unconverted} registros no tienen conversión USD utilizable. Faltan los movimientos bancarios no asociados, costos bancarios y posibles operaciones pendientes de causación. Las transferencias no se fuerzan artificialmente a cero: deben verificarse ambas contrapartes antes de aprobar el día.</div>`;
+      <div class="reconciliation-warning">Vista de diagnóstico en lectura, no conciliada: solo se incluyen movimientos de tesorería consultables y montos USD verificables. ${unconverted} registros no tienen conversión USD utilizable. Faltan los movimientos bancarios no asociados, costos bancarios y posibles operaciones pendientes de causación. Las transferencias no se fuerzan artificialmente a cero: deben verificarse ambas contrapartes antes de aprobar el día.</div>`;
   }
 
   async function loadBalance() {
