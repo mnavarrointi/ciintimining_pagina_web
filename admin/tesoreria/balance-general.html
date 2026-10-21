@@ -926,6 +926,11 @@
     Cargando variación diaria...
   </div>
 
+
+  <div id="patrimonialPeriodPanel" class="variation-card" style="margin-top:18px;">
+    Cargando Cambio Patrimonial del Periodo...
+  </div>
+
   <div
     id="statusPanel"
     class="card"
@@ -2440,6 +2445,110 @@
   }
 
 
+
+  let patrimonialMovements = [];
+  let patrimonialLoadError = "";
+
+  const PATRIMONIAL_NATURES = {
+    OPEX:"OPEX",
+    TRANSFERENCIA_INTERNA:"Transacciones entre cuentas",
+    TRANSFERENCIA_NO_OPERATIVA:"Transferencias no operativas",
+    COSTO_BANCARIO:"Gastos bancarios",
+    GMF:"GMF / impuestos bancarios",
+    RENDIMIENTO:"Rendimientos financieros",
+    EXPORTACION:"Flujos de operación (Exportación)",
+    INGRESO:"Ingresos",
+    IMPUESTOS:"Impuestos",
+    DIFERENCIA_CAMBIARIA:"Diferencia cambiaria",
+    NO_DETERMINADO:"No determinado"
+  };
+
+  function classifyPatrimonial(row) {
+    const nature = String(row.naturaleza_economica || "").toUpperCase();
+    const classification = String(row.clasificacion_operativa || "").toUpperCase();
+    if(nature === "OPEX" || nature === "IMPUESTOS") return nature;
+    if(nature === "TRANSFERENCIA_INTERNA" || classification === "TRANSFERENCIA" || classification === "TRANSFERENCIA_OPERATIVA") return "TRANSFERENCIA_INTERNA";
+    if(nature === "TRANSFERENCIA_NO_OPERATIVA" || classification === "TRANSFERENCIA_NO_OPERATIVA") return "TRANSFERENCIA_NO_OPERATIVA";
+    if(nature === "EXPORTACION" || classification === "FLUJO_EXPORTACION" || row.exportacion_id) return "EXPORTACION";
+    if(classification === "INGRESO") return "INGRESO";
+    if(classification === "PAGO_EGRESO" && row.impacto_pyg_directo === true) return "OPEX";
+    return "NO_DETERMINADO";
+  }
+
+  async function loadPatrimonialPeriod(date) {
+    patrimonialLoadError = "";
+    patrimonialMovements = [];
+    // Lectura exclusiva: ninguna clasificacion se modifica en la base.
+    const {data,error} = await supabaseClient
+      .from("movimientos_tesoreria")
+      .select("id,fecha_causacion,fecha_pago,concepto,tipo_movimiento,valor_original,moneda,valor_base,moneda_base,clasificacion_operativa,impacto_pyg_directo,exportacion_id,solicitud_item_id")
+      .or(`fecha_pago.eq.${date},and(fecha_pago.is.null,fecha_causacion.eq.${date})`)
+      .neq("estado","ANULADO");
+    if(error) {patrimonialLoadError = error.message; return;}
+    patrimonialMovements = data || [];
+    // La naturaleza aprobada en la solicitud prevalece sobre la inferencia.
+    const ids = [...new Set(patrimonialMovements.map(x=>x.solicitud_item_id).filter(Boolean))];
+    if(ids.length) {
+      const {data:items,error:itemError} = await supabaseClient
+        .from("solicitud_pago_items")
+        .select("id,naturaleza_economica")
+        .in("id",ids);
+      if(itemError) {patrimonialLoadError = itemError.message; return;}
+      const lookup = new Map((items||[]).map(x=>[x.id,x.naturaleza_economica]));
+      patrimonialMovements.forEach(x=>x.naturaleza_economica = lookup.get(x.solicitud_item_id)||null);
+    }
+  }
+
+  function renderPatrimonialPeriod() {
+    const panel = $("patrimonialPeriodPanel");
+    if(!panel) return;
+    const fx = variationRows.reduce((sum,r)=>sum+Number(r.cambio_usd_tasa||0)*(r.lado==="PASIVO"?-1:1),0);
+    const flow = variationRows.reduce((sum,r)=>sum+Number(r.cambio_usd_movimiento||0)*(r.lado==="PASIVO"?-1:1),0);
+    if(patrimonialLoadError) {
+      panel.innerHTML = `<h2>Cambio Patrimonial del Periodo</h2><p class="reconciliation-warning">No se pudieron consultar los movimientos: ${escapeHtml(patrimonialLoadError)}. No se presenta cuadre.</p>`;
+      return;
+    }
+    const groups = new Map();
+    let unconverted = 0;
+    for(const row of patrimonialMovements) {
+      const key = classifyPatrimonial(row);
+      if(!groups.has(key)) groups.set(key,{incoming:0,outgoing:0,count:0,missing:0});
+      const group=groups.get(key);
+      group.count++;
+      const currency=String(row.moneda_base||row.moneda||"").trim();
+      let value=Number(row.valor_base);
+      if(!(Number.isFinite(value)&&value>0&&currency==="USD")) {
+        if(String(row.moneda||"").trim()==="USD") value=Number(row.valor_original);
+        else {group.missing++;unconverted++;continue;}
+      }
+      if(row.tipo_movimiento==="INGRESO") group.incoming+=value;
+      else if(row.tipo_movimiento==="EGRESO") group.outgoing-=value;
+      else {group.missing++;unconverted++;}
+    }
+    const rows=[...Object.entries(PATRIMONIAL_NATURES)].filter(([key])=>groups.has(key)||key==="NO_DETERMINADO");
+    const operational=rows.reduce((sum,[key])=>{const g=groups.get(key);return sum+(g?g.incoming+g.outgoing:0)},0);
+    const total=operational+fx;
+    const gap=flow-operational;
+    const fmt=v=>signedMoney(v,"USD");
+    const cells=rows.map(([key,label])=>{
+      const g=groups.get(key)||{incoming:0,outgoing:0,count:0,missing:0};
+      return `<tr><td>${escapeHtml(label)} <span class="muted">(${g.count})</span></td><td class="number">${fmt(g.incoming)}</td><td class="number">${fmt(g.outgoing)}</td><td class="number">—</td><td class="number"><strong>${fmt(g.incoming+g.outgoing)}</strong></td></tr>`;
+    }).join("");
+    panel.innerHTML=`
+      <div class="variation-header"><div><div class="variation-title">Cambio Patrimonial del Periodo</div>
+      <div class="muted">Naturalezas de los movimientos · ${escapeHtml(formatDate($("balanceDate").value))}</div></div>
+      <div class="variation-value ${variationClass(total)}">${fmt(total)}</div></div>
+      <div class="table-wrap"><table class="variation-table"><thead><tr>
+      <th>Naturaleza</th><th class="number">Ingresos (+)</th><th class="number">Egresos (−)</th>
+      <th class="number">Diferencia cambiaria</th><th class="number">Total USD</th>
+      </tr></thead><tbody>${cells}
+      <tr><td><strong>Diferencia cambiaria por valoración</strong></td><td></td><td></td><td class="number">${fmt(fx)}</td><td class="number">${fmt(fx)}</td></tr>
+      <tr><td><strong>Cambio patrimonial del período</strong></td><td></td><td></td><td class="number"><strong>${fmt(fx)}</strong></td><td class="number"><strong>${fmt(total)}</strong></td></tr>
+      </tbody></table></div>
+      <p class="muted">Comparación contra cambio por flujos del Balance: ${fmt(flow)}. Diferencia sin explicar en flujos: <strong>${fmt(gap)}</strong>.</p>
+      <div class="reconciliation-warning">Cuadro preliminar, no conciliado: solo se incluyen movimientos de tesorería consultables y montos USD verificables. ${unconverted} registros no tienen conversión USD utilizable. Faltan los movimientos bancarios no asociados, costos bancarios y posibles operaciones pendientes de causación. Las transferencias no se fuerzan artificialmente a cero: deben verificarse ambas contrapartes antes de aprobar el día.</div>`;
+  }
+
   async function loadBalance() {
 
     const date =
@@ -2474,7 +2583,9 @@
 
       loadBalanceReviewStatus(),
 
-      loadDailyVariation(date)
+      loadDailyVariation(date),
+
+      loadPatrimonialPeriod(date)
 
     ]);
 
@@ -3381,6 +3492,8 @@
     renderBalanceReviewStatus();
 
     renderVariation();
+
+    renderPatrimonialPeriod();
 
 
     $("balanceContent")
