@@ -2593,12 +2593,38 @@
           concepto_detalle:"Cancelación de fondos en tránsito; salida del "+salida.fecha_movimiento});
       }
     }
+    // Contrapartidas patrimoniales de préstamos confirmados: una única fila
+    // de pasivo/activo por préstamo y fecha, vinculada al banco original.
+    const {data:loanRows,error:loanError}=await supabaseClient.from("prestamos_grupo")
+      .select("id,tercero,tipo,moneda,capital_inicial,fecha_inicio,movimiento_origen_id")
+      .eq("fecha_inicio",date);
+    if(loanError){patrimonialLoadError=loanError.message;return;}
+    const bankIdsToday=new Set(bankIds);
+    const loanAdjustments=[];
+    for(const loan of loanRows||[]){
+      if(!bankIdsToday.has(loan.movimiento_origen_id))continue;
+      const original=bankRows.find(b=>b.id===loan.movimiento_origen_id);
+      if(!original||original.estado_conciliacion!=="CONCILIADO")continue;
+      const isPayable=loan.tipo==="POR_PAGAR";
+      const isIncoming=String(original.naturaleza).toUpperCase()==="CREDITO";
+      if(isPayable!==isIncoming)continue;
+      loanAdjustments.push({
+        id:"loan-counterpart:"+loan.id,
+        pareja_transferencia_id:"loan:"+loan.id,
+        naturaleza_patrimonial:"TRANSFERENCIA_NO_OPERATIVA",
+        moneda:loan.moneda,valor_original:Number(loan.capital_inicial),
+        tipo_movimiento:isPayable?"DEBITO":"CREDITO",
+        banco_nombre:isPayable?"Cuentas por pagar · Préstamos":"Cuentas por cobrar · Préstamos",
+        beneficiario_nombre:loan.tercero,
+        concepto_detalle:isPayable?"Reconocimiento del pasivo por préstamo de tercero":"Reconocimiento del activo por préstamo a tercero"
+      });
+    }
     patrimonialMovements=bankRows.map(b=>{
       const treasury=treasuryById.get(linkByBank.get(b.id))||{};
-      return {...b,...treasury,id:b.id,pareja_transferencia_id:pairByBank.get(b.id)||null,valor_original:b.valor,
+      return {...b,...treasury,id:b.id,pareja_transferencia_id:(loanRows||[]).find(p=>p.movimiento_origen_id===b.id) ? "loan:"+loanRows.find(p=>p.movimiento_origen_id===b.id).id : pairByBank.get(b.id)||null,valor_original:b.valor,
         moneda:b.moneda,banco_nombre:bankByAccount.get(b.cuenta_bancaria_id)||null,beneficiario_nombre:beneficiaryById.get(treasury.beneficiario_id||itemDetailById.get(treasury.solicitud_item_id)?.beneficiario_id)||null,concepto_detalle:treasury.concepto||itemDetailById.get(treasury.solicitud_item_id)?.concepto||null,naturaleza_economica:itemById.get(treasury.solicitud_item_id)||null,
         tipo_movimiento:String(b.naturaleza||"").toUpperCase()};
-    }).concat(transitAdjustments);
+    }).concat(transitAdjustments,loanAdjustments);
   }
 
   function renderPatrimonialPeriod() {
@@ -2610,9 +2636,28 @@
       panel.innerHTML = `<h2>Cambio Patrimonial del Periodo</h2><p class="reconciliation-warning">No se pudieron consultar los movimientos: ${escapeHtml(patrimonialLoadError)}. No se presenta cuadre.</p>`;
       return;
     }
+    // Cierre provisional 30/09: clasificar en exportaciones la variacion
+    // del oro ya registrada en Balance. No se crea otro activo ni banco.
+    const periodMovements = [...patrimonialMovements];
+    if ($("balanceDate").value === "2026-09-30") {
+      const gold = variationRows.find(r => r.codigo === "ACT_ORO_PEN");
+      const value = Number(gold?.cambio_usd_movimiento || 0);
+      if (Number.isFinite(value) && Math.abs(value) > 0.005) {
+        periodMovements.push({
+          id: "gold-closing-20260930",
+          naturaleza_patrimonial: "EXPORTACION",
+          moneda: "USD",
+          valor_original: Math.abs(value),
+          tipo_movimiento: value > 0 ? "CREDITO" : "DEBITO",
+          banco_nombre: "Ajuste manual del valor de oro",
+          beneficiario_nombre: "Pendiente de asociar a exportacion",
+          concepto_detalle: "Provisional: variacion del activo oro existente; no es venta ni ingreso bancario."
+        });
+      }
+    }
     const groups = new Map();
     let unconverted = 0;
-    for(const row of patrimonialMovements) {
+    for(const row of periodMovements) {
       const key = classifyPatrimonial(row);
       if(!groups.has(key)) groups.set(key,{incoming:0,outgoing:0,count:0,missing:0,details:[]});
       const group=groups.get(key);
@@ -2630,8 +2675,46 @@
       else if(direction==="DEBITO" || direction==="DÉBITO" || direction==="EGRESO" || direction==="SALIDA") {group.outgoing-=value;group.details.push({row,impact:-value});}
       else {group.missing++;unconverted++;group.details.push({row,impact:null});}
     }
+    // Reclasificar diferencias solo en transferencias confirmadas con dos lados visibles.
+    // No se generan movimientos bancarios ni se altera el total consolidado.
+    const transfers=groups.get("TRANSFERENCIA_INTERNA");
+    if(transfers){
+      const byPair=new Map();
+      for(const item of transfers.details){
+        const id=item.row.pareja_transferencia_id;
+        if(!id||item.impact===null) continue;
+        if(!byPair.has(id)) byPair.set(id,[]);
+        byPair.get(id).push(item);
+      }
+      transfers.fxDifference=0;
+      for(const entries of byPair.values()){
+        if(!entries.some(x=>x.impact>0)||!entries.some(x=>x.impact<0)) continue;
+        const net=entries.reduce((n,x)=>n+x.impact,0);
+        if(Math.abs(net)<0.005) continue;
+        const currencies=new Set(entries.map(x=>String(x.row.moneda||"").trim()));
+        if(currencies.size===1 && net<0){
+          // Diferencia negativa de la misma moneda: gasto bancario.
+          transfers.incoming+=-net;
+          if(!groups.has("COSTO_BANCARIO")) groups.set("COSTO_BANCARIO",{incoming:0,outgoing:0,count:0,missing:0,details:[]});
+          const cost=groups.get("COSTO_BANCARIO");
+          cost.outgoing+=net;
+          cost.count++;
+          const source=entries.find(x=>x.impact>0).row;
+          cost.details.push({row:{...source,id:"bank-fee:"+source.pareja_transferencia_id,
+            moneda:"USD",valor_original:-net,tipo_movimiento:"DEBITO",
+            banco_nombre:"Diferencia de transferencia interna",
+            concepto_detalle:"Costo bancario derivado de transferencia emparejada",
+            pareja_transferencia_id:null},impact:net});
+        }else if(currencies.size>1){
+          // Conversión/monetización: mostrar diferencia en columna FX de la misma naturaleza.
+          transfers.fxDifference+=net;
+          if(net>0) transfers.incoming-=net;
+          else transfers.outgoing-=net;
+        }
+      }
+    }
     const rows=Object.entries(PATRIMONIAL_NATURES).filter(([key])=>key!=="DIFERENCIA_CAMBIARIA");
-    const operational=rows.reduce((sum,[key])=>{const g=groups.get(key);return sum+(g?g.incoming+g.outgoing:0)},0);
+    const operational=rows.reduce((sum,[key])=>{const g=groups.get(key);return sum+(g?g.incoming+g.outgoing+(g.fxDifference||0):0)},0);
     const total=unconverted===0?operational+fx:null;
     const gap=unconverted===0?flow-operational:null;
     const fmt=v=>v===null?"Pendiente":signedMoney(v,"USD");
@@ -2664,7 +2747,7 @@
           <td style="vertical-align:top;width:40%">${cell(negatives)}</td>
           <td class="number" style="vertical-align:top"><strong>${net===null?"Pendiente":fmt(net)}</strong><div class="muted" style="font-size:11px">${escapeHtml(unknown.length?"Valoración pendiente":status)}</div></td></tr>`;
       }).join("");
-      return `<tr><td><details class="patrimonial-accordion"><summary style="cursor:pointer"><strong>${escapeHtml(label)}</strong> <span class="muted">(${g.count})</span></summary></details></td><td class="number">${fmt(g.incoming)}</td><td class="number">${fmt(g.outgoing)}</td><td class="number">—</td><td class="number"><strong>${fmt(g.incoming+g.outgoing)}</strong></td></tr>
+      return `<tr><td><details class="patrimonial-accordion"><summary style="cursor:pointer"><strong>${escapeHtml(label)}</strong> <span class="muted">(${g.count})</span></summary></details></td><td class="number">${fmt(g.incoming)}</td><td class="number">${fmt(g.outgoing)}</td><td class="number">${g.fxDifference?fmt(g.fxDifference):"—"}</td><td class="number"><strong>${fmt(g.incoming+g.outgoing+(g.fxDifference||0))}</strong></td></tr>
       <tr class="patrimonial-detail-container" style="display:none"><td colspan="5"><table style="width:100%"><thead><tr><th>Ingreso (+) · monto, banco, beneficiario y concepto</th><th>Egreso (−) · monto, banco, beneficiario y concepto</th><th class="number">Impacto USD</th></tr></thead><tbody>${detail||'<tr><td colspan="3">Sin movimientos asociados.</td></tr>'}</tbody></table></td></tr>`;
     }).join("");
     panel.innerHTML=`
