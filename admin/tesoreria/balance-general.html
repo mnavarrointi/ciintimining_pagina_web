@@ -2550,8 +2550,8 @@
       const value=Math.abs(original)/(currency==="USD"?1:rate);
       // Los extractos registran el valor como magnitud positiva: la naturaleza indica el sentido.
       const direction=String(row.tipo_movimiento||"").trim().toUpperCase();
-      if(direction==="CREDITO" || direction==="CRÉDITO" || direction==="INGRESO") group.incoming+=value;group.details.push({row,impact:value});
-      else if(direction==="DEBITO" || direction==="DÉBITO" || direction==="EGRESO" || direction==="SALIDA") group.outgoing-=value;group.details.push({row,impact:-value});
+      if(direction==="CREDITO" || direction==="CRÉDITO" || direction==="INGRESO") {group.incoming+=value;group.details.push({row,impact:value});}
+      else if(direction==="DEBITO" || direction==="DÉBITO" || direction==="EGRESO" || direction==="SALIDA") {group.outgoing-=value;group.details.push({row,impact:-value});}
       else {group.missing++;unconverted++;group.details.push({row,impact:null});}
     }
     const rows=Object.entries(PATRIMONIAL_NATURES).filter(([key])=>key!=="DIFERENCIA_CAMBIARIA");
@@ -2560,7 +2560,7 @@
     const gap=unconverted===0?flow-operational:null;
     const fmt=v=>v===null?"Pendiente":signedMoney(v,"USD");
     const cells=rows.map(([key,label])=>{
-      const g=groups.get(key)||{incoming:0,outgoing:0,count:0,missing:0,details:[],details:[]};
+      const g=groups.get(key)||{incoming:0,outgoing:0,count:0,missing:0,details:[]};
       const details=(g.details||[]).map(({row,impact})=>`
         <tr><td colspan="2" style="padding-left:28px">
           <strong>${escapeHtml(row.descripcion_original||"Sin descripción")}</strong>
