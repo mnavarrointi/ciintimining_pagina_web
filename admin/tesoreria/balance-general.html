@@ -2467,6 +2467,8 @@
     const op = String(row.clasificacion_operativa || "").toUpperCase();
     const nature = String(row.naturaleza_economica || "").toUpperCase();
     const kind = bank || op;
+    // La categoria bancaria prevalece: naturaleza en movimientos_bancarios indica DEBITO/CREDITO.
+    if(bank === "COSTOS_BANCARIOS" || bank === "GASTOS_BANCARIOS" || bank === "COSTO_BANCARIO" || bank === "GASTO_BANCARIO") return "COSTO_BANCARIO";
     if(nature === "OPEX" || nature === "IMPUESTOS") return nature;
     if(nature.includes("EXPORTACION") || kind === "FLUJO_EXPORTACION" || row.exportacion_id) return "EXPORTACION";
     if(kind === "GASTO_BANCARIO" || kind === "COSTO_BANCARIO") return "COSTO_BANCARIO";
