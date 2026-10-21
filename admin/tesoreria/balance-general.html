@@ -2561,23 +2561,9 @@
     const fmt=v=>v===null?"Pendiente":signedMoney(v,"USD");
     const cells=rows.map(([key,label])=>{
       const g=groups.get(key)||{incoming:0,outgoing:0,count:0,missing:0,details:[]};
-      const details=(g.details||[]).map(({row,impact})=>`
-        <tr><td colspan="2" style="padding-left:28px">
-          <strong>${escapeHtml(row.descripcion_original||"Sin descripción")}</strong>
-          <div class="muted" style="font-size:12px">${escapeHtml(row.fecha_movimiento||"")} · ${escapeHtml(row.referencia||"Sin referencia")} · ${escapeHtml(row.moneda||"")} ${formatNumber(row.valor)}</div>
-          <div class="muted" style="font-size:11px">ID ${escapeHtml(row.id||"")}</div>
-        </td><td class="number">${impact!==null&&impact>0?fmt(impact):"—"}</td>
-        <td class="number">${impact!==null&&impact<0?fmt(impact):"—"}</td>
-        <td class="number">${impact===null?"Pendiente":fmt(impact)}</td></tr>`).join("");
-      return `<tr><td colspan="5" style="padding:0">
-        <details style="padding:10px 12px">
-          <summary style="cursor:pointer;display:flex;gap:12px;align-items:center;justify-content:space-between">
-            <strong>${escapeHtml(label)} (${g.count})</strong>
-            <span>${fmt(g.incoming)} ingresos · ${fmt(g.outgoing)} egresos · <strong>${fmt(g.incoming+g.outgoing)} neto</strong></span>
-          </summary>
-          <table style="width:100%;margin-top:10px"><thead><tr><th colspan="2">Movimiento</th><th class="number">Ingreso USD</th><th class="number">Egreso USD</th><th class="number">Neto USD</th></tr></thead>
-          <tbody>${details||'<tr><td colspan="5" class="muted">No hay movimientos para esta naturaleza.</td></tr>'}</tbody></table>
-        </details></td></tr>`;
+      const detail=(g.details||[]).map(({row,impact})=>`<tr><td>${escapeHtml(row.moneda||"")} ${formatNumber(row.valor_original)}</td><td>${escapeHtml(row.banco_nombre||"Por identificar")}</td><td>${escapeHtml(row.beneficiario_nombre||"Por identificar")}</td><td>${escapeHtml(row.concepto_detalle||"Por identificar")}</td><td class="number">${impact===null?"Pendiente":fmt(impact)}</td></tr>`).join("");
+      return `<tr><td><details class="patrimonial-accordion"><summary style="cursor:pointer"><strong>${escapeHtml(label)}</strong> <span class="muted">(${g.count})</span></summary></details></td><td class="number">${fmt(g.incoming)}</td><td class="number">${fmt(g.outgoing)}</td><td class="number">—</td><td class="number"><strong>${fmt(g.incoming+g.outgoing)}</strong></td></tr>
+      <tr class="patrimonial-detail-container" style="display:none"><td colspan="5"><table style="width:100%"><thead><tr><th>Monto original</th><th>Banco</th><th>Beneficiario</th><th>Concepto</th><th class="number">Impacto USD</th></tr></thead><tbody>${detail||'<tr><td colspan="5">Sin movimientos asociados.</td></tr>'}</tbody></table></td></tr>`;
     }).join("");
     panel.innerHTML=`
       <div class="variation-header"><div><div class="variation-title">Cambio Patrimonial del Periodo</div>
@@ -2592,6 +2578,10 @@
       </tbody></table></div>
       <p class="muted">Comparación contra cambio por flujos del Balance: ${fmt(flow)}. Diferencia sin explicar en flujos: <strong>${fmt(gap)}</strong>.</p>
       <div class="reconciliation-warning">Vista de diagnóstico en lectura, no conciliada: se incluyen movimientos bancarios del día, clasificados por categoría bancaria o conciliación confirmada, sin duplicar movimientos de tesorería. ${unconverted} registros tienen moneda, tasa o sentido bancario sin resolver. Faltan los movimientos bancarios no asociados, costos bancarios y posibles operaciones pendientes de causación. Las transferencias no se fuerzan artificialmente a cero: deben verificarse ambas contrapartes antes de aprobar el día.</div>`;
+    panel.querySelectorAll(".patrimonial-accordion").forEach(node=>node.addEventListener("toggle",()=>{
+      const detail=node.closest("tr").nextElementSibling;
+      if(detail) detail.style.display=node.open?"table-row":"none";
+    }));
   }
 
   async function loadBalance() {
