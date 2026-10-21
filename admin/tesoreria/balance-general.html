@@ -2447,6 +2447,7 @@
 
 
   let patrimonialMovements = [];
+  const expandedPatrimonialNatures = new Set();
   let patrimonialLoadError = "";
 
   const PATRIMONIAL_NATURES = {
@@ -2485,7 +2486,7 @@
     // El extracto bancario es la fuente primaria; no sumar otra vez tesoreria.
     const {data:banks,error} = await supabaseClient
       .from("movimientos_bancarios")
-      .select("id,fecha_movimiento,fecha_valor,descripcion_original,naturaleza,valor,moneda,categoria_bancaria,estado_conciliacion")
+      .select("id,fecha_movimiento,fecha_valor,descripcion_original,referencia,naturaleza,valor,moneda,categoria_bancaria,estado_conciliacion")
       .eq("fecha_movimiento",date)
       .order("id");
     if(error) {patrimonialLoadError = error.message;return;}
@@ -2538,21 +2539,21 @@
     let unconverted = 0;
     for(const row of patrimonialMovements) {
       const key = classifyPatrimonial(row);
-      if(!groups.has(key)) groups.set(key,{incoming:0,outgoing:0,count:0,missing:0});
+      if(!groups.has(key)) groups.set(key,{incoming:0,outgoing:0,count:0,missing:0,details:[]});
       const group=groups.get(key);
       group.count++;
       const currency=String(row.moneda||"").trim();
       const original=Number(row.valor_original);
       const rate=currency==="USD"?1:rateToUsd(currency);
       if(!Number.isFinite(original)||!Number.isFinite(rate)||rate<=0) {
-        group.missing++;unconverted++;continue;
+        group.missing++;unconverted++;group.details.push({row,impact:null});continue;
       }
       const value=Math.abs(original)/(currency==="USD"?1:rate);
       // Los extractos registran el valor como magnitud positiva: la naturaleza indica el sentido.
       const direction=String(row.tipo_movimiento||"").trim().toUpperCase();
-      if(direction==="CREDITO" || direction==="CRÉDITO" || direction==="INGRESO") group.incoming+=value;
-      else if(direction==="DEBITO" || direction==="DÉBITO" || direction==="EGRESO" || direction==="SALIDA") group.outgoing-=value;
-      else {group.missing++;unconverted++;}
+      if(direction==="CREDITO" || direction==="CRÉDITO" || direction==="INGRESO") group.incoming+=value;group.details.push({row,impact:value});
+      else if(direction==="DEBITO" || direction==="DÉBITO" || direction==="EGRESO" || direction==="SALIDA") group.outgoing-=value;group.details.push({row,impact:-value});
+      else {group.missing++;unconverted++;group.details.push({row,impact:null});}
     }
     const rows=Object.entries(PATRIMONIAL_NATURES).filter(([key])=>key!=="DIFERENCIA_CAMBIARIA");
     const operational=rows.reduce((sum,[key])=>{const g=groups.get(key);return sum+(g?g.incoming+g.outgoing:0)},0);
@@ -2560,8 +2561,20 @@
     const gap=unconverted===0?flow-operational:null;
     const fmt=v=>v===null?"Pendiente":signedMoney(v,"USD");
     const cells=rows.map(([key,label])=>{
-      const g=groups.get(key)||{incoming:0,outgoing:0,count:0,missing:0};
-      return `<tr><td>${escapeHtml(label)} <span class="muted">(${g.count})</span></td><td class="number">${fmt(g.incoming)}</td><td class="number">${fmt(g.outgoing)}</td><td class="number">—</td><td class="number"><strong>${fmt(g.incoming+g.outgoing)}</strong></td></tr>`;
+      const g=groups.get(key)||{incoming:0,outgoing:0,count:0,missing:0,details:[]};
+      const open=expandedPatrimonialNatures.has(key);
+      const details=g.details.map(({row,impact})=>`<tr style="background:#f8fafc">
+        <td colspan="2" style="padding-left:30px"><strong>${escapeHtml(row.descripcion_original||"Sin descripción")}</strong>
+        <div class="muted" style="font-size:12px">${escapeHtml(row.fecha_movimiento||"")} · Ref: ${escapeHtml(row.referencia||"—")} · ${escapeHtml(row.moneda||"")} ${formatNumber(row.valor)} · ${escapeHtml(row.categoria_bancaria||row.clasificacion_operativa||"Sin clasificar")}</div>
+        <div class="muted" style="font-size:11px">ID: ${escapeHtml(row.id||"")}</div></td>
+        <td class="number">${impact!==null&&impact>0?fmt(impact):"—"}</td>
+        <td class="number">${impact!==null&&impact<0?fmt(impact):"—"}</td>
+        <td class="number">${impact===null?"Pendiente":fmt(impact)}</td></tr>`).join("");
+      return `<tr data-nature="${escapeHtml(key)}" style="cursor:pointer" title="Desplegar o contraer movimientos">
+        <td><strong>${open?"▼":"▶"} ${escapeHtml(label)}</strong> <span class="muted">(${g.count})</span></td>
+        <td class="number">${fmt(g.incoming)}</td><td class="number">${fmt(g.outgoing)}</td>
+        <td class="number">—</td><td class="number"><strong>${fmt(g.incoming+g.outgoing)}</strong></td></tr>
+        ${open?`<tr style="background:#eef2f7"><th colspan="2">Movimiento / referencia</th><th class="number">Ingreso USD</th><th class="number">Egreso USD</th><th class="number">Neto USD</th></tr>${details||'<tr><td colspan="5">Sin movimientos para esta naturaleza.</td></tr>'}`:""}`;
     }).join("");
     panel.innerHTML=`
       <div class="variation-header"><div><div class="variation-title">Cambio Patrimonial del Periodo</div>
@@ -2576,6 +2589,12 @@
       </tbody></table></div>
       <p class="muted">Comparación contra cambio por flujos del Balance: ${fmt(flow)}. Diferencia sin explicar en flujos: <strong>${fmt(gap)}</strong>.</p>
       <div class="reconciliation-warning">Vista de diagnóstico en lectura, no conciliada: se incluyen movimientos bancarios del día, clasificados por categoría bancaria o conciliación confirmada, sin duplicar movimientos de tesorería. ${unconverted} registros tienen moneda, tasa o sentido bancario sin resolver. Faltan los movimientos bancarios no asociados, costos bancarios y posibles operaciones pendientes de causación. Las transferencias no se fuerzan artificialmente a cero: deben verificarse ambas contrapartes antes de aprobar el día.</div>`;
+    panel.querySelectorAll("[data-nature]").forEach(tr=>tr.addEventListener("click",()=>{
+      const key=tr.dataset.nature;
+      if(expandedPatrimonialNatures.has(key)) expandedPatrimonialNatures.delete(key);
+      else expandedPatrimonialNatures.add(key);
+      renderPatrimonialPeriod();
+    }));
   }
 
   async function loadBalance() {
