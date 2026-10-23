@@ -6158,6 +6158,12 @@
         if (error) {
           throw error;
         }
+        const {error:imputacionError}=await supabaseClient.rpc("registrar_imputacion_conciliada",{
+          p_movimiento_bancario_id:movimientoSeleccionado.id,
+          p_exportacion_id:exportacionId,
+          p_rubro:rubroExportacion
+        });
+        if(imputacionError)throw Error("Conciliación guardada, pero falló la imputación a exportaciones: "+imputacionError.message);
 
       }
 
