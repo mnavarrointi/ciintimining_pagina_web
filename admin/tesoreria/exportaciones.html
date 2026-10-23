@@ -22,7 +22,7 @@ const escapeHtml=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;"
       const lines=imputaciones.filter(x=>x.exportacion_id===exp.id&&x.rubro===name);
       const pen=lines.filter(x=>x.moneda==="PEN").reduce((v,x)=>v+Number(x.monto)*Number(x.signo),0);
       const usd=lines.filter(x=>x.moneda==="USD").reduce((v,x)=>v+Number(x.monto)*Number(x.signo),0);
-      const pending=costos.filter(c=>c.exportacion_id===exp.id&&c.rubro===name&&c.estado==="PROYECTADO"&&!c.solicitud_item_id);
+      const pending=costos.filter(c=>c.exportacion_id===exp.id&&c.rubro===name&&c.estado==="PROYECTADO");
       const estimatedPEN=pending.filter(c=>c.moneda==="PEN").reduce((v,c)=>v+Number(c.monto_proyectado),0);
       const estimatedUSD=pending.filter(c=>c.moneda==="USD").reduce((v,c)=>v+Number(c.monto_proyectado),0);
       return {name,pen:pen-estimatedPEN,usd:usd-estimatedUSD};
