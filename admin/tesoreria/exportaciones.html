@@ -13,7 +13,7 @@ const escapeHtml=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;"
   const {data:profile,error:profileError}=await supabaseClient.from("usuarios_app").select("rol,activo").eq("user_id",user.id).single();
   if(profileError||!profile?.activo||!["admin","consulta","tesoreria_pagos"].includes(profile.rol))throw Error("Acceso no autorizado.");
   create.hidden=profile.rol!=="admin";app.hidden=false;status.textContent="";
-  let exports=[];let imputaciones=[];let costos=[];let beneficiarios=[];let borradores=[];
+  let exports=[];let imputaciones=[];let costos=[];let beneficiarios=[];let borradores=[];let comprasOro=[];
   function show(exp){
     detail.hidden=false;
     const rate=Number(exp.pen_por_usd);
@@ -23,9 +23,12 @@ const escapeHtml=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;"
       const pen=lines.filter(x=>x.moneda==="PEN").reduce((v,x)=>v+Number(x.monto)*Number(x.signo),0);
       const usd=lines.filter(x=>x.moneda==="USD").reduce((v,x)=>v+Number(x.monto)*Number(x.signo),0);
       const pending=costos.filter(c=>c.exportacion_id===exp.id&&c.rubro===name&&c.estado==="PROYECTADO");
+      const creditos=name==="COMPRA DE MATERIAL"?comprasOro.filter(c=>c.exportacion_id===exp.id&&c.modalidad==="CREDITO"&&c.estado==="ACTIVA"):[];
+      const creditoPEN=creditos.filter(c=>c.moneda==="PEN").reduce((v,c)=>v+Number(c.valor_total),0);
+      const creditoUSD=creditos.filter(c=>c.moneda==="USD").reduce((v,c)=>v+Number(c.valor_total),0);
       const estimatedPEN=pending.filter(c=>c.moneda==="PEN").reduce((v,c)=>v+Number(c.monto_proyectado),0);
       const estimatedUSD=pending.filter(c=>c.moneda==="USD").reduce((v,c)=>v+Number(c.monto_proyectado),0);
-      return {name,pen:pen-estimatedPEN,usd:usd-estimatedUSD};
+      return {name,pen:pen-estimatedPEN-creditoPEN,usd:usd-estimatedUSD-creditoUSD};
     });
     const cells=t=>rate>0?"<td>"+fmt(t.pen+t.usd*rate,"PEN")+"</td><td>"+fmt(t.usd+t.pen/rate,"USD")+"</td>":"<td>"+fmt(t.pen,"PEN")+" (sin convertir)</td><td>"+fmt(t.usd,"USD")+" (sin convertir)</td>";
     const rows=totals.map(t=>"<tr><td>"+escapeHtml(t.name)+"</td>"+cells(t)+"</tr>").join("");
@@ -82,11 +85,18 @@ const escapeHtml=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;"
       '<button type="submit" disabled title="Pendiente de habilitar registro transaccional">Registrar compra a crédito (pendiente de activación)</button></form>'+
       '<p class="muted">Pendiente de prueba: registro de compras a crédito, conciliación de compras de contado y aplicación de pagos a pasivos. Se conservarán moneda y tasa histórica en cada movimiento.</p></section>';
   }
+  async function loadGoldPurchases(){
+    // La tabla se habilita mediante migracion posterior. No interrumpir exportaciones actuales.
+    const {data,error}=await supabaseClient.from("exportacion_compras_oro").select("id,exportacion_id,modalidad,valor_total,moneda,estado");
+    if(error){comprasOro=[];return;}
+    comprasOro=data||[];
+  }
   async function loadDrafts(){const {data,error}=await supabaseClient.from("solicitud_pago_items").select("id,exportacion_id,beneficiario_id,rubro_exportacion,moneda,concepto,naturaleza_economica,estado").eq("estado","BORRADOR").not("exportacion_id","is",null);if(error)throw error;borradores=data||[];}
   async function loadCosts(){const {data,error}=await supabaseClient.from("exportacion_costos_modelo").select("id,exportacion_id,rubro,concepto,moneda,monto_proyectado,estado,solicitud_item_id,beneficiario_id");if(error)throw error;costos=data||[];}
   async function load(){
    const {data,error}=await supabaseClient.from("exportaciones").select("id,codigo,estado,fecha_inicio,created_at,moneda_resultado,pen_por_usd").order("codigo");
    if(error)throw error;exports=data||[];
+   await loadGoldPurchases();
    const {data:rows,error:imputError}=await supabaseClient.from("exportacion_imputaciones").select("exportacion_id,rubro,moneda,monto,signo");
    if(imputError)throw imputError;imputaciones=rows||[];const {data:b,error:be}=await supabaseClient.from("beneficiarios").select("id,nombre").eq("activo",true).order("nombre");if(be)throw be;beneficiarios=b||[];await loadCosts();await loadDrafts();list.replaceChildren();
    for(const exp of exports){const btn=document.createElement("button");btn.className="tile";btn.innerHTML='<strong>'+escapeHtml(exp.codigo)+'</strong><p class="muted">Creada: '+escapeHtml(exp.created_at?.slice(0,10)||"—")+'</p><span class="muted">'+escapeHtml(exp.estado)+'</span>';btn.addEventListener("click",()=>show(exp));list.append(btn);}
