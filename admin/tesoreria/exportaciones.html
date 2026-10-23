@@ -49,7 +49,18 @@ const escapeHtml=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;"
     });
     const goldForm=document.getElementById("compraOroForm");
     if(goldForm){
-      goldForm.addEventListener("submit",event=>event.preventDefault());
+      goldForm.addEventListener("submit",async event=>{
+        event.preventDefault();
+        const d=new FormData(goldForm), btn=goldForm.querySelector('button[type="submit"]');
+        const payload={p_exportacion_id:exp.id,p_proveedor_id:d.get("proveedor"),p_valor_total:Number(d.get("valor")),p_moneda:d.get("moneda"),p_fecha_recepcion:d.get("recepcion"),p_fecha_estimada_pago:d.get("pago"),p_moneda_base:d.get("moneda_base"),p_tasa_historica:Number(d.get("tasa"))};
+        if(!(payload.p_valor_total>0)||!(payload.p_tasa_historica>0)){alert("Valor y tasa deben ser positivos");return;}
+        if(payload.p_moneda===payload.p_moneda_base&&payload.p_tasa_historica!==1){alert("La tasa entre monedas iguales debe ser 1");return;}
+        if(!confirm("Registrar compra a credito en "+exp.codigo+" por "+payload.p_valor_total+" "+payload.p_moneda+"? Esta etapa solo imputa a Exportaciones; no crea inventario ni pasivo."))return;
+        btn.disabled=true;
+        const {error}=await supabaseClient.rpc("registrar_compra_oro_credito",payload);
+        if(error){alert("No se pudo registrar la compra: "+error.message);btn.disabled=false;return;}
+        await loadGoldPurchases();show(exp);
+      });
       goldForm.addEventListener("change",()=>{const d=new FormData(goldForm),receipt=String(d.get("recepcion")||""),due=String(d.get("pago")||"");const warning=goldForm.querySelector("[data-gold-warning]");if(warning)warning.textContent=receipt&&due&&due<receipt?"La fecha estimada de pago es anterior a la recepción. Verifica las fechas.":"";});
       goldForm.addEventListener("input",()=>{
         const fields=new FormData(goldForm), amount=Number(fields.get("valor")), rate=Number(fields.get("tasa"));
@@ -72,7 +83,7 @@ const escapeHtml=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;"
   function costosHtml(exp){const items=costos.filter(c=>c.exportacion_id===exp.id);const options=(arr,value,label)=>arr.map(x=>'<option value="'+escapeHtml(x[value])+'">'+escapeHtml(x[label])+'</option>').join("");return '<section style="margin-top:26px;border-top:1px solid #ddd;padding-top:18px"><h3>Costos proyectados</h3><p class="muted">Solo planeación: no genera asientos ni modifica el Balance General.</p><table><thead><tr><th>Rubro / concepto</th><th>Beneficiario</th><th>Valor</th><th>Estado</th><th></th></tr></thead><tbody>'+items.map(c=>'<tr><td>'+escapeHtml(c.rubro)+'<p class="muted">'+escapeHtml(c.concepto)+'</p></td><td>'+escapeHtml(beneficiarios.find(b=>b.id===c.beneficiario_id)?.nombre||"—")+'</td><td>'+escapeHtml(c.monto_proyectado)+' '+escapeHtml(c.moneda)+'</td><td>'+escapeHtml(c.estado)+'</td><td>'+(canEdit&&c.estado==="PROYECTADO"&&!c.solicitud_item_id?'<button data-edit-cost="'+escapeHtml(c.id)+'">Editar</button>':'')+(canEdit&&c.estado==="PROYECTADO"&&!c.solicitud_item_id?'<div style="margin-top:8px"><select id="draft-'+escapeHtml(c.id)+'"><option value="">Seleccionar pago borrador</option>'+options(borradores.filter(i=>i.exportacion_id===c.exportacion_id&&i.beneficiario_id===c.beneficiario_id&&i.rubro_exportacion===c.rubro&&String(i.moneda).trim()===c.moneda&&i.naturaleza_economica==="EXPORTACION"),"id","concepto")+'</select> <button data-link-cost="'+escapeHtml(c.id)+'">Adjudicar a solicitud</button></div>':'')+'</td></tr>').join("")+'</tbody></table>'+(canEdit&&exp.estado==="EN_CURSO"?'<form id="costForm" style="display:grid;gap:10px;margin-top:20px"><h4>Nuevo costo / editar costo</h4><input type="hidden" name="id"><label>Valor <input required name="valor" type="number" min="0.01" step="0.01"></label><label>Rubro <select name="rubro" required>'+RUBROS.map(r=>'<option>'+escapeHtml(r)+'</option>').join("")+'</select></label><label>Beneficiario <select name="beneficiario" required><option value="">Seleccionar beneficiario</option>'+options(beneficiarios,"id","nombre")+'</select></label><label>Moneda <select name="moneda"><option>PEN</option><option>USD</option><option>COP</option></select></label><label>Concepto <input name="concepto" required maxlength="300"></label><button type="submit">Guardar costo proyectado</button></form>':'')+'<p class="muted" style="margin-top:16px"><strong>Pendiente de prueba:</strong> Proceso de adjudicar costo proyectado a solicitud de pago aún debe ser probado. Requiere activar la migración de Fase 3.</p></section>';}
   function comprasOroHtml(exp){
     const proveedorOptions=beneficiarios.map(b=>'<option value="'+escapeHtml(b.id)+'">'+escapeHtml(b.nombre)+'</option>').join("");
-    return '<section style="margin-top:28px;border-top:1px solid #ddd;padding-top:18px"><h3>Compra de Material a Crédito</h3><p class="muted">Preparación en desarrollo. La recepción aumentará inventario y cuentas por pagar al activar la integración contable. Por ahora no se crean movimientos.</p>'+
+    return '<section style="margin-top:28px;border-top:1px solid #ddd;padding-top:18px"><h3>Compra de Material a Crédito</h3><p class="muted">Al guardar, la compra se imputa a COMPRA DE MATERIAL en esta exportación. El inventario y las cuentas por pagar se habilitarán en la siguiente etapa.</p>'+
       '<form id="compraOroForm" style="display:grid;gap:10px"><label>Proveedor <select required name="proveedor"><option value="">Seleccionar proveedor</option>'+proveedorOptions+'</select></label>'+
       '<label>Valor total <input type="number" min="0.01" step="0.01" required name="valor"></label>'+
       '<label>Moneda <select name="moneda" required><option>PEN</option><option>USD</option><option>COP</option></select></label>'+
@@ -82,8 +93,8 @@ const escapeHtml=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;"
       '<label>Tasa histórica (unidades de moneda base por 1 unidad de moneda original) <input type="number" min="0.00000001" step="any" required name="tasa" value="1"></label>'+
       '<p class="muted" data-gold-preview>Completa valor, moneda y tasa histórica para ver el asiento previsto.</p>'+
       '<p class="error" data-gold-warning></p>'+
-      '<button type="submit" disabled title="Pendiente de habilitar registro transaccional">Registrar compra a crédito (pendiente de activación)</button></form>'+
-      '<p class="muted">Pendiente de prueba: registro de compras a crédito, conciliación de compras de contado y aplicación de pagos a pasivos. Se conservarán moneda y tasa histórica en cada movimiento.</p></section>';
+      '<button type="submit">Registrar compra a crédito</button></form>'+
+      '<p class="muted">El registro guarda moneda y tasa histórica. Esta etapa no genera asientos de inventario ni pasivos ni concilia pagos.</p></section>';
   }
   async function loadGoldPurchases(){
     // La tabla se habilita mediante migracion posterior. No interrumpir exportaciones actuales.
