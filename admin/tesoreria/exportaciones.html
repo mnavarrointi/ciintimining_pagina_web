@@ -47,6 +47,7 @@ const escapeHtml=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;"
     const goldForm=document.getElementById("compraOroForm");
     if(goldForm){
       goldForm.addEventListener("submit",event=>event.preventDefault());
+      goldForm.addEventListener("change",()=>{const d=new FormData(goldForm),receipt=String(d.get("recepcion")||""),due=String(d.get("pago")||"");const warning=goldForm.querySelector("[data-gold-warning]");if(warning)warning.textContent=receipt&&due&&due<receipt?"La fecha estimada de pago es anterior a la recepción. Verifica las fechas.":"";});
       goldForm.addEventListener("input",()=>{
         const fields=new FormData(goldForm), amount=Number(fields.get("valor")), rate=Number(fields.get("tasa"));
         const base=String(fields.get("moneda_base")||"");
@@ -77,6 +78,7 @@ const escapeHtml=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;"
       '<label>Moneda base del asiento <select name="moneda_base"><option>PEN</option><option>USD</option><option>COP</option></select></label>'+
       '<label>Tasa histórica (unidades de moneda base por 1 unidad de moneda original) <input type="number" min="0.00000001" step="any" required name="tasa" value="1"></label>'+
       '<p class="muted" data-gold-preview>Completa valor, moneda y tasa histórica para ver el asiento previsto.</p>'+
+      '<p class="error" data-gold-warning></p>'+
       '<button type="submit" disabled title="Pendiente de habilitar registro transaccional">Registrar compra a crédito (pendiente de activación)</button></form>'+
       '<p class="muted">Pendiente de prueba: registro de compras a crédito, conciliación de compras de contado y aplicación de pagos a pasivos. Se conservarán moneda y tasa histórica en cada movimiento.</p></section>';
   }
