@@ -2854,6 +2854,41 @@
         );
 
 
+    // Asientos derivados de compras a credito: no se alteran snapshots historicos.
+    const {data:goldCredits,error:goldError}=await supabaseClient
+      .from("exportacion_compras_oro")
+      .select("id,exportacion_id,proveedor_id,valor_total,moneda,fecha_recepcion,estado,beneficiarios(nombre)")
+      .eq("modalidad","CREDITO")
+      .eq("estado","ACTIVA")
+      .lte("fecha_recepcion",date);
+    if(goldError)throw goldError;
+    const additions=new Map();
+    for(const c of goldCredits||[]){
+      const amount=Number(c.valor_total);
+      const key="ACT_ORO_"+c.moneda;
+      additions.set(key,(additions.get(key)||0)+amount);
+      const rate=rateToUsd(c.moneda);
+      const provider=c.beneficiarios?.nombre||"Proveedor "+c.proveedor_id;
+      balanceRows.push({
+        posicion_id:c.id,codigo:"CREDITO_ORO_"+c.id,lado:"PASIVO",
+        categoria:"CUENTAS POR PAGAR",nombre:"Material a crédito - "+provider,
+        empresa:null,moneda:c.moneda,fuente:"CALCULADA",
+        valor_original:amount,tasa_usd:rate,
+        valor_usd:rate>0?amount/rate:null,
+        fecha_valor:c.fecha_recepcion,actualizado:true,
+        metadata:{exportacion_id:c.exportacion_id,compra_oro_id:c.id,solo_lectura:true}
+      });
+    }
+    for(const [code,increment] of additions){
+      const inventory=balanceRows.find(row=>row.codigo===code);
+      if(inventory){
+        inventory.valor_original=Number(inventory.valor_original||0)+increment;
+        inventory.valor_usd=inventory.tasa_usd>0?inventory.valor_original/inventory.tasa_usd:null;
+        inventory.fuente="CALCULADA";
+        inventory.metadata={...inventory.metadata,compras_credito_incluidas:true};
+      }
+    }
+
     await loadFalconDetail(date);
 
     render();
