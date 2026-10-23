@@ -44,6 +44,21 @@ const escapeHtml=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;"
       const {error}=await supabaseClient.from("exportaciones").update({pen_por_usd:val}).eq("id",exp.id);
       if(error){alert(error.message);return;}exp.pen_por_usd=val;show(exp);
     });
+    const goldForm=document.getElementById("compraOroForm");
+    if(goldForm){
+      goldForm.addEventListener("submit",event=>event.preventDefault());
+      goldForm.addEventListener("input",()=>{
+        const fields=new FormData(goldForm), amount=Number(fields.get("valor")), rate=Number(fields.get("tasa"));
+        const base=String(fields.get("moneda_base")||"");
+        const moneda=String(fields.get("moneda")||"");
+        const preview=goldForm.querySelector("[data-gold-preview]");
+        if(!preview)return;
+        if(!(amount>0)||!(rate>0)||!base||!moneda){preview.textContent="Completa valor, moneda y tasa histórica para ver el asiento previsto.";return;}
+        if(base===moneda&&rate!==1){preview.textContent="Cuando ambas monedas coinciden, la tasa debe ser 1.";return;}
+        const valorBase=(amount*rate).toLocaleString("es-CO",{maximumFractionDigits:4});
+        preview.textContent="Recepción: débito Inventario de oro y crédito Cuentas por pagar por "+valorBase+" "+base+". Valor original: "+amount+" "+moneda+". Solo simulación: no se guarda ni modifica el Balance.";
+      });
+    }
     const form=document.getElementById("costForm");if(form)form.addEventListener("submit",async event=>{event.preventDefault();const btn=form.querySelector("button[type=submit]");btn.disabled=true;const fields=new FormData(form);const monto=Number(fields.get("valor"));if(!Number.isFinite(monto)||monto<=0){alert("El valor debe ser mayor que cero.");btn.disabled=false;return;}const payload={p_exportacion_id:exp.id,p_rubro:fields.get("rubro"),p_concepto:String(fields.get("concepto")).trim(),p_moneda:fields.get("moneda"),p_monto:monto,p_beneficiario_id:fields.get("beneficiario"),p_costo_id:fields.get("id")||null};const {error}=await supabaseClient.rpc("guardar_costo_proyectado_exportacion",payload);if(error){alert(error.message);btn.disabled=false;return;}await loadCosts();show(exp);});
     detail.querySelectorAll("[data-link-cost]").forEach(btn=>btn.addEventListener("click",async()=>{const c=costos.find(x=>x.id===btn.dataset.linkCost);const selected=document.getElementById("draft-"+c.id)?.value;if(!selected){alert("Selecciona un pago borrador");return;}if(!confirm("Adjudicar costo proyectado a este pago borrador?"))return;btn.disabled=true;const {error}=await supabaseClient.rpc("vincular_costo_proyectado_a_giro",{p_costo_id:c.id,p_solicitud_item_id:selected});if(error){alert("La vinculación aún requiere activar la migración de Fase 3. "+error.message);btn.disabled=false;return;}await loadCosts();await loadDrafts();show(exp);}));
     detail.querySelectorAll("[data-edit-cost]").forEach(btn=>btn.addEventListener("click",()=>{const cost=costos.find(x=>x.id===btn.dataset.editCost);if(!cost)return;const form=document.getElementById("costForm");for(const [key,value] of Object.entries({id:cost.id,valor:cost.monto_proyectado,rubro:cost.rubro,concepto:cost.concepto,moneda:cost.moneda,beneficiario:cost.beneficiario_id}))form.elements.namedItem(key).value=value;form.scrollIntoView({behavior:"smooth"});}));
@@ -59,6 +74,9 @@ const escapeHtml=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;"
       '<label>Moneda <select name="moneda" required><option>PEN</option><option>USD</option><option>COP</option></select></label>'+
       '<label>Fecha recepción material <input type="date" required name="recepcion"></label>'+
       '<label>Fecha estimada de pago <input type="date" required name="pago"></label>'+
+      '<label>Moneda base del asiento <select name="moneda_base"><option>PEN</option><option>USD</option><option>COP</option></select></label>'+
+      '<label>Tasa histórica (unidades de moneda base por 1 unidad de moneda original) <input type="number" min="0.00000001" step="any" required name="tasa" value="1"></label>'+
+      '<p class="muted" data-gold-preview>Completa valor, moneda y tasa histórica para ver el asiento previsto.</p>'+
       '<button type="submit" disabled title="Pendiente de habilitar registro transaccional">Registrar compra a crédito (pendiente de activación)</button></form>'+
       '<p class="muted">Pendiente de prueba: registro de compras a crédito, conciliación de compras de contado y aplicación de pagos a pasivos. Se conservarán moneda y tasa histórica en cada movimiento.</p></section>';
   }
