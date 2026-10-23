@@ -13,7 +13,7 @@ const escapeHtml=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;"
   const {data:profile,error:profileError}=await supabaseClient.from("usuarios_app").select("rol,activo").eq("user_id",user.id).single();
   if(profileError||!profile?.activo||!["admin","consulta","tesoreria_pagos"].includes(profile.rol))throw Error("Acceso no autorizado.");
   create.hidden=profile.rol!=="admin";app.hidden=false;status.textContent="";
-  let exports=[];let imputaciones=[];let costos=[];let beneficiarios=[];
+  let exports=[];let imputaciones=[];let costos=[];let beneficiarios=[];let borradores=[];let comprasOro=[];
   function show(exp){
     detail.hidden=false;
     const rate=Number(exp.pen_por_usd);
@@ -22,10 +22,13 @@ const escapeHtml=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;"
       const lines=imputaciones.filter(x=>x.exportacion_id===exp.id&&x.rubro===name);
       const pen=lines.filter(x=>x.moneda==="PEN").reduce((v,x)=>v+Number(x.monto)*Number(x.signo),0);
       const usd=lines.filter(x=>x.moneda==="USD").reduce((v,x)=>v+Number(x.monto)*Number(x.signo),0);
-      const pending=costos.filter(c=>c.exportacion_id===exp.id&&c.rubro===name&&c.estado==="PROYECTADO"&&!c.solicitud_item_id);
+      const pending=costos.filter(c=>c.exportacion_id===exp.id&&c.rubro===name&&c.estado==="PROYECTADO");
+      const creditos=name==="COMPRA DE MATERIAL"?comprasOro.filter(c=>c.exportacion_id===exp.id&&c.modalidad==="CREDITO"&&c.estado==="ACTIVA"):[];
+      const creditoPEN=creditos.filter(c=>c.moneda==="PEN").reduce((v,c)=>v+Number(c.valor_total),0);
+      const creditoUSD=creditos.filter(c=>c.moneda==="USD").reduce((v,c)=>v+Number(c.valor_total),0);
       const estimatedPEN=pending.filter(c=>c.moneda==="PEN").reduce((v,c)=>v+Number(c.monto_proyectado),0);
       const estimatedUSD=pending.filter(c=>c.moneda==="USD").reduce((v,c)=>v+Number(c.monto_proyectado),0);
-      return {name,pen:pen-estimatedPEN,usd:usd-estimatedUSD};
+      return {name,pen:pen-estimatedPEN-creditoPEN,usd:usd-estimatedUSD-creditoUSD};
     });
     const cells=t=>rate>0?"<td>"+fmt(t.pen+t.usd*rate,"PEN")+"</td><td>"+fmt(t.usd+t.pen/rate,"USD")+"</td>":"<td>"+fmt(t.pen,"PEN")+" (sin convertir)</td><td>"+fmt(t.usd,"USD")+" (sin convertir)</td>";
     const rows=totals.map(t=>"<tr><td>"+escapeHtml(t.name)+"</td>"+cells(t)+"</tr>").join("");
@@ -36,7 +39,7 @@ const escapeHtml=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;"
     '<table><thead><tr><th>Rubro</th><th>Soles (PEN)</th><th>USD</th></tr></thead><tbody>'+rows+
     '<tr class="summary"><td>TOTAL RUBROS (incluye costos proyectados PEN y USD)</td>'+cells(total)+'</tr>'+
     '<tr><td>VENTA — venta real pagada</td><td colspan="2">Pendiente</td></tr><tr><td>UTILIDAD BRUTA</td><td colspan="2">Pendiente</td></tr><tr><td>COMISIÓN TEO</td><td colspan="2">Pendiente</td></tr><tr><td>UTILIDAD NETA</td><td colspan="2">Pendiente</td></tr></tbody></table>'+
-    '<p class="muted">Los importes positivos son ingresos y los negativos son egresos. Las solicitudes vinculadas y las conciliaciones se consolidan por rubro sin sumar dos veces el mismo pago.</p>'+costosHtml(exp);
+    '<p class="muted">Los importes positivos son ingresos y los negativos son egresos. Las solicitudes vinculadas y las conciliaciones se consolidan por rubro sin sumar dos veces el mismo pago.</p>'+costosHtml(exp)+comprasOroHtml(exp);
     const button=document.getElementById("saveRate");button.disabled=profile.rol!=="admin";
     button.addEventListener("click",async()=>{
       const val=Number(document.getElementById("exportRate").value);
@@ -44,18 +47,67 @@ const escapeHtml=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;"
       const {error}=await supabaseClient.from("exportaciones").update({pen_por_usd:val}).eq("id",exp.id);
       if(error){alert(error.message);return;}exp.pen_por_usd=val;show(exp);
     });
+    const goldForm=document.getElementById("compraOroForm");
+    if(goldForm){
+      goldForm.addEventListener("submit",async event=>{
+        event.preventDefault();
+        const d=new FormData(goldForm), btn=goldForm.querySelector('button[type="submit"]');
+        const payload={p_exportacion_id:exp.id,p_proveedor_id:d.get("proveedor"),p_valor_total:Number(d.get("valor")),p_moneda:d.get("moneda"),p_fecha_recepcion:d.get("recepcion"),p_fecha_estimada_pago:d.get("pago"),p_moneda_base:d.get("moneda"),p_tasa_historica:1};
+        if(!(payload.p_valor_total>0)){alert("El valor debe ser positivo");return;}
+        if(payload.p_moneda===payload.p_moneda_base&&payload.p_tasa_historica!==1){alert("La tasa entre monedas iguales debe ser 1");return;}
+        if(!confirm("Registrar compra a crédito en "+exp.codigo+" por "+payload.p_valor_total+" "+payload.p_moneda+"? Se reflejará en la exportación y en el Balance desde la fecha de recepción."))return;
+        btn.disabled=true;
+        const {error}=await supabaseClient.rpc("registrar_compra_oro_credito",payload);
+        if(error){alert("No se pudo registrar la compra: "+error.message);btn.disabled=false;return;}
+        await loadGoldPurchases();show(exp);
+      });
+      goldForm.addEventListener("change",()=>{const d=new FormData(goldForm),receipt=String(d.get("recepcion")||""),due=String(d.get("pago")||"");const warning=goldForm.querySelector("[data-gold-warning]");if(warning)warning.textContent=receipt&&due&&due<receipt?"La fecha estimada de pago es anterior a la recepción. Verifica las fechas.":"";});
+      goldForm.addEventListener("input",()=>{
+        const fields=new FormData(goldForm), amount=Number(fields.get("valor"));
+        const moneda=String(fields.get("moneda")||"");
+        const preview=goldForm.querySelector("[data-gold-preview]");
+        if(!preview)return;
+        preview.textContent=amount>0&&moneda
+          ?"Al recibir el material: Inventario de oro +"+amount.toLocaleString("es-CO")+" "+moneda+"; Cuentas por pagar al proveedor +"+amount.toLocaleString("es-CO")+" "+moneda+". Se refleja en Balance General desde la fecha de recepción."
+          :"Introduce el valor y la moneda de la compra.";
+      });
+    }
     const form=document.getElementById("costForm");if(form)form.addEventListener("submit",async event=>{event.preventDefault();const btn=form.querySelector("button[type=submit]");btn.disabled=true;const fields=new FormData(form);const monto=Number(fields.get("valor"));if(!Number.isFinite(monto)||monto<=0){alert("El valor debe ser mayor que cero.");btn.disabled=false;return;}const payload={p_exportacion_id:exp.id,p_rubro:fields.get("rubro"),p_concepto:String(fields.get("concepto")).trim(),p_moneda:fields.get("moneda"),p_monto:monto,p_beneficiario_id:fields.get("beneficiario"),p_costo_id:fields.get("id")||null};const {error}=await supabaseClient.rpc("guardar_costo_proyectado_exportacion",payload);if(error){alert(error.message);btn.disabled=false;return;}await loadCosts();show(exp);});
+    detail.querySelectorAll("[data-link-cost]").forEach(btn=>btn.addEventListener("click",async()=>{const c=costos.find(x=>x.id===btn.dataset.linkCost);const selected=document.getElementById("draft-"+c.id)?.value;if(!selected){alert("Selecciona un pago borrador");return;}if(!confirm("Adjudicar costo proyectado a este pago borrador?"))return;btn.disabled=true;const {error}=await supabaseClient.rpc("vincular_costo_proyectado_a_giro",{p_costo_id:c.id,p_solicitud_item_id:selected});if(error){alert("La vinculación aún requiere activar la migración de Fase 3. "+error.message);btn.disabled=false;return;}await loadCosts();await loadDrafts();show(exp);}));
     detail.querySelectorAll("[data-edit-cost]").forEach(btn=>btn.addEventListener("click",()=>{const cost=costos.find(x=>x.id===btn.dataset.editCost);if(!cost)return;const form=document.getElementById("costForm");for(const [key,value] of Object.entries({id:cost.id,valor:cost.monto_proyectado,rubro:cost.rubro,concepto:cost.concepto,moneda:cost.moneda,beneficiario:cost.beneficiario_id}))form.elements.namedItem(key).value=value;form.scrollIntoView({behavior:"smooth"});}));
     detail.scrollIntoView({behavior:"smooth",block:"start"});
   }
   const canEdit=["admin","tesoreria_pagos"].includes(profile.rol);
-  function costosHtml(exp){const items=costos.filter(c=>c.exportacion_id===exp.id);const options=(arr,value,label)=>arr.map(x=>'<option value="'+escapeHtml(x[value])+'">'+escapeHtml(x[label])+'</option>').join("");return '<section style="margin-top:26px;border-top:1px solid #ddd;padding-top:18px"><h3>Costos proyectados</h3><p class="muted">Solo planeación: no genera asientos ni modifica el Balance General.</p><table><thead><tr><th>Rubro / concepto</th><th>Beneficiario</th><th>Valor</th><th>Estado</th><th></th></tr></thead><tbody>'+items.map(c=>'<tr><td>'+escapeHtml(c.rubro)+'<p class="muted">'+escapeHtml(c.concepto)+'</p></td><td>'+escapeHtml(beneficiarios.find(b=>b.id===c.beneficiario_id)?.nombre||"—")+'</td><td>'+escapeHtml(c.monto_proyectado)+' '+escapeHtml(c.moneda)+'</td><td>'+escapeHtml(c.estado)+'</td><td>'+(canEdit&&c.estado==="PROYECTADO"&&!c.solicitud_item_id?'<button data-edit-cost="'+escapeHtml(c.id)+'">Editar</button>':'')+'</td></tr>').join("")+'</tbody></table>'+(canEdit&&exp.estado==="EN_CURSO"?'<form id="costForm" style="display:grid;gap:10px;margin-top:20px"><h4>Nuevo costo / editar costo</h4><input type="hidden" name="id"><label>Valor <input required name="valor" type="number" min="0.01" step="0.01"></label><label>Rubro <select name="rubro" required>'+RUBROS.map(r=>'<option>'+escapeHtml(r)+'</option>').join("")+'</select></label><label>Beneficiario <select name="beneficiario" required><option value="">Seleccionar beneficiario</option>'+options(beneficiarios,"id","nombre")+'</select></label><label>Moneda <select name="moneda"><option>PEN</option><option>USD</option><option>COP</option></select></label><label>Concepto <input name="concepto" required maxlength="300"></label><button type="submit">Guardar costo proyectado</button></form>':'')+'</section>';}
+  function costosHtml(exp){const items=costos.filter(c=>c.exportacion_id===exp.id);const options=(arr,value,label)=>arr.map(x=>'<option value="'+escapeHtml(x[value])+'">'+escapeHtml(x[label])+'</option>').join("");return '<section style="margin-top:26px;border-top:1px solid #ddd;padding-top:18px"><h3>Costos proyectados</h3><p class="muted">Solo planeación: no genera asientos ni modifica el Balance General.</p><table><thead><tr><th>Rubro / concepto</th><th>Beneficiario</th><th>Valor</th><th>Estado</th><th></th></tr></thead><tbody>'+items.map(c=>'<tr><td>'+escapeHtml(c.rubro)+'<p class="muted">'+escapeHtml(c.concepto)+'</p></td><td>'+escapeHtml(beneficiarios.find(b=>b.id===c.beneficiario_id)?.nombre||"—")+'</td><td>'+escapeHtml(c.monto_proyectado)+' '+escapeHtml(c.moneda)+'</td><td>'+escapeHtml(c.estado)+'</td><td>'+(canEdit&&c.estado==="PROYECTADO"&&!c.solicitud_item_id?'<button data-edit-cost="'+escapeHtml(c.id)+'">Editar</button>':'')+(canEdit&&c.estado==="PROYECTADO"&&!c.solicitud_item_id?'<div style="margin-top:8px"><select id="draft-'+escapeHtml(c.id)+'"><option value="">Seleccionar pago borrador</option>'+options(borradores.filter(i=>i.exportacion_id===c.exportacion_id&&i.beneficiario_id===c.beneficiario_id&&i.rubro_exportacion===c.rubro&&String(i.moneda).trim()===c.moneda&&i.naturaleza_economica==="EXPORTACION"),"id","concepto")+'</select> <button data-link-cost="'+escapeHtml(c.id)+'">Adjudicar a solicitud</button></div>':'')+'</td></tr>').join("")+'</tbody></table>'+(canEdit&&exp.estado==="EN_CURSO"?'<form id="costForm" style="display:grid;gap:10px;margin-top:20px"><h4>Nuevo costo / editar costo</h4><input type="hidden" name="id"><label>Valor <input required name="valor" type="number" min="0.01" step="0.01"></label><label>Rubro <select name="rubro" required>'+RUBROS.map(r=>'<option>'+escapeHtml(r)+'</option>').join("")+'</select></label><label>Beneficiario <select name="beneficiario" required><option value="">Seleccionar beneficiario</option>'+options(beneficiarios,"id","nombre")+'</select></label><label>Moneda <select name="moneda"><option>PEN</option><option>USD</option><option>COP</option></select></label><label>Concepto <input name="concepto" required maxlength="300"></label><button type="submit">Guardar costo proyectado</button></form>':'')+'<p class="muted" style="margin-top:16px"><strong>Pendiente de prueba:</strong> Proceso de adjudicar costo proyectado a solicitud de pago aún debe ser probado. Requiere activar la migración de Fase 3.</p></section>';}
+  function comprasOroHtml(exp){
+    const proveedorOptions=beneficiarios.map(b=>'<option value="'+escapeHtml(b.id)+'">'+escapeHtml(b.nombre)+'</option>').join("");
+    return '<section style="margin-top:28px;border-top:1px solid #ddd;padding-top:18px"><h3>Compra de Material a Crédito</h3><p class="muted">Al guardar, la compra se imputa a COMPRA DE MATERIAL en esta exportación. El inventario y las cuentas por pagar se habilitarán en la siguiente etapa.</p>'+
+      '<form id="compraOroForm" style="display:grid;gap:10px"><label>Proveedor <select required name="proveedor"><option value="">Seleccionar proveedor</option>'+proveedorOptions+'</select></label>'+
+      '<label>Valor total <input type="number" min="0.01" step="0.01" required name="valor"></label>'+
+      '<label>Moneda de la compra y de la deuda <select name="moneda" required><option>PEN</option><option>USD</option></select></label>'+
+      '<label>Fecha recepción material <input type="date" required name="recepcion"></label>'+
+      '<label>Fecha estimada de pago <input type="date" required name="pago"></label>'+
+      
+      
+      '<p class="muted" data-gold-preview>Introduce el valor y la moneda de la compra.</p>'+
+      '<p class="error" data-gold-warning></p>'+
+      '<button type="submit">Registrar compra a crédito</button></form>'+
+      '<p class="muted">El inventario y el pasivo se muestran en Balance General desde la recepción. La deuda conserva su moneda original. El pago todavía no amortiza el pasivo.</p></section>';
+  }
+  async function loadGoldPurchases(){
+    // La tabla se habilita mediante migracion posterior. No interrumpir exportaciones actuales.
+    const {data,error}=await supabaseClient.from("exportacion_compras_oro").select("id,exportacion_id,modalidad,valor_total,moneda,estado");
+    if(error){comprasOro=[];return;}
+    comprasOro=data||[];
+  }
+  async function loadDrafts(){const {data,error}=await supabaseClient.from("solicitud_pago_items").select("id,exportacion_id,beneficiario_id,rubro_exportacion,moneda,concepto,naturaleza_economica,estado").eq("estado","BORRADOR").not("exportacion_id","is",null);if(error)throw error;borradores=data||[];}
   async function loadCosts(){const {data,error}=await supabaseClient.from("exportacion_costos_modelo").select("id,exportacion_id,rubro,concepto,moneda,monto_proyectado,estado,solicitud_item_id,beneficiario_id");if(error)throw error;costos=data||[];}
   async function load(){
    const {data,error}=await supabaseClient.from("exportaciones").select("id,codigo,estado,fecha_inicio,created_at,moneda_resultado,pen_por_usd").order("codigo");
    if(error)throw error;exports=data||[];
+   await loadGoldPurchases();
    const {data:rows,error:imputError}=await supabaseClient.from("exportacion_imputaciones").select("exportacion_id,rubro,moneda,monto,signo");
-   if(imputError)throw imputError;imputaciones=rows||[];const {data:b,error:be}=await supabaseClient.from("beneficiarios").select("id,nombre").eq("activo",true).order("nombre");if(be)throw be;beneficiarios=b||[];await loadCosts();list.replaceChildren();
+   if(imputError)throw imputError;imputaciones=rows||[];const {data:b,error:be}=await supabaseClient.from("beneficiarios").select("id,nombre").eq("activo",true).order("nombre");if(be)throw be;beneficiarios=b||[];await loadCosts();await loadDrafts();list.replaceChildren();
    for(const exp of exports){const btn=document.createElement("button");btn.className="tile";btn.innerHTML='<strong>'+escapeHtml(exp.codigo)+'</strong><p class="muted">Creada: '+escapeHtml(exp.created_at?.slice(0,10)||"—")+'</p><span class="muted">'+escapeHtml(exp.estado)+'</span>';btn.addEventListener("click",()=>show(exp));list.append(btn);}
    if(!exports.length)list.textContent="No hay exportaciones registradas.";
   }
