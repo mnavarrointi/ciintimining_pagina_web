@@ -13,18 +13,41 @@ const escapeHtml=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;"
   const {data:profile,error:profileError}=await supabaseClient.from("usuarios_app").select("rol,activo").eq("user_id",user.id).single();
   if(profileError||!profile?.activo||!["admin","consulta"].includes(profile.rol))throw Error("Acceso no autorizado.");
   create.hidden=profile.rol!=="admin";app.hidden=false;status.textContent="";
-  let exports=[];
+  let exports=[];let imputaciones=[];
   function show(exp){
-   detail.hidden=false;
-   const date=exp.created_at?.slice(0,10)||"Sin fecha";
-   const rows=RUBROS.map(name=>'<tr><td>'+escapeHtml(name)+'</td><td class="muted">Pendiente de asignación</td></tr>').join("");
-   detail.innerHTML='<div class="top"><h2>'+escapeHtml(exp.codigo)+'</h2><span class="muted">Fecha de creación: '+escapeHtml(date)+'</span></div><p class="muted">Estado: '+escapeHtml(exp.estado)+' · Moneda de resultado: USD</p><table><thead><tr><th>Rubro</th><th>Valor</th></tr></thead><tbody>'+rows+
-   '<tr class="summary"><td>COSTO TOTAL</td><td>Pendiente</td></tr><tr><td>VENTA — venta real pagada</td><td>Pendiente</td></tr><tr class="summary"><td>UTILIDAD BRUTA</td><td>Pendiente</td></tr><tr><td>COMISIÓN TEO — sobre utilidad bruta</td><td>Pendiente</td></tr><tr class="summary"><td>UTILIDAD NETA</td><td>Pendiente</td></tr></tbody></table><p class="muted">Primera etapa: estructura de rubros. Los importes, la diferencia en tasa y la comisión TEO se definirán y vincularán progresivamente. No se contabilizan valores sin soporte.</p>';
-   detail.scrollIntoView({behavior:"smooth",block:"start"});
+    detail.hidden=false;
+    const rate=Number(exp.pen_por_usd);
+    const fmt=(n,c)=>n.toLocaleString(c==="PEN"?"es-PE":"en-US",{minimumFractionDigits:2,maximumFractionDigits:2})+" "+c;
+    const totals=RUBROS.map(name=>{
+      const lines=imputaciones.filter(x=>x.exportacion_id===exp.id&&x.rubro===name);
+      const pen=lines.filter(x=>x.moneda==="PEN").reduce((v,x)=>v+Number(x.monto)*Number(x.signo),0);
+      const usd=lines.filter(x=>x.moneda==="USD").reduce((v,x)=>v+Number(x.monto)*Number(x.signo),0);
+      return {name,pen,usd};
+    });
+    const cells=t=>rate>0?"<td>"+fmt(t.pen+t.usd*rate,"PEN")+"</td><td>"+fmt(t.usd+t.pen/rate,"USD")+"</td>":"<td>"+fmt(t.pen,"PEN")+" (sin convertir)</td><td>"+fmt(t.usd,"USD")+" (sin convertir)</td>";
+    const rows=totals.map(t=>"<tr><td>"+escapeHtml(t.name)+"</td>"+cells(t)+"</tr>").join("");
+    const total=totals.reduce((a,t)=>({pen:a.pen+t.pen,usd:a.usd+t.usd}),{pen:0,usd:0});
+    detail.innerHTML='<div class="top"><h2>'+escapeHtml(exp.codigo)+'</h2><span class="muted">Fecha de creación: '+escapeHtml(exp.created_at?.slice(0,10)||"—")+'</span></div>'+
+    '<p class="muted">Estado: '+escapeHtml(exp.estado)+'</p>'+
+    '<div style="margin:16px 0"><label>Tasa manual (soles por 1 USD): <input id="exportRate" type="number" min="0.000001" step="any" value="'+(exp.pen_por_usd||"")+'" style="max-width:180px;padding:8px"></label> <button id="saveRate">Guardar tasa</button></div>'+
+    '<table><thead><tr><th>Rubro</th><th>Soles (PEN)</th><th>USD</th></tr></thead><tbody>'+rows+
+    '<tr class="summary"><td>TOTAL RUBROS (neto de ingresos)</td>'+cells(total)+'</tr>'+
+    '<tr><td>VENTA — venta real pagada</td><td colspan="2">Pendiente</td></tr><tr><td>UTILIDAD BRUTA</td><td colspan="2">Pendiente</td></tr><tr><td>COMISIÓN TEO</td><td colspan="2">Pendiente</td></tr><tr><td>UTILIDAD NETA</td><td colspan="2">Pendiente</td></tr></tbody></table>'+
+    '<p class="muted">Los importes positivos son ingresos y los negativos son egresos. Las solicitudes vinculadas y las conciliaciones se consolidan por rubro sin sumar dos veces el mismo pago.</p>';
+    const button=document.getElementById("saveRate");button.disabled=profile.rol!=="admin";
+    button.addEventListener("click",async()=>{
+      const val=Number(document.getElementById("exportRate").value);
+      if(!Number.isFinite(val)||val<=0){alert("Ingresa una tasa positiva PEN por USD.");return;}
+      const {error}=await supabaseClient.from("exportaciones").update({pen_por_usd:val}).eq("id",exp.id);
+      if(error){alert(error.message);return;}exp.pen_por_usd=val;show(exp);
+    });
+    detail.scrollIntoView({behavior:"smooth",block:"start"});
   }
   async function load(){
-   const {data,error}=await supabaseClient.from("exportaciones").select("id,codigo,estado,fecha_inicio,created_at,moneda_resultado").order("codigo");
-   if(error)throw error;exports=data||[];list.replaceChildren();
+   const {data,error}=await supabaseClient.from("exportaciones").select("id,codigo,estado,fecha_inicio,created_at,moneda_resultado,pen_por_usd").order("codigo");
+   if(error)throw error;exports=data||[];
+   const {data:rows,error:imputError}=await supabaseClient.from("exportacion_imputaciones").select("exportacion_id,rubro,moneda,monto,signo");
+   if(imputError)throw imputError;imputaciones=rows||[];list.replaceChildren();
    for(const exp of exports){const btn=document.createElement("button");btn.className="tile";btn.innerHTML='<strong>'+escapeHtml(exp.codigo)+'</strong><p class="muted">Creada: '+escapeHtml(exp.created_at?.slice(0,10)||"—")+'</p><span class="muted">'+escapeHtml(exp.estado)+'</span>';btn.addEventListener("click",()=>show(exp));list.append(btn);}
    if(!exports.length)list.textContent="No hay exportaciones registradas.";
   }
