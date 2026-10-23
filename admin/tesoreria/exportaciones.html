@@ -11,9 +11,9 @@ const escapeHtml=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;"
  try{
   const {data:{user},error:authError}=await supabaseClient.auth.getUser();if(authError||!user)throw Error("Debes iniciar sesión.");
   const {data:profile,error:profileError}=await supabaseClient.from("usuarios_app").select("rol,activo").eq("user_id",user.id).single();
-  if(profileError||!profile?.activo||!["admin","consulta"].includes(profile.rol))throw Error("Acceso no autorizado.");
+  if(profileError||!profile?.activo||!["admin","consulta","tesoreria_pagos"].includes(profile.rol))throw Error("Acceso no autorizado.");
   create.hidden=profile.rol!=="admin";app.hidden=false;status.textContent="";
-  let exports=[];let imputaciones=[];
+  let exports=[];let imputaciones=[];let costos=[];let beneficiarios=[];
   function show(exp){
     detail.hidden=false;
     const rate=Number(exp.pen_por_usd);
@@ -22,7 +22,10 @@ const escapeHtml=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;"
       const lines=imputaciones.filter(x=>x.exportacion_id===exp.id&&x.rubro===name);
       const pen=lines.filter(x=>x.moneda==="PEN").reduce((v,x)=>v+Number(x.monto)*Number(x.signo),0);
       const usd=lines.filter(x=>x.moneda==="USD").reduce((v,x)=>v+Number(x.monto)*Number(x.signo),0);
-      return {name,pen,usd};
+      const pending=costos.filter(c=>c.exportacion_id===exp.id&&c.rubro===name&&c.estado==="PROYECTADO"&&!c.solicitud_item_id);
+      const estimatedPEN=pending.filter(c=>c.moneda==="PEN").reduce((v,c)=>v+Number(c.monto_proyectado),0);
+      const estimatedUSD=pending.filter(c=>c.moneda==="USD").reduce((v,c)=>v+Number(c.monto_proyectado),0);
+      return {name,pen:pen-estimatedPEN,usd:usd-estimatedUSD};
     });
     const cells=t=>rate>0?"<td>"+fmt(t.pen+t.usd*rate,"PEN")+"</td><td>"+fmt(t.usd+t.pen/rate,"USD")+"</td>":"<td>"+fmt(t.pen,"PEN")+" (sin convertir)</td><td>"+fmt(t.usd,"USD")+" (sin convertir)</td>";
     const rows=totals.map(t=>"<tr><td>"+escapeHtml(t.name)+"</td>"+cells(t)+"</tr>").join("");
@@ -31,9 +34,9 @@ const escapeHtml=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;"
     '<p class="muted">Estado: '+escapeHtml(exp.estado)+'</p>'+
     '<div style="margin:16px 0"><label>Tasa manual (soles por 1 USD): <input id="exportRate" type="number" min="0.000001" step="any" value="'+(exp.pen_por_usd||"")+'" style="max-width:180px;padding:8px"></label> <button id="saveRate">Guardar tasa</button></div>'+
     '<table><thead><tr><th>Rubro</th><th>Soles (PEN)</th><th>USD</th></tr></thead><tbody>'+rows+
-    '<tr class="summary"><td>TOTAL RUBROS (neto de ingresos)</td>'+cells(total)+'</tr>'+
+    '<tr class="summary"><td>TOTAL RUBROS (incluye costos proyectados PEN y USD)</td>'+cells(total)+'</tr>'+
     '<tr><td>VENTA — venta real pagada</td><td colspan="2">Pendiente</td></tr><tr><td>UTILIDAD BRUTA</td><td colspan="2">Pendiente</td></tr><tr><td>COMISIÓN TEO</td><td colspan="2">Pendiente</td></tr><tr><td>UTILIDAD NETA</td><td colspan="2">Pendiente</td></tr></tbody></table>'+
-    '<p class="muted">Los importes positivos son ingresos y los negativos son egresos. Las solicitudes vinculadas y las conciliaciones se consolidan por rubro sin sumar dos veces el mismo pago.</p>';
+    '<p class="muted">Los importes positivos son ingresos y los negativos son egresos. Las solicitudes vinculadas y las conciliaciones se consolidan por rubro sin sumar dos veces el mismo pago.</p>'+costosHtml(exp);
     const button=document.getElementById("saveRate");button.disabled=profile.rol!=="admin";
     button.addEventListener("click",async()=>{
       const val=Number(document.getElementById("exportRate").value);
@@ -41,13 +44,18 @@ const escapeHtml=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;"
       const {error}=await supabaseClient.from("exportaciones").update({pen_por_usd:val}).eq("id",exp.id);
       if(error){alert(error.message);return;}exp.pen_por_usd=val;show(exp);
     });
+    const form=document.getElementById("costForm");if(form)form.addEventListener("submit",async event=>{event.preventDefault();const btn=form.querySelector("button[type=submit]");btn.disabled=true;const fields=new FormData(form);const monto=Number(fields.get("valor"));if(!Number.isFinite(monto)||monto<=0){alert("El valor debe ser mayor que cero.");btn.disabled=false;return;}const payload={p_exportacion_id:exp.id,p_rubro:fields.get("rubro"),p_concepto:String(fields.get("concepto")).trim(),p_moneda:fields.get("moneda"),p_monto:monto,p_beneficiario_id:fields.get("beneficiario"),p_costo_id:fields.get("id")||null};const {error}=await supabaseClient.rpc("guardar_costo_proyectado_exportacion",payload);if(error){alert(error.message);btn.disabled=false;return;}await loadCosts();show(exp);});
+    detail.querySelectorAll("[data-edit-cost]").forEach(btn=>btn.addEventListener("click",()=>{const cost=costos.find(x=>x.id===btn.dataset.editCost);if(!cost)return;const form=document.getElementById("costForm");for(const [key,value] of Object.entries({id:cost.id,valor:cost.monto_proyectado,rubro:cost.rubro,concepto:cost.concepto,moneda:cost.moneda,beneficiario:cost.beneficiario_id}))form.elements.namedItem(key).value=value;form.scrollIntoView({behavior:"smooth"});}));
     detail.scrollIntoView({behavior:"smooth",block:"start"});
   }
+  const canEdit=["admin","tesoreria_pagos"].includes(profile.rol);
+  function costosHtml(exp){const items=costos.filter(c=>c.exportacion_id===exp.id);const options=(arr,value,label)=>arr.map(x=>'<option value="'+escapeHtml(x[value])+'">'+escapeHtml(x[label])+'</option>').join("");return '<section style="margin-top:26px;border-top:1px solid #ddd;padding-top:18px"><h3>Costos proyectados</h3><p class="muted">Solo planeación: no genera asientos ni modifica el Balance General.</p><table><thead><tr><th>Rubro / concepto</th><th>Beneficiario</th><th>Valor</th><th>Estado</th><th></th></tr></thead><tbody>'+items.map(c=>'<tr><td>'+escapeHtml(c.rubro)+'<p class="muted">'+escapeHtml(c.concepto)+'</p></td><td>'+escapeHtml(beneficiarios.find(b=>b.id===c.beneficiario_id)?.nombre||"—")+'</td><td>'+escapeHtml(c.monto_proyectado)+' '+escapeHtml(c.moneda)+'</td><td>'+escapeHtml(c.estado)+'</td><td>'+(canEdit&&c.estado==="PROYECTADO"&&!c.solicitud_item_id?'<button data-edit-cost="'+escapeHtml(c.id)+'">Editar</button>':'')+'</td></tr>').join("")+'</tbody></table>'+(canEdit&&exp.estado==="EN_CURSO"?'<form id="costForm" style="display:grid;gap:10px;margin-top:20px"><h4>Nuevo costo / editar costo</h4><input type="hidden" name="id"><label>Valor <input required name="valor" type="number" min="0.01" step="0.01"></label><label>Rubro <select name="rubro" required>'+RUBROS.map(r=>'<option>'+escapeHtml(r)+'</option>').join("")+'</select></label><label>Beneficiario <select name="beneficiario" required><option value="">Seleccionar beneficiario</option>'+options(beneficiarios,"id","nombre")+'</select></label><label>Moneda <select name="moneda"><option>PEN</option><option>USD</option><option>COP</option></select></label><label>Concepto <input name="concepto" required maxlength="300"></label><button type="submit">Guardar costo proyectado</button></form>':'')+'</section>';}
+  async function loadCosts(){const {data,error}=await supabaseClient.from("exportacion_costos_modelo").select("id,exportacion_id,rubro,concepto,moneda,monto_proyectado,estado,solicitud_item_id,beneficiario_id");if(error)throw error;costos=data||[];}
   async function load(){
    const {data,error}=await supabaseClient.from("exportaciones").select("id,codigo,estado,fecha_inicio,created_at,moneda_resultado,pen_por_usd").order("codigo");
    if(error)throw error;exports=data||[];
    const {data:rows,error:imputError}=await supabaseClient.from("exportacion_imputaciones").select("exportacion_id,rubro,moneda,monto,signo");
-   if(imputError)throw imputError;imputaciones=rows||[];list.replaceChildren();
+   if(imputError)throw imputError;imputaciones=rows||[];const {data:b,error:be}=await supabaseClient.from("beneficiarios").select("id,nombre").eq("activo",true).order("nombre");if(be)throw be;beneficiarios=b||[];await loadCosts();list.replaceChildren();
    for(const exp of exports){const btn=document.createElement("button");btn.className="tile";btn.innerHTML='<strong>'+escapeHtml(exp.codigo)+'</strong><p class="muted">Creada: '+escapeHtml(exp.created_at?.slice(0,10)||"—")+'</p><span class="muted">'+escapeHtml(exp.estado)+'</span>';btn.addEventListener("click",()=>show(exp));list.append(btn);}
    if(!exports.length)list.textContent="No hay exportaciones registradas.";
   }
