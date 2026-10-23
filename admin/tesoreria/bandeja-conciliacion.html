@@ -1039,6 +1039,27 @@
                 </select>
               </div>
 
+              <div class="modal-field">
+                <label>Rubro de exportación *</label>
+                <select id="explainExportRubro">
+                  <option value="">Seleccionar rubro</option>
+                  <option value="1">COMPRA DE MATERIAL</option>
+                  <option value="2">TRANSPORTE (LOGÍSTICA)</option>
+                  <option value="3">TIQUETES</option>
+                  <option value="4">VIÁTICOS</option>
+                  <option value="5">ASESORÍA ADUANA (JONATHAN)</option>
+                  <option value="6">COSTO DG</option>
+                  <option value="7">LABORATORIO</option>
+                  <option value="8">ADUANA IMPO</option>
+                  <option value="9">COMISIÓN FREDY MURILLO</option>
+                  <option value="10">TRANSPORTE ALFREDO</option>
+                  <option value="11">TRANSPORTE TERRESTRE</option>
+                  <option value="12">GASTOS BANCARIOS</option>
+                  <option value="13">DIFERENCIA EN TASA</option>
+                  <option value="14">OTROS</option>
+                </select>
+              </div>
+
               <div
                 id="exportPayableField"
                 class="modal-field modal-field-full"
@@ -6067,6 +6088,10 @@
 
         const rolExportacion =
           explainExportRole.value;
+        const rubroSelect=document.getElementById("explainExportRubro");
+        const rubroExportacion=rubroSelect.selectedOptions[0]?.textContent||"";
+        if(!rubroSelect.value)throw Error("Debes seleccionar el rubro de la exportación.");
+
 
         const concepto =
           document
@@ -6126,7 +6151,7 @@
                 p_cuenta_por_pagar_id:
                   cuentaPorPagarId || null,
                 p_comentario:
-                  comentarioNoOperativo || null
+                  [comentarioNoOperativo,"Rubro exportación: "+rubroExportacion].filter(Boolean).join(" | ")
               }
             );
 
