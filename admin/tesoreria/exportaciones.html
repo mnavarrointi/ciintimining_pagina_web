@@ -22,7 +22,10 @@ const escapeHtml=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;"
       const lines=imputaciones.filter(x=>x.exportacion_id===exp.id&&x.rubro===name);
       const pen=lines.filter(x=>x.moneda==="PEN").reduce((v,x)=>v+Number(x.monto)*Number(x.signo),0);
       const usd=lines.filter(x=>x.moneda==="USD").reduce((v,x)=>v+Number(x.monto)*Number(x.signo),0);
-      return {name,pen,usd};
+      const pending=costos.filter(c=>c.exportacion_id===exp.id&&c.rubro===name&&c.estado==="PROYECTADO"&&!c.solicitud_item_id);
+      const estimatedPEN=pending.filter(c=>c.moneda==="PEN").reduce((v,c)=>v+Number(c.monto_proyectado),0);
+      const estimatedUSD=pending.filter(c=>c.moneda==="USD").reduce((v,c)=>v+Number(c.monto_proyectado),0);
+      return {name,pen:pen-estimatedPEN,usd:usd-estimatedUSD};
     });
     const cells=t=>rate>0?"<td>"+fmt(t.pen+t.usd*rate,"PEN")+"</td><td>"+fmt(t.usd+t.pen/rate,"USD")+"</td>":"<td>"+fmt(t.pen,"PEN")+" (sin convertir)</td><td>"+fmt(t.usd,"USD")+" (sin convertir)</td>";
     const rows=totals.map(t=>"<tr><td>"+escapeHtml(t.name)+"</td>"+cells(t)+"</tr>").join("");
@@ -31,7 +34,7 @@ const escapeHtml=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;"
     '<p class="muted">Estado: '+escapeHtml(exp.estado)+'</p>'+
     '<div style="margin:16px 0"><label>Tasa manual (soles por 1 USD): <input id="exportRate" type="number" min="0.000001" step="any" value="'+(exp.pen_por_usd||"")+'" style="max-width:180px;padding:8px"></label> <button id="saveRate">Guardar tasa</button></div>'+
     '<table><thead><tr><th>Rubro</th><th>Soles (PEN)</th><th>USD</th></tr></thead><tbody>'+rows+
-    '<tr class="summary"><td>TOTAL RUBROS (neto de ingresos)</td>'+cells(total)+'</tr>'+
+    '<tr class="summary"><td>TOTAL RUBROS (incluye costos proyectados PEN y USD)</td>'+cells(total)+'</tr>'+
     '<tr><td>VENTA — venta real pagada</td><td colspan="2">Pendiente</td></tr><tr><td>UTILIDAD BRUTA</td><td colspan="2">Pendiente</td></tr><tr><td>COMISIÓN TEO</td><td colspan="2">Pendiente</td></tr><tr><td>UTILIDAD NETA</td><td colspan="2">Pendiente</td></tr></tbody></table>'+
     '<p class="muted">Los importes positivos son ingresos y los negativos son egresos. Las solicitudes vinculadas y las conciliaciones se consolidan por rubro sin sumar dos veces el mismo pago.</p>'+costosHtml(exp);
     const button=document.getElementById("saveRate");button.disabled=profile.rol!=="admin";
