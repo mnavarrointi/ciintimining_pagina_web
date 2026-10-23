@@ -356,6 +356,13 @@
             </select>
           </div>
 
+          <div id="exportacionSolicitudFields" style="display:none;grid-column:1/-1;padding:12px;border:1px solid #ddd;border-radius:8px">
+            <label>Exportación activa *</label>
+            <select id="solicitudExportacion"><option value="">Seleccionar exportación</option></select>
+            <label style="display:block;margin-top:10px">Rubro de exportación *</label>
+            <select id="solicitudRubro"><option value="">Seleccionar rubro</option><option value="1">COMPRA DE MATERIAL</option><option value="2">TRANSPORTE (LOGÍSTICA)</option><option value="3">TIQUETES</option><option value="4">VIÁTICOS</option><option value="5">ASESORÍA ADUANA (JONATHAN)</option><option value="6">COSTO DG</option><option value="7">LABORATORIO</option><option value="8">ADUANA IMPO</option><option value="9">COMISIÓN FREDY MURILLO</option><option value="10">TRANSPORTE ALFREDO</option><option value="11">TRANSPORTE TERRESTRE</option><option value="12">GASTOS BANCARIOS</option><option value="13">DIFERENCIA EN TASA</option><option value="14">OTROS</option></select>
+            <small>Esta clasificación vincula la solicitud con la operación; no genera un segundo costo bancario.</small>
+          </div>
           <div id="noOperativaSolicitudFields" style="display:none;grid-column:1/-1;padding:12px;border:1px solid #ddd;border-radius:8px">
             <label>Categoría de transferencia no operativa *</label>
             <select id="noOperativaSolicitudTipo">
@@ -1456,6 +1463,30 @@
 
     }
 
+    const EXPORT_RUBROS=["COMPRA DE MATERIAL","TRANSPORTE (LOGÍSTICA)","TIQUETES","VIÁTICOS","ASESORÍA ADUANA (JONATHAN)","COSTO DG","LABORATORIO","ADUANA IMPO","COMISIÓN FREDY MURILLO","TRANSPORTE ALFREDO","TRANSPORTE TERRESTRE","GASTOS BANCARIOS","DIFERENCIA EN TASA","OTROS"];
+    const expBox=document.getElementById("exportacionSolicitudFields");
+    const expSelect=document.getElementById("solicitudExportacion");
+    const rubroSelect=document.getElementById("solicitudRubro");
+    async function cargarExportacionesSolicitud(){
+      const {data,error}=await supabaseClient.from("exportaciones").select("id,codigo").eq("estado","EN_CURSO").order("codigo");
+      if(error)throw error;
+      expSelect.replaceChildren(new Option("Seleccionar exportación",""));
+      for(const exp of data||[])expSelect.add(new Option(exp.codigo,exp.id));
+    }
+    async function actualizarExportacionSolicitud(){
+      const active=document.getElementById("naturalezaEconomica").value==="EXPORTACION";
+      expBox.style.display=active?"block":"none";
+      expSelect.required=active;rubroSelect.required=active;
+      if(active&&expSelect.options.length===1)await cargarExportacionesSolicitud();
+    }
+    document.getElementById("naturalezaEconomica").addEventListener("change",()=>actualizarExportacionSolicitud().catch(e=>alert(e.message)));
+    function comentarioExportacion(base,naturaleza){
+      if(naturaleza!=="EXPORTACION")return base;
+      const id=expSelect.value,rubro=EXPORT_RUBROS[Number(rubroSelect.value)-1];
+      if(!id||!rubro)throw Error("Selecciona exportación activa y rubro.");
+      const codigo=expSelect.selectedOptions[0].textContent;
+      return [base,"Exportación: "+codigo,"Exportación ID: "+id,"Rubro exportación: "+rubro].filter(Boolean).join(" | ");
+    }
     function actualizarVisibilidadCategoria() {
       // Campos específicos de giros no operativos (solo salidas).
     const noOpNature=document.getElementById("naturalezaEconomica");
@@ -1597,6 +1628,12 @@
           item.naturaleza_economica === "EXTRAORDINARIO" ? "OPEX" :
           item.naturaleza_economica || "";
         actualizarVisibilidadCategoria();
+        await actualizarExportacionSolicitud();
+        const oldComment=item.comentario||"";
+        const matchId=oldComment.match(/Exportación ID: ([0-9a-f-]{36})/);
+        const matchRubro=oldComment.match(/Rubro exportación: ([^|]+)/);
+        if(matchId)expSelect.value=matchId[1];
+        if(matchRubro){const index=EXPORT_RUBROS.indexOf(matchRubro[1].trim());if(index>=0)rubroSelect.value=String(index+1);}
 
         document
           .getElementById(
@@ -1631,7 +1668,7 @@
             "comentario"
           )
           .value =
-          item.comentario || "";
+          (item.comentario || "").replace(/(?: \\| )?Exportación: AXP-\\d+ \\| Exportación ID: [0-9a-f-]{36} \\| Rubro exportación: [^|]+/g,"").trim();
 
         paymentMessage.textContent =
           "";
@@ -1985,6 +2022,7 @@
               )
               .value
               .trim() || null;
+          const comentarioFinal=comentarioExportacion(comentario,naturalezaEconomica);
 
           if (
             !empresaId ||
@@ -2046,7 +2084,7 @@
                       valor,
 
                     p_comentario:
-                      comentario
+                      comentarioFinal
                   }
                 );
 
@@ -2100,7 +2138,7 @@
               naturaleza_economica: naturalezaEconomica,
 
               comentario:
-                naturalezaEconomica==="TRANSFERENCIA_NO_OPERATIVA"?[comentario,"Categoría no operativa: "+noOpCategory,noOpLoanId?"Préstamo: "+noOpLoanId:""].filter(Boolean).join(" | "):comentario,
+                naturalezaEconomica==="TRANSFERENCIA_NO_OPERATIVA"?[comentario,"Categoría no operativa: "+noOpCategory,noOpLoanId?"Préstamo: "+noOpLoanId:""].filter(Boolean).join(" | "):comentarioFinal,
 
               updated_by:
                 usuarioActual.user_id
@@ -2194,7 +2232,7 @@
               naturaleza_economica: naturalezaEconomica,
 
               comentario:
-                naturalezaEconomica==="TRANSFERENCIA_NO_OPERATIVA"?[comentario,"Categoría no operativa: "+noOpCategory,noOpLoanId?"Préstamo: "+noOpLoanId:""].filter(Boolean).join(" | "):comentario,
+                naturalezaEconomica==="TRANSFERENCIA_NO_OPERATIVA"?[comentario,"Categoría no operativa: "+noOpCategory,noOpLoanId?"Préstamo: "+noOpLoanId:""].filter(Boolean).join(" | "):comentarioFinal,
 
               estado:
                 "BORRADOR",
