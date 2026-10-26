@@ -1433,6 +1433,30 @@
       saldosResponse.data ||
       [];
 
+    // Continuidad mensual: usar el cierre del mes anterior cuando no hay
+    // un saldo inicial explícito. Misma fuente que Balance General.
+    const cierreAnterior = new Date(Date.UTC(p.year, p.month - 1, 0))
+      .toISOString().slice(0,10);
+    const {data:balanceAnterior,error:balanceError}=await supabaseClient
+      .rpc("obtener_balance_fecha",{p_fecha:cierreAnterior});
+    if(balanceError)throw balanceError;
+    const cuentasConBase=new Set(saldosIniciales.map(x=>x.cuenta_bancaria_id));
+    for(const row of balanceAnterior||[]){
+      if(row.fuente!=="BANCO"||row.valor_original===null)continue;
+      const cuentaId=String(row.codigo||"").replace(/^BANK_/,"");
+      const cuentaUuid=cuentaId.length===32
+        ?cuentaId.replace(/^(........)(....)(....)(....)(............)$/,"$1-$2-$3-$4-$5")
+        :null;
+      if(cuentaUuid&&!cuentasConBase.has(cuentaUuid)){
+        saldosIniciales.push({
+          cuenta_bancaria_id:cuentaUuid,
+          saldo_inicial:Number(row.valor_original),
+          moneda:row.moneda
+        });
+        cuentasConBase.add(cuentaUuid);
+      }
+    }
+
 
     cuentas =
       (
