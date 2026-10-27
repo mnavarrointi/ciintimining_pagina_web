@@ -1,6 +1,6 @@
 # Devoluciones de préstamos — revisión en Desarrollo
 
-Estado: interfaz y SQL preparados. La base de datos NO fue actualizada: revisión automática bloqueó el cambio sobre el proyecto compartido inti-treasury. Requiere aprobación específica antes de ejecutar el SQL.
+Estado: estructura y funciones activadas en inti-treasury el 27/10/2026 con autorización expresa del usuario. Pantallas en Desarrollo; main sin cambios. Las pruebas de integración como rol authenticated pasaron y fueron revertidas.
 
 ## Uso
 1. Préstamos → Abrir operación.
@@ -15,7 +15,7 @@ No se configuró el total real de MLHN ni se vinculó el pago de Luis Navarro.
 - admin/tesoreria/prestamos.html: edición de condiciones, búsqueda, vinculación e historial.
 - admin/tesoreria/balance-general.html: lectura de nuevas funciones únicamente si están disponibles; contrapartidas emparejadas en Transferencias no operativas.
 - docs/prestamos/sql/devoluciones-prestamos.sql: condiciones con RLS, validación transaccional y funciones de cálculo.
-- docs/prestamos/sql/prueba-devoluciones-prestamos.sql: prueba de integración reversible que debe ejecutarse después de activar la estructura.
+- docs/prestamos/sql/prueba-devoluciones-prestamos.sql: prueba de integración parametrizada y reversible.
 
 La clasificación anterior y el cálculo de producción se mantienen disponibles. No se modificó main.
 
@@ -33,4 +33,4 @@ Cada pago aplica capital proporcional: capital original × pago / total a devolv
 - Sin crear otro movimiento de dinero.
 
 ## Verificaciones realizadas
-Sintaxis JavaScript de ambas pantallas y pruebas simuladas de apertura, configuración, búsqueda, vinculación y saldo; agrupación patrimonial con banco único, neto cero en la misma moneda y diferencia de conversión en distinta moneda. Las pruebas SQL en la base real están pendientes de aprobación/activación.
+Sintaxis JavaScript de ambas pantallas y pruebas simuladas de apertura, configuración, búsqueda, vinculación y saldo; agrupación patrimonial con banco único, neto cero en la misma moneda y diferencia de conversión en distinta moneda. Prueba SQL como rol authenticated: guardar condiciones, buscar pago existente, amortizar con fecha bancaria, conservar saldo anterior, generar dos contrapartidas, impedir duplicados, bloquear edición de condiciones después de vincular y rechazar usuarios no autorizados. Todo fue revertido. Verificación posterior: cero condiciones y cero aplicaciones guardadas; cálculo de Balance idéntico al anterior sin aplicaciones. No hay hallazgos de seguridad referidos a los objetos agregados.
