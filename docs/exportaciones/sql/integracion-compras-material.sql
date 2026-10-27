@@ -1,3 +1,5 @@
+-- Aplicado para revisión en desarrollo. No reemplaza las funciones utilizadas por main.
+-- No cambia pagos ni snapshots manuales; excluye el snapshot de Oro Sur en el cálculo integrado.
 create or replace view public.v_exportacion_compras_material
 with (security_invoker=true) as
 select i.id, i.exportacion_id, 'CONTADO'::text modalidad,
@@ -45,128 +47,66 @@ where c.modalidad='CREDITO' and c.estado='ACTIVA';
 revoke all on public.v_exportacion_compras_material from anon;
 grant select on public.v_exportacion_compras_material to authenticated;
 
-CREATE OR REPLACE FUNCTION public.obtener_balance_fecha(p_fecha date)
+
+CREATE OR REPLACE FUNCTION public.obtener_balance_fecha_integrado(p_fecha date)
  RETURNS TABLE(posicion_id uuid, codigo text, lado text, categoria text, nombre text, empresa text, moneda character, fuente text, valor_original numeric, tasa_usd numeric, valor_usd numeric, fecha_valor date, actualizado boolean)
  LANGUAGE sql
  SET search_path TO 'public', 'pg_temp'
 AS $function$
-with fx as (
- select x.moneda, case when x.moneda='USD' then 1::numeric else (select t.unidades_por_usd from public.tasas_cambio_diarias t where t.moneda=x.moneda and t.fecha<=p_fecha order by t.fecha desc limit 1) end tasa
- from (values ('COP'::char(3)),('USD'::char(3)),('PEN'::char(3))) x(moneda)
-), manuales as (
- select distinct on (bv.posicion_id) bv.posicion_id,bv.fecha_efectiva,bv.valor from public.balance_valores bv where bv.fecha_efectiva<=p_fecha order by bv.posicion_id,bv.fecha_efectiva desc
-), bancos as (
- select bp.id posicion_id,
-        case when base.saldo_inicial is null then null
-             else base.saldo_inicial + coalesce((
-               select sum(case when mb.naturaleza='CREDITO' then mb.valor else -mb.valor end)
-               from public.movimientos_bancarios mb
-               where mb.cuenta_bancaria_id=bp.cuenta_bancaria_id
-                 and mb.fecha_movimiento>=base.periodo
-                 and mb.fecha_movimiento<=p_fecha
-             ),0) end valor,
-        p_fecha fecha_valor,
-        base.saldo_inicial is not null tiene_base
- from public.balance_posiciones bp
- left join lateral (
-   select sim.periodo,sim.saldo_inicial
-   from public.saldos_iniciales_mensuales sim
-   where sim.cuenta_bancaria_id=bp.cuenta_bancaria_id
-     and sim.periodo<=date_trunc('month',p_fecha)::date
-   order by sim.periodo desc limit 1
- ) base on true
- where bp.fuente='BANCO' and bp.activo
-), amortizaciones as (
- select a.posicion_id,
-        coalesce(sum(a.valor_cop) filter(where a.tipo='RECEPCION_COP_PENDIENTE'),0) - coalesce(sum(a.valor_cop) filter(where a.tipo='MONETIZACION_DEFINITIVA'),0) cop_pendiente,
-        coalesce(sum(a.valor_usd_definitivo) filter(where a.tipo='MONETIZACION_DEFINITIVA'),0) usd_definitivo,
-        max(a.fecha) fecha_ultima
- from public.balance_amortizaciones_cxc a
- where a.fecha<=p_fecha
- group by a.posicion_id
-), transito as (
- select coalesce(sum(case when t.moneda_origen='USD' then t.valor_origen else 0 end),0)::numeric valor
- from public.transferencias_bancarias_internas t
- join public.movimientos_bancarios salida on salida.id=t.movimiento_salida_id
- left join public.movimientos_bancarios entrada on entrada.id=t.movimiento_entrada_id
- where t.estado='EMPAREJADA'
-   and salida.fecha_movimiento<=p_fecha
-   and (entrada.fecha_movimiento>p_fecha or entrada.id is null)
-), compras_material as (
+with base as (
+ select * from public.obtener_balance_fecha(p_fecha)
+), compras as (
  select moneda,sum(valor_total) valor,max(fecha_recepcion) fecha
  from public.v_exportacion_compras_material
  where fecha_recepcion<=p_fecha group by moneda
-), valores as (
- select bp.id posicion_id,
-        case
-          when bp.codigo='PAS_AJUSTE_TEMP_FALCON' and p_fecha>=date '2026-09-28' then 0::numeric
-          when bp.codigo='ACT_MONETIZACION' and p_fecha>=date '2026-09-29' then (select valor from transito)
-          when bp.codigo='ACT_ORO_'||trim(bp.moneda) and cm.moneda is not null
-            then coalesce(m.valor,0)+cm.valor
-          when bp.fuente='BANCO' then b.valor
-          when bp.moneda='USD' and a.posicion_id is not null then
-            m.valor - a.usd_definitivo - case when a.cop_pendiente>0 then a.cop_pendiente / nullif((select tasa from fx where moneda='COP'),0) else 0 end
-          else m.valor
-        end valor,
-        case
-          when bp.codigo='PAS_AJUSTE_TEMP_FALCON' and p_fecha>=date '2026-09-28' then date '2026-09-28'
-          when bp.codigo='ACT_MONETIZACION' and p_fecha>=date '2026-09-29' then p_fecha
-          when bp.codigo='ACT_ORO_'||trim(bp.moneda) and cm.moneda is not null
-            then greatest(m.fecha_efectiva,cm.fecha)
-          when bp.fuente='BANCO' then b.fecha_valor
-          else greatest(m.fecha_efectiva,coalesce(a.fecha_ultima,m.fecha_efectiva))
-        end fecha_valor,
-        case
-          when bp.codigo='PAS_AJUSTE_TEMP_FALCON' and p_fecha>=date '2026-09-28' then true
-          when bp.codigo='ACT_MONETIZACION' and p_fecha>=date '2026-09-29' then true
-          when bp.codigo='ACT_ORO_'||trim(bp.moneda) and cm.moneda is not null then true
-          when bp.fuente='BANCO' then coalesce(b.tiene_base,false)
-          else m.fecha_efectiva is not null
-        end actualizado
- from public.balance_posiciones bp
- left join compras_material cm on cm.moneda=trim(bp.moneda)
- left join manuales m on m.posicion_id=bp.id
- left join bancos b on b.posicion_id=bp.id
- left join amortizaciones a on a.posicion_id=bp.id
- where bp.activo
+), inventario as (
+ select b.*,
+   case
+     -- The legacy snapshot represented Oro Sur, now taken from confirmed purchases.
+     -- Keep the stored history untouched for main; exclude it only in the integrated calculation.
+     when b.codigo='ACT_ORO_PEN' and b.fecha_valor=date '2026-09-30'
+          and b.valor_original=190677.71 and c.moneda is not null then 0::numeric
+     else coalesce(b.valor_original,0)
+   end residual,
+   c.valor compra_valor,c.fecha compra_fecha
+ from base b
+ left join compras c on b.codigo='ACT_ORO_'||c.moneda
 )
-select * from (
-select bp.id,bp.codigo,bp.lado,bp.categoria,bp.nombre,e.nombre_corto,bp.moneda,
-       case when a.posicion_id is not null or
- (bp.codigo='ACT_ORO_'||trim(bp.moneda) and exists(
- select 1 from compras_material cm where cm.moneda=trim(bp.moneda)))
- then 'CALCULADA' else bp.fuente end,
-       v.valor,fx.tasa,
-       case when v.valor is null or fx.tasa is null then null else v.valor/fx.tasa end,
-       v.fecha_valor,v.actualizado
-from public.balance_posiciones bp
-left join public.empresas e on e.id=bp.empresa_id
-left join valores v on v.posicion_id=bp.id
-left join amortizaciones a on a.posicion_id=bp.id
-left join fx on fx.moneda=bp.moneda
-where bp.activo
+select b.posicion_id,b.codigo,b.lado,b.categoria,b.nombre,b.empresa,b.moneda,
+       case when b.compra_valor is not null then 'CALCULADA' else b.fuente end,
+       case when b.compra_valor is not null then b.residual+b.compra_valor else b.valor_original end,
+       b.tasa_usd,
+       case when b.compra_valor is not null then (b.residual+b.compra_valor)/nullif(b.tasa_usd,0) else b.valor_usd end,
+       case when b.compra_valor is not null then greatest(b.fecha_valor,b.compra_fecha) else b.fecha_valor end,
+       b.actualizado or b.compra_valor is not null
+from inventario b
 union all
 select c.id,'CREDITO_ORO_'||c.id::text,'PASIVO','CUENTAS POR PAGAR',
-       c.concepto,null::text,c.moneda::char(3),'CALCULADA',
-       c.valor_total,fx.tasa,c.valor_total/nullif(fx.tasa,0),
-       c.fecha_recepcion,true
+       coalesce(p.nombre,c.concepto)||' — '||e.codigo,null::text,
+       c.moneda::char(3),'CALCULADA',c.valor_total,
+       fx.tasa,c.valor_total/nullif(fx.tasa,0),c.fecha_recepcion,true
 from public.v_exportacion_compras_material c
-left join fx on fx.moneda=c.moneda::char(3)
-where c.modalidad='CREDITO' and c.fecha_recepcion<=p_fecha
-) resultado
-order by case when lado='ACTIVO' then 1 else 2 end,categoria,nombre;
+join public.exportaciones e on e.id=c.exportacion_id
+left join public.exportacion_compras_oro original on original.id=c.id
+left join public.beneficiarios p on p.id=original.proveedor_id
+left join lateral (
+ select case when c.moneda='USD' then 1::numeric else
+ (select t.unidades_por_usd from public.tasas_cambio_diarias t
+ where trim(t.moneda)=c.moneda and t.fecha<=p_fecha order by t.fecha desc limit 1) end tasa
+) fx on true
+where c.modalidad='CREDITO' and c.fecha_recepcion<=p_fecha;
 $function$;
 
-CREATE OR REPLACE FUNCTION public.obtener_variacion_balance_fecha(p_fecha date)
+CREATE OR REPLACE FUNCTION public.obtener_variacion_balance_fecha_integrado(p_fecha date)
  RETURNS TABLE(posicion_id uuid, codigo text, lado text, categoria text, nombre text, empresa text, moneda character, valor_anterior numeric, valor_actual numeric, cambio_moneda_original numeric, tasa_anterior numeric, tasa_actual numeric, usd_anterior numeric, usd_actual numeric, cambio_usd_movimiento numeric, cambio_usd_tasa numeric, cambio_usd_total numeric, impacto_patrimonio_usd numeric)
  LANGUAGE sql
  SET search_path TO 'public', 'pg_temp'
 AS $function$
 with anterior as (
-  select * from public.obtener_balance_fecha(p_fecha - 1)
+  select * from public.obtener_balance_fecha_integrado(p_fecha - 1)
 ),
 actual as (
-  select * from public.obtener_balance_fecha(p_fecha)
+  select * from public.obtener_balance_fecha_integrado(p_fecha)
 ),
 ids as (
   select posicion_id from anterior
@@ -239,33 +179,9 @@ from calc
 order by case when lado='ACTIVO' then 1 else 2 end,categoria,nombre;
 $function$;
 
--- Backfill confirmed cash purchases from their original bank movements.
-insert into public.exportacion_imputaciones
-(exportacion_id,rubro,origen,movimiento_bancario_id,moneda,monto,signo)
-select t.exportacion_id,'COMPRA DE MATERIAL','BANCO',b.id,trim(b.moneda),b.valor,-1
-from public.movimientos_tesoreria t
-join public.conciliaciones c on c.movimiento_tesoreria_id=t.id and c.estado='CONFIRMADA'
-join public.movimientos_bancarios b on b.id=c.movimiento_bancario_id
-join public.exportaciones e on e.id=t.exportacion_id
-where e.codigo='AXP-026' and t.rol_exportacion='COMPRA_METAL'
- and t.estado='PAGADO' and t.solicitud_item_id is null
- and b.estado_conciliacion='CONCILIADO' and b.naturaleza='DEBITO'
-on conflict (movimiento_bancario_id) do update set
- exportacion_id=excluded.exportacion_id,rubro=excluded.rubro,
- moneda=excluded.moneda,monto=excluded.monto,signo=excluded.signo;
--- Convert the replaced manual inventory snapshot to residual inventory.
--- The original amount is retained explicitly in the comment.
-update public.balance_valores v set valor=0,
- comentario='Migración a inventario derivado de compras AXP-026. Saldo manual reemplazado: PEN 190677.71; Oro Sur conciliado: PEN 190642.20. Saldo residual manual: 0.',
- fuente_referencia='MIGRACION_INVENTARIO_COMPRAS_AXP026',updated_at=now()
-from public.balance_posiciones p
-where v.posicion_id=p.id and p.codigo='ACT_ORO_PEN'
- and v.fecha_efectiva='2026-09-30' and v.valor=190677.71;
 
--- Correct the cash purchase description; the export link already points to AXP-026.
-update public.movimientos_tesoreria t set
- concepto='PAGO DE MATERIAL AXP-026 (ORO SUR DETRACCION)',updated_at=now()
-from public.exportaciones e
-where t.exportacion_id=e.id and e.codigo='AXP-026'
- and t.concepto='PAGO DE MATERIAL AXP-025 (ORO SUR DETRACCION)'
- and t.valor_original=2860 and t.moneda='PEN';
+revoke all on function public.obtener_balance_fecha_integrado(date) from PUBLIC,anon;
+grant execute on function public.obtener_balance_fecha_integrado(date) to authenticated;
+revoke all on function public.obtener_variacion_balance_fecha_integrado(date) from PUBLIC,anon;
+grant execute on function public.obtener_variacion_balance_fecha_integrado(date) to authenticated;
+NOTIFY pgrst, 'reload schema';
