@@ -1074,6 +1074,7 @@
 
 
   let variationRows = [];
+  let loanRepaymentAdjustments = [];
 
   let falconDetail = null;
 
@@ -2488,6 +2489,15 @@
   async function loadPatrimonialPeriod(date) {
     patrimonialLoadError = "";
     patrimonialMovements = [];
+    loanRepaymentAdjustments = [];
+    const {data:repayments,error:repaymentError}=await supabaseClient
+      .from("balance_valores")
+      .select("posicion_id,fuente_referencia")
+      .eq("fecha_efectiva",date)
+      .like("fuente_referencia","DEVOLUCION_PRESTAMO:%");
+    if(repaymentError){patrimonialLoadError=repaymentError.message;return;}
+    loanRepaymentAdjustments=repayments||[];
+
     // El extracto bancario es la fuente primaria; no sumar otra vez tesoreria.
     const {data:banks,error} = await supabaseClient
       .from("movimientos_bancarios")
@@ -2667,6 +2677,28 @@
     // Cierre provisional 30/09: clasificar en exportaciones la variacion
     // del oro ya registrada en Balance. No se crea otro activo ni banco.
     const periodMovements = exportPatrimonialMovements();
+    // Ajustes puntuales: la contrapartida procede de la variación real del pasivo.
+    for(const adjustment of loanRepaymentAdjustments) {
+      const bankId=adjustment.fuente_referencia.split(":")[1];
+      const bank=periodMovements.find(r=>r.id===bankId);
+      const liability=variationRows.find(r=>r.posicion_id===adjustment.posicion_id);
+      const reduction=-Number(liability?.cambio_moneda_original||0);
+      if(!bank || bank.estado_conciliacion!=="CONCILIADO" ||
+         bank.tipo_movimiento!=="DEBITO" || liability?.lado!=="PASIVO" ||
+         bank.moneda!==liability.moneda || reduction<=0 ||
+         Math.abs(reduction-Number(bank.valor_original))>0.005) continue;
+      const pairId="loan-repayment:"+bankId;
+      bank.naturaleza_patrimonial="TRANSFERENCIA_NO_OPERATIVA";
+      bank.pareja_transferencia_id=pairId;
+      periodMovements.push({
+        id:"loan-repayment-counterpart:"+bankId,pareja_transferencia_id:pairId,
+        naturaleza_patrimonial:"TRANSFERENCIA_NO_OPERATIVA",
+        moneda:liability.moneda,valor_original:reduction,tipo_movimiento:"CREDITO",
+        banco_nombre:"Pasivo · Préstamos",beneficiario_nombre:liability.nombre,
+        concepto_detalle:"Reducción del pasivo por devolución de recursos"
+      });
+    }
+
     if ($("balanceDate").value === "2026-09-30") {
       const gold = variationRows.find(r => r.codigo === "ACT_ORO_PEN");
       const value = Number(gold?.cambio_usd_movimiento || 0);
