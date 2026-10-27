@@ -13,17 +13,17 @@ const escapeHtml=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;"
   const {data:profile,error:profileError}=await supabaseClient.from("usuarios_app").select("rol,activo").eq("user_id",user.id).single();
   if(profileError||!profile?.activo||!["admin","consulta","tesoreria_pagos"].includes(profile.rol))throw Error("Acceso no autorizado.");
   create.hidden=profile.rol!=="admin";app.hidden=false;status.textContent="";
-  let exports=[];let imputaciones=[];let costos=[];let beneficiarios=[];let borradores=[];let comprasOro=[];let liquidaciones=[];
+  let exports=[];let imputaciones=[];let costos=[];let beneficiarios=[];let borradores=[];let comprasOro=[];let comprasMaterial=[];let liquidaciones=[];
   function show(exp){
     detail.hidden=false;
     const rate=Number(exp.pen_por_usd);
     const fmt=(n,c)=>n.toLocaleString(c==="PEN"?"es-PE":"en-US",{minimumFractionDigits:2,maximumFractionDigits:2})+" "+c;
     const totals=RUBROS.map(name=>{
-      const lines=imputaciones.filter(x=>x.exportacion_id===exp.id&&x.rubro===name);
+      const lines=imputaciones.filter(x=>x.exportacion_id===exp.id&&x.rubro===name&&(name!=="COMPRA DE MATERIAL"||x.origen!=="BANCO"));
       const pen=lines.filter(x=>x.moneda==="PEN").reduce((v,x)=>v+Number(x.monto)*Number(x.signo),0);
       const usd=lines.filter(x=>x.moneda==="USD").reduce((v,x)=>v+Number(x.monto)*Number(x.signo),0);
       const pending=costos.filter(c=>c.exportacion_id===exp.id&&c.rubro===name&&c.estado==="PROYECTADO");
-      const creditos=name==="COMPRA DE MATERIAL"?comprasOro.filter(c=>c.exportacion_id===exp.id&&c.modalidad==="CREDITO"&&c.estado==="ACTIVA"):[];
+      const creditos=name==="COMPRA DE MATERIAL"?comprasMaterial.filter(c=>c.exportacion_id===exp.id):[];
       const creditoPEN=creditos.filter(c=>c.moneda==="PEN").reduce((v,c)=>v+Number(c.valor_total),0);
       const creditoUSD=creditos.filter(c=>c.moneda==="USD").reduce((v,c)=>v+Number(c.valor_total),0);
       const estimatedPEN=pending.filter(c=>c.moneda==="PEN").reduce((v,c)=>v+Number(c.monto_proyectado),0);
@@ -39,7 +39,7 @@ const escapeHtml=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;"
     '<table><thead><tr><th>Rubro</th><th>Soles (PEN)</th><th>USD</th></tr></thead><tbody>'+rows+
     '<tr class="summary"><td>TOTAL RUBROS (incluye costos proyectados PEN y USD)</td>'+cells(total)+'</tr>'+
     '<tr><td>VENTA — venta real pagada</td><td colspan="2">Pendiente</td></tr><tr><td>UTILIDAD BRUTA</td><td colspan="2">Pendiente</td></tr><tr><td>COMISIÓN TEO</td><td colspan="2">Pendiente</td></tr><tr><td>UTILIDAD NETA</td><td colspan="2">Pendiente</td></tr></tbody></table>'+
-    '<p class="muted">Los importes positivos son ingresos y los negativos son egresos. Las solicitudes vinculadas y las conciliaciones se consolidan por rubro sin sumar dos veces el mismo pago.</p>'+costosHtml(exp)+comprasOroHtml(exp)+liquidacionHtml(exp);
+    '<p class="muted">Los importes positivos son ingresos y los negativos son egresos. Las solicitudes vinculadas y las conciliaciones se consolidan por rubro sin sumar dos veces el mismo pago.</p>'+materialHtml(exp)+costosHtml(exp)+comprasOroHtml(exp)+liquidacionHtml(exp);
     const button=document.getElementById("saveRate");button.disabled=profile.rol!=="admin";
     button.addEventListener("click",async()=>{
       const val=Number(document.getElementById("exportRate").value);
@@ -116,9 +116,14 @@ const escapeHtml=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;"
       (profile.rol==="admin"?'<button type="submit">Guardar liquidación</button>':'<p class="muted">Solo lectura</p>')+
       '</form><p class="muted">Este formulario solo almacena la liquidación. No afecta Balance General, bancos ni imputaciones.</p></section>';
   }
+  function materialHtml(exp){
+    const rows=comprasMaterial.filter(c=>c.exportacion_id===exp.id);
+    const amount=c=>Number(c.valor_total).toLocaleString("es-PE",{minimumFractionDigits:2,maximumFractionDigits:2})+" "+escapeHtml(c.moneda);
+    return '<section style="margin-top:24px"><h3>Compra de Material registrada</h3><table><thead><tr><th>Concepto</th><th>Modalidad</th><th>Fecha</th><th>Valor</th></tr></thead><tbody>'+rows.map(c=>'<tr><td>'+escapeHtml(c.concepto)+'</td><td>'+escapeHtml(c.modalidad)+'</td><td>'+escapeHtml(c.fecha_recepcion)+'</td><td>'+amount(c)+'</td></tr>').join("")+'</tbody></table></section>';
+  }
   function comprasOroHtml(exp){
     const proveedorOptions=beneficiarios.map(b=>'<option value="'+escapeHtml(b.id)+'">'+escapeHtml(b.nombre)+'</option>').join("");
-    return '<section style="margin-top:28px;border-top:1px solid #ddd;padding-top:18px"><h3>Compra de Material a Crédito</h3><p class="muted">Al guardar, la compra se imputa a COMPRA DE MATERIAL en esta exportación. El inventario y las cuentas por pagar se habilitarán en la siguiente etapa.</p>'+
+    return '<section style="margin-top:28px;border-top:1px solid #ddd;padding-top:18px"><h3>Compra de Material a Crédito</h3><p class="muted">Al guardar, la compra se imputa a COMPRA DE MATERIAL en esta exportación. El inventario y las cuentas por pagar se reconocen en el Balance General desde la fecha de recepción.</p>'+
       '<form id="compraOroForm" style="display:grid;gap:10px"><label>Proveedor <select required name="proveedor"><option value="">Seleccionar proveedor</option>'+proveedorOptions+'</select></label>'+
       '<label>Valor total <input type="number" min="0.01" step="0.01" required name="valor"></label>'+
       '<label>Moneda de la compra y de la deuda <select name="moneda" required><option>PEN</option><option>USD</option></select></label>'+
@@ -134,8 +139,10 @@ const escapeHtml=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;"
   async function loadGoldPurchases(){
     // La tabla se habilita mediante migracion posterior. No interrumpir exportaciones actuales.
     const {data,error}=await supabaseClient.from("exportacion_compras_oro").select("id,exportacion_id,modalidad,valor_total,moneda,estado");
-    if(error){comprasOro=[];return;}
+    if(error)throw error;
     comprasOro=data||[];
+    const {data:material,error:materialError}=await supabaseClient.from("v_exportacion_compras_material").select("exportacion_id,modalidad,moneda,valor_total,fecha_recepcion,concepto");
+    if(materialError)throw materialError;comprasMaterial=material||[];
   }
   async function loadDrafts(){const {data,error}=await supabaseClient.from("solicitud_pago_items").select("id,exportacion_id,beneficiario_id,rubro_exportacion,moneda,concepto,naturaleza_economica,estado").eq("estado","BORRADOR").not("exportacion_id","is",null);if(error)throw error;borradores=data||[];}
   async function loadCosts(){const {data,error}=await supabaseClient.from("exportacion_costos_modelo").select("id,exportacion_id,rubro,concepto,moneda,monto_proyectado,estado,solicitud_item_id,beneficiario_id");if(error)throw error;costos=data||[];}
@@ -143,7 +150,7 @@ const escapeHtml=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;"
    const {data,error}=await supabaseClient.from("exportaciones").select("id,codigo,estado,fecha_inicio,created_at,moneda_resultado,pen_por_usd").order("codigo");
    if(error)throw error;exports=data||[];
    await loadGoldPurchases();
-   const {data:rows,error:imputError}=await supabaseClient.from("exportacion_imputaciones").select("exportacion_id,rubro,moneda,monto,signo");
+   const {data:rows,error:imputError}=await supabaseClient.from("exportacion_imputaciones").select("exportacion_id,rubro,origen,moneda,monto,signo");
    if(imputError)throw imputError;imputaciones=rows||[];const {data:b,error:be}=await supabaseClient.from("beneficiarios").select("id,nombre").eq("activo",true).order("nombre");if(be)throw be;beneficiarios=b||[];await loadCosts();await loadDrafts();list.replaceChildren();
    for(const exp of exports){const btn=document.createElement("button");btn.className="tile";btn.innerHTML='<strong>'+escapeHtml(exp.codigo)+'</strong><p class="muted">Creada: '+escapeHtml(exp.created_at?.slice(0,10)||"—")+'</p><span class="muted">'+escapeHtml(exp.estado)+'</span>';btn.addEventListener("click",()=>show(exp));list.append(btn);}
    if(!exports.length)list.textContent="No hay exportaciones registradas.";
