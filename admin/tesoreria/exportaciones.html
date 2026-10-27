@@ -138,6 +138,7 @@ const escapeHtml=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;"
     cobroContext={exp,tipo,amount:Number(tipo==="ANTICIPO"?l.anticipo_usd:l.balance_usd)};
     document.getElementById("cobrosTitle").textContent="Conciliar "+tipo.toLowerCase()+" — "+exp.codigo;
     document.getElementById("cobrosAmount").textContent="Ingresos disponibles por "+cobroContext.amount.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})+" USD. Selecciona manualmente el pago de la refinería.";
+    if(tipo==="ANTICIPO")document.getElementById("cobrosAmount").textContent+=" Al vincular se reconocerá la exportación en el Balance con la fecha del ingreso: salida de inventario, cuenta por cobrar y costos por pagar. La deuda de material se conserva.";
     document.getElementById("cobrosQuery").value="";
     dialog.showModal();searchCobros();
   }
