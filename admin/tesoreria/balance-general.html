@@ -1818,7 +1818,7 @@
     } =
       await supabaseClient
         .rpc(
-          "obtener_variacion_balance_fecha",
+          "obtener_variacion_balance_fecha_integrado",
           {
             p_fecha:date
           }
@@ -2448,6 +2448,8 @@
 
   let patrimonialMovements = [];
   let patrimonialLoadError = "";
+  let exportPatrimonialParts = [];
+  let exportPatrimonialLoadError = "";
 
   const PATRIMONIAL_NATURES = {
     OPEX:"OPEX",
@@ -2627,18 +2629,44 @@
     }).concat(transitAdjustments,loanAdjustments);
   }
 
+  async function loadExportPatrimonial(date) {
+    exportPatrimonialParts=[];exportPatrimonialLoadError="";
+    try{
+      const {data,error}=await supabaseClient.rpc("obtener_partidas_exportacion_fecha",{p_fecha:date});
+      if(error)throw error;
+      exportPatrimonialParts=data||[];
+    }catch(error){exportPatrimonialLoadError=error.message||String(error);}
+  }
+
+  function exportPatrimonialMovements() {
+    const banks=new Map(exportPatrimonialParts.filter(p=>p.movimiento_bancario_id).map(p=>[p.movimiento_bancario_id,p]));
+    const rows=patrimonialMovements.map(row=>{
+      const part=banks.get(row.id);
+      return part?{...row,naturaleza_patrimonial:"EXPORTACION",exportacion_codigo:part.exportacion,concepto_detalle:part.nombre}:row;
+    });
+    const seen=new Set(rows.map(row=>row.id));
+    for(const p of exportPatrimonialParts) {
+      if(p.movimiento_bancario_id&&seen.has(p.movimiento_bancario_id))continue;
+      rows.push({
+        id:p.movimiento_bancario_id||p.id,naturaleza_patrimonial:"EXPORTACION",
+        moneda:p.moneda,valor_original:Math.abs(Number(p.valor)),
+        tipo_movimiento:Number(p.valor)>=0?"CREDITO":"DEBITO",
+        banco_nombre:p.movimiento_bancario_id?"Ingreso bancario · refinería":p.tipo==="INVENTARIO"?"Inventario · salida por exportación":p.tipo==="COSTO"?"Cuentas por pagar · costos de exportación":"Cuentas por cobrar · refinería",
+        beneficiario_nombre:p.exportacion,concepto_detalle:p.nombre,exportacion_codigo:p.exportacion
+      });
+    }
+    return rows;
+  }
+
   function renderPatrimonialPeriod() {
     const panel = $("patrimonialPeriodPanel");
     if(!panel) return;
     const fx = variationRows.reduce((sum,r)=>sum+Number(r.cambio_usd_tasa||0)*(r.lado==="PASIVO"?-1:1),0);
     const flow = variationRows.reduce((sum,r)=>sum+Number(r.cambio_usd_movimiento||0)*(r.lado==="PASIVO"?-1:1),0);
-    if(patrimonialLoadError) {
-      panel.innerHTML = `<h2>Cambio Patrimonial del Periodo</h2><p class="reconciliation-warning">No se pudieron consultar los movimientos: ${escapeHtml(patrimonialLoadError)}. No se presenta cuadre.</p>`;
-      return;
-    }
+    const loadErrors=[patrimonialLoadError,exportPatrimonialLoadError].filter(Boolean);
     // Cierre provisional 30/09: clasificar en exportaciones la variacion
     // del oro ya registrada en Balance. No se crea otro activo ni banco.
-    const periodMovements = [...patrimonialMovements];
+    const periodMovements = exportPatrimonialMovements();
     if ($("balanceDate").value === "2026-09-30") {
       const gold = variationRows.find(r => r.codigo === "ACT_ORO_PEN");
       const value = Number(gold?.cambio_usd_movimiento || 0);
@@ -2715,8 +2743,8 @@
     }
     const rows=Object.entries(PATRIMONIAL_NATURES).filter(([key])=>key!=="DIFERENCIA_CAMBIARIA");
     const operational=rows.reduce((sum,[key])=>{const g=groups.get(key);return sum+(g?g.incoming+g.outgoing+(g.fxDifference||0):0)},0);
-    const total=unconverted===0?operational+fx:null;
-    const gap=unconverted===0?flow-operational:null;
+    const total=unconverted===0&&!loadErrors.length?operational+fx:null;
+    const gap=unconverted===0&&!loadErrors.length?flow-operational:null;
     const fmt=v=>v===null?"Pendiente":signedMoney(v,"USD");
     const cells=rows.map(([key,label])=>{
       const g=groups.get(key)||{incoming:0,outgoing:0,count:0,missing:0,details:[]};
@@ -2725,7 +2753,7 @@
       for(const entry of entries) {
         const id=entry.row.pareja_transferencia_id
           ? "transfer:"+entry.row.pareja_transferencia_id
-          : "single:"+entry.row.id;
+          : entry.row.exportacion_codigo ? "export:"+entry.row.exportacion_codigo : "single:"+entry.row.id;
         if(!groupsByOperation.has(id)) groupsByOperation.set(id,[]);
         groupsByOperation.get(id).push(entry);
       }
@@ -2741,15 +2769,26 @@
         const unknown=movements.filter(x=>x.impact===null);
         const net=unknown.length?null:movements.reduce((sum,x)=>sum+x.impact,0);
         const paired=id.startsWith("transfer:")&&positives.length>0&&negatives.length>0;
-        const status=paired?(Math.abs(net||0)<0.005?"Emparejada · neto 0":"Emparejada · diferencia"):"Sin contraparte en este día";
+        const status=paired?(Math.abs(net||0)<0.005?"Emparejada · neto 0":"Emparejada · diferencia"):id.startsWith("export:")?"Reconocimiento de exportación":"Sin contraparte en este día";
         const cell=list=>list.length?list.map(renderMovement).join(""):"<span class='muted'>—</span>";
         return `<tr><td style="vertical-align:top;width:40%">${cell(positives)}</td>
           <td style="vertical-align:top;width:40%">${cell(negatives)}</td>
           <td class="number" style="vertical-align:top"><strong>${net===null?"Pendiente":fmt(net)}</strong><div class="muted" style="font-size:11px">${escapeHtml(unknown.length?"Valoración pendiente":status)}</div></td></tr>`;
       }).join("");
-      return `<tr><td><details class="patrimonial-accordion"><summary style="cursor:pointer"><strong>${escapeHtml(label)}</strong> <span class="muted">(${g.count})</span></summary></details></td><td class="number">${fmt(g.incoming)}</td><td class="number">${fmt(g.outgoing)}</td><td class="number">${g.fxDifference?fmt(g.fxDifference):"—"}</td><td class="number"><strong>${fmt(g.incoming+g.outgoing+(g.fxDifference||0))}</strong></td></tr>
-      <tr class="patrimonial-detail-container" style="display:none"><td colspan="5"><table style="width:100%"><thead><tr><th>Ingreso (+) · monto, banco, beneficiario y concepto</th><th>Egreso (−) · monto, banco, beneficiario y concepto</th><th class="number">Impacto USD</th></tr></thead><tbody>${detail||'<tr><td colspan="3">Sin movimientos asociados.</td></tr>'}</tbody></table></td></tr>`;
+      return `<tr><td><details ${key==="EXPORTACION"?"open":""} class="patrimonial-accordion"><summary style="cursor:pointer"><strong>${escapeHtml(label)}</strong> <span class="muted">(${g.count})</span></summary></details></td><td class="number">${fmt(g.incoming)}</td><td class="number">${fmt(g.outgoing)}</td><td class="number">${g.fxDifference?fmt(g.fxDifference):"—"}</td><td class="number"><strong>${fmt(g.incoming+g.outgoing+(g.fxDifference||0))}</strong></td></tr>
+      <tr class="patrimonial-detail-container" style="display:${key==="EXPORTACION"?"table-row":"none"}"><td colspan="5"><table style="width:100%"><thead><tr><th>Ingreso (+) · monto, banco, beneficiario y concepto</th><th>Egreso (−) · monto, banco, beneficiario y concepto</th><th class="number">Impacto USD</th></tr></thead><tbody>${detail||'<tr><td colspan="3">Sin movimientos asociados.</td></tr>'}</tbody></table></td></tr>`;
     }).join("");
+    const exportOperations=new Map();
+    for(const row of periodMovements.filter(r=>r.exportacion_codigo)){
+      const rate=String(row.moneda).trim()==="USD"?1:rateToUsd(String(row.moneda).trim());
+      const value=rate>0?Number(row.valor_original)/rate:null;
+      const prev=exportOperations.get(row.exportacion_codigo)||{income:0,outgoing:0,missing:false};
+      if(value===null)prev.missing=true;
+      else if(row.tipo_movimiento==="CREDITO")prev.income+=value;
+      else prev.outgoing+=value;
+      exportOperations.set(row.exportacion_codigo,prev);
+    }
+    const exportSummary=[...exportOperations].map(([code,x])=>`<p><strong>${escapeHtml(code)}</strong> · Flujo de Operación (Exportación): ingresos ${fmt(x.income)} − salidas ${fmt(x.outgoing)} = <strong>${x.missing?"Valoración pendiente":fmt(x.income-x.outgoing)}</strong>.</p>`).join("");
     panel.innerHTML=`
       <div class="variation-header"><div><div class="variation-title">Cambio Patrimonial del Periodo</div>
       <div class="muted">Naturalezas de los movimientos · ${escapeHtml(formatDate($("balanceDate").value))}</div></div>
@@ -2761,6 +2800,8 @@
       <tr><td><strong>Diferencia cambiaria por valoración</strong></td><td></td><td></td><td class="number">${fmt(fx)}</td><td class="number">${fmt(fx)}</td></tr>
       <tr><td><strong>Cambio patrimonial del período</strong></td><td></td><td></td><td class="number"><strong>${fmt(fx)}</strong></td><td class="number"><strong>${fmt(total)}</strong></td></tr>
       </tbody></table></div>
+      ${exportSummary}
+      ${loadErrors.length?`<div class="reconciliation-warning">Carga incompleta: ${loadErrors.map(escapeHtml).join("; ")}. No se presenta un cuadre total.</div>`:""}
       <p class="muted">Comparación contra cambio por flujos del Balance: ${fmt(flow)}. Diferencia sin explicar en flujos: <strong>${fmt(gap)}</strong>.</p>
       <div class="reconciliation-warning">Vista de diagnóstico en lectura, no conciliada: se incluyen movimientos bancarios del día, clasificados por categoría bancaria o conciliación confirmada, sin duplicar movimientos de tesorería. ${unconverted} registros tienen moneda, tasa o sentido bancario sin resolver. Faltan los movimientos bancarios no asociados, costos bancarios y posibles operaciones pendientes de causación. Las transferencias no se fuerzan artificialmente a cero: deben verificarse ambas contrapartes antes de aprobar el día.</div>`;
     panel.querySelectorAll(".patrimonial-accordion").forEach(node=>node.addEventListener("toggle",()=>{
@@ -2805,7 +2846,9 @@
 
       loadDailyVariation(date),
 
-      loadPatrimonialPeriod(date)
+      loadPatrimonialPeriod(date),
+
+      loadExportPatrimonial(date)
 
     ]);
 
@@ -2816,7 +2859,7 @@
     } =
       await supabaseClient
         .rpc(
-          "obtener_balance_fecha",
+          "obtener_balance_fecha_integrado",
           {
             p_fecha:date
           }
@@ -2854,40 +2897,7 @@
         );
 
 
-    // Asientos derivados de compras a credito: no se alteran snapshots historicos.
-    const {data:goldCredits,error:goldError}=await supabaseClient
-      .from("exportacion_compras_oro")
-      .select("id,exportacion_id,proveedor_id,valor_total,moneda,fecha_recepcion,estado,beneficiarios(nombre)")
-      .eq("modalidad","CREDITO")
-      .eq("estado","ACTIVA")
-      .lte("fecha_recepcion",date);
-    if(goldError)throw goldError;
-    const additions=new Map();
-    for(const c of goldCredits||[]){
-      const amount=Number(c.valor_total);
-      const key="ACT_ORO_"+c.moneda;
-      additions.set(key,(additions.get(key)||0)+amount);
-      const rate=rateToUsd(c.moneda);
-      const provider=c.beneficiarios?.nombre||"Proveedor "+c.proveedor_id;
-      balanceRows.push({
-        posicion_id:c.id,codigo:"CREDITO_ORO_"+c.id,lado:"PASIVO",
-        categoria:"CUENTAS POR PAGAR",nombre:"Material a crédito - "+provider,
-        empresa:null,moneda:c.moneda,fuente:"CALCULADA",
-        valor_original:amount,tasa_usd:rate,
-        valor_usd:rate>0?amount/rate:null,
-        fecha_valor:c.fecha_recepcion,actualizado:true,
-        metadata:{exportacion_id:c.exportacion_id,compra_oro_id:c.id,solo_lectura:true}
-      });
-    }
-    for(const [code,increment] of additions){
-      const inventory=balanceRows.find(row=>row.codigo===code);
-      if(inventory){
-        inventory.valor_original=Number(inventory.valor_original||0)+increment;
-        inventory.valor_usd=inventory.tasa_usd>0?inventory.valor_original/inventory.tasa_usd:null;
-        inventory.fuente="CALCULADA";
-        inventory.metadata={...inventory.metadata,compras_credito_incluidas:true};
-      }
-    }
+    // Inventario y pasivos de material provienen de obtener_balance_fecha.
 
     await loadFalconDetail(date);
 

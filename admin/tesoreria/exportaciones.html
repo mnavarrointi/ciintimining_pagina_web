@@ -2,7 +2,8 @@
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Exportaciones | Inti Mining</title><link rel="stylesheet" href="../../styles.css">
 <style>
 body{margin:0;background:#f5f6f8;color:#222;font-family:Arial,sans-serif}main{max-width:1100px;margin:30px auto;padding:0 20px}.card{background:white;border:1px solid #e1e4e8;border-radius:12px;padding:22px;margin:16px 0}.top{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}.tile{border:1px solid #ddd;border-radius:9px;padding:18px;cursor:pointer;text-align:left;background:white;color:#222}.tile:hover{border-color:#333}.tile strong{font-size:20px}.muted{color:#666;font-size:13px}button{padding:11px 16px;border-radius:7px;border:0;background:#20252b;color:white;cursor:pointer}button:disabled{opacity:.5}table{border-collapse:collapse;width:100%}td,th{padding:12px;border-bottom:1px solid #eee;text-align:left}td:last-child,th:last-child{text-align:right}.error{color:#ad2727}.summary{font-weight:bold;background:#f7f8fa}a{color:#222}
-</style></head><body><main><p><a href="../index.html">← Panel administrativo</a></p><div class="top"><div><h1>Exportaciones</h1><p class="muted">Seguimiento de costos, ventas y utilidad por operación AXP.</p></div><button id="create" hidden>+ Nueva exportación</button></div><p id="status">Verificando acceso…</p><section id="app" hidden><div id="list" class="grid"></div><div id="detail" class="card" hidden></div></section></main>
+#cobrosDialog{position:fixed;inset:0;margin:auto;box-sizing:border-box;width:min(960px,calc(100vw - 32px));max-height:calc(100dvh - 32px);overflow:auto;border:1px solid #ddd;border-radius:12px;padding:24px}dialog::backdrop{background:#0007}.state-ok{color:#176b37;font-weight:bold}.state-pending{color:#805400}input{max-width:100%;box-sizing:border-box;padding:8px}#cobrosResults table{min-width:650px}
+</style></head><body><main><p><a href="../index.html">← Panel administrativo</a></p><div class="top"><div><h1>Exportaciones</h1><p class="muted">Seguimiento de costos, ventas y utilidad por operación AXP.</p></div><button id="create" hidden>+ Nueva exportación</button></div><p id="status">Verificando acceso…</p><section id="app" hidden><div id="list" class="grid"></div><div id="detail" class="card" hidden></div></section></main><dialog id="cobrosDialog" aria-labelledby="cobrosTitle"><div class="top"><h3 id="cobrosTitle"></h3><button type="button" id="closeCobros">Cerrar</button></div><p id="cobrosAmount"></p><form id="searchCobros"><label>Buscar refinería, referencia o banco <input id="cobrosQuery" type="search" maxlength="150"></label> <button type="submit">Buscar</button></form><p id="cobrosStatus" role="status"></p><div id="cobrosResults" style="overflow:auto"></div></dialog>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="../../js/supabase-config.js"></script><script src="../../js/auth.js"></script><script>
 const RUBROS=["COMPRA DE MATERIAL","TRANSPORTE (LOGÍSTICA)","TIQUETES","VIÁTICOS","ASESORÍA ADUANA (JONATHAN)","COSTO DG","LABORATORIO","ADUANA IMPO","COMISIÓN FREDY MURILLO","TRANSPORTE ALFREDO","TRANSPORTE TERRESTRE","GASTOS BANCARIOS","DIFERENCIA EN TASA","OTROS"];
 const escapeHtml=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -13,17 +14,17 @@ const escapeHtml=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;"
   const {data:profile,error:profileError}=await supabaseClient.from("usuarios_app").select("rol,activo").eq("user_id",user.id).single();
   if(profileError||!profile?.activo||!["admin","consulta","tesoreria_pagos"].includes(profile.rol))throw Error("Acceso no autorizado.");
   create.hidden=profile.rol!=="admin";app.hidden=false;status.textContent="";
-  let exports=[];let imputaciones=[];let costos=[];let beneficiarios=[];let borradores=[];let comprasOro=[];
+  let exports=[];let imputaciones=[];let costos=[];let beneficiarios=[];let borradores=[];let comprasOro=[];let comprasMaterial=[];let liquidaciones=[];let cobrosRefineria=[];
   function show(exp){
     detail.hidden=false;
     const rate=Number(exp.pen_por_usd);
     const fmt=(n,c)=>n.toLocaleString(c==="PEN"?"es-PE":"en-US",{minimumFractionDigits:2,maximumFractionDigits:2})+" "+c;
     const totals=RUBROS.map(name=>{
-      const lines=imputaciones.filter(x=>x.exportacion_id===exp.id&&x.rubro===name);
+      const lines=imputaciones.filter(x=>x.exportacion_id===exp.id&&x.rubro===name&&(name!=="COMPRA DE MATERIAL"||x.origen!=="BANCO"));
       const pen=lines.filter(x=>x.moneda==="PEN").reduce((v,x)=>v+Number(x.monto)*Number(x.signo),0);
       const usd=lines.filter(x=>x.moneda==="USD").reduce((v,x)=>v+Number(x.monto)*Number(x.signo),0);
       const pending=costos.filter(c=>c.exportacion_id===exp.id&&c.rubro===name&&c.estado==="PROYECTADO");
-      const creditos=name==="COMPRA DE MATERIAL"?comprasOro.filter(c=>c.exportacion_id===exp.id&&c.modalidad==="CREDITO"&&c.estado==="ACTIVA"):[];
+      const creditos=name==="COMPRA DE MATERIAL"?comprasMaterial.filter(c=>c.exportacion_id===exp.id):[];
       const creditoPEN=creditos.filter(c=>c.moneda==="PEN").reduce((v,c)=>v+Number(c.valor_total),0);
       const creditoUSD=creditos.filter(c=>c.moneda==="USD").reduce((v,c)=>v+Number(c.valor_total),0);
       const estimatedPEN=pending.filter(c=>c.moneda==="PEN").reduce((v,c)=>v+Number(c.monto_proyectado),0);
@@ -39,7 +40,7 @@ const escapeHtml=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;"
     '<table><thead><tr><th>Rubro</th><th>Soles (PEN)</th><th>USD</th></tr></thead><tbody>'+rows+
     '<tr class="summary"><td>TOTAL RUBROS (incluye costos proyectados PEN y USD)</td>'+cells(total)+'</tr>'+
     '<tr><td>VENTA — venta real pagada</td><td colspan="2">Pendiente</td></tr><tr><td>UTILIDAD BRUTA</td><td colspan="2">Pendiente</td></tr><tr><td>COMISIÓN TEO</td><td colspan="2">Pendiente</td></tr><tr><td>UTILIDAD NETA</td><td colspan="2">Pendiente</td></tr></tbody></table>'+
-    '<p class="muted">Los importes positivos son ingresos y los negativos son egresos. Las solicitudes vinculadas y las conciliaciones se consolidan por rubro sin sumar dos veces el mismo pago.</p>'+costosHtml(exp)+comprasOroHtml(exp);
+    '<p class="muted">Los importes positivos son ingresos y los negativos son egresos. Las solicitudes vinculadas y las conciliaciones se consolidan por rubro sin sumar dos veces el mismo pago.</p>'+materialHtml(exp)+costosHtml(exp)+comprasOroHtml(exp)+liquidacionHtml(exp);
     const button=document.getElementById("saveRate");button.disabled=profile.rol!=="admin";
     button.addEventListener("click",async()=>{
       const val=Number(document.getElementById("exportRate").value);
@@ -47,6 +48,30 @@ const escapeHtml=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;"
       const {error}=await supabaseClient.from("exportaciones").update({pen_por_usd:val}).eq("id",exp.id);
       if(error){alert(error.message);return;}exp.pen_por_usd=val;show(exp);
     });
+    const liqForm=document.getElementById("liquidacionForm");
+    if(liqForm){
+      const recalc=()=>{
+        const cents=k=>Math.round((Number(liqForm.elements[k].value)||0)*100);
+        liqForm.elements["balance"].value=((cents("metal")-cents("refineria")-cents("anticipo"))/100).toFixed(2);
+      };
+      for(const k of ["metal","refineria","anticipo"])liqForm.elements[k].addEventListener("input",recalc);
+      liqForm.addEventListener("submit",async ev=>{
+        ev.preventDefault();if(profile.rol!=="admin")return;recalc();
+        const btn=liqForm.querySelector('button[type="submit"]');btn.disabled=true;
+        try{
+          const payload={exportacion_id:exp.id,fecha_liquidacion:liqForm.elements["fecha"].value,
+            valor_total_metal_usd:Number(liqForm.elements["metal"].value),
+            costo_total_refineria_usd:Number(liqForm.elements["refineria"].value),
+            anticipo_usd:Number(liqForm.elements["anticipo"].value),
+            balance_usd:Number(liqForm.elements["balance"].value)};
+          const {error}=await supabaseClient.from("exportacion_liquidaciones_refineria").upsert(payload,{onConflict:"exportacion_id"});
+          if(error)throw error;await loadLiquidaciones();show(exp);
+          document.getElementById("liquidacionGuardada")?.scrollIntoView({behavior:"smooth"});
+        }catch(error){alert("No se pudo guardar la liquidación: "+error.message);}
+        finally{btn.disabled=false;}
+      });
+    }
+    detail.querySelectorAll("[data-conciliar-cobro]").forEach(btn=>btn.addEventListener("click",()=>openCobros(exp,btn.dataset.conciliarCobro)));
     const goldForm=document.getElementById("compraOroForm");
     if(goldForm){
       goldForm.addEventListener("submit",async event=>{
@@ -59,7 +84,8 @@ const escapeHtml=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;"
         btn.disabled=true;
         const {error}=await supabaseClient.rpc("registrar_compra_oro_credito",payload);
         if(error){alert("No se pudo registrar la compra: "+error.message);btn.disabled=false;return;}
-        await loadGoldPurchases();show(exp);
+        await loadGoldPurchases();
+   const {data:liqRows,error:liqError}=await supabaseClient.from("exportacion_liquidaciones_refineria").select("*");if(liqError)throw liqError;liquidaciones=liqRows||[];show(exp);
       });
       goldForm.addEventListener("change",()=>{const d=new FormData(goldForm),receipt=String(d.get("recepcion")||""),due=String(d.get("pago")||"");const warning=goldForm.querySelector("[data-gold-warning]");if(warning)warning.textContent=receipt&&due&&due<receipt?"La fecha estimada de pago es anterior a la recepción. Verifica las fechas.":"";});
       goldForm.addEventListener("input",()=>{
@@ -79,9 +105,80 @@ const escapeHtml=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;"
   }
   const canEdit=["admin","tesoreria_pagos"].includes(profile.rol);
   function costosHtml(exp){const items=costos.filter(c=>c.exportacion_id===exp.id);const options=(arr,value,label)=>arr.map(x=>'<option value="'+escapeHtml(x[value])+'">'+escapeHtml(x[label])+'</option>').join("");return '<section style="margin-top:26px;border-top:1px solid #ddd;padding-top:18px"><h3>Costos proyectados</h3><p class="muted">Solo planeación: no genera asientos ni modifica el Balance General.</p><table><thead><tr><th>Rubro / concepto</th><th>Beneficiario</th><th>Valor</th><th>Estado</th><th></th></tr></thead><tbody>'+items.map(c=>'<tr><td>'+escapeHtml(c.rubro)+'<p class="muted">'+escapeHtml(c.concepto)+'</p></td><td>'+escapeHtml(beneficiarios.find(b=>b.id===c.beneficiario_id)?.nombre||"—")+'</td><td>'+escapeHtml(c.monto_proyectado)+' '+escapeHtml(c.moneda)+'</td><td>'+escapeHtml(c.estado)+'</td><td>'+(canEdit&&c.estado==="PROYECTADO"&&!c.solicitud_item_id?'<button data-edit-cost="'+escapeHtml(c.id)+'">Editar</button>':'')+(canEdit&&c.estado==="PROYECTADO"&&!c.solicitud_item_id?'<div style="margin-top:8px"><select id="draft-'+escapeHtml(c.id)+'"><option value="">Seleccionar pago borrador</option>'+options(borradores.filter(i=>i.exportacion_id===c.exportacion_id&&i.beneficiario_id===c.beneficiario_id&&i.rubro_exportacion===c.rubro&&String(i.moneda).trim()===c.moneda&&i.naturaleza_economica==="EXPORTACION"),"id","concepto")+'</select> <button data-link-cost="'+escapeHtml(c.id)+'">Adjudicar a solicitud</button></div>':'')+'</td></tr>').join("")+'</tbody></table>'+(canEdit&&exp.estado==="EN_CURSO"?'<form id="costForm" style="display:grid;gap:10px;margin-top:20px"><h4>Nuevo costo / editar costo</h4><input type="hidden" name="id"><label>Valor <input required name="valor" type="number" min="0.01" step="0.01"></label><label>Rubro <select name="rubro" required>'+RUBROS.map(r=>'<option>'+escapeHtml(r)+'</option>').join("")+'</select></label><label>Beneficiario <select name="beneficiario" required><option value="">Seleccionar beneficiario</option>'+options(beneficiarios,"id","nombre")+'</select></label><label>Moneda <select name="moneda"><option>PEN</option><option>USD</option><option>COP</option></select></label><label>Concepto <input name="concepto" required maxlength="300"></label><button type="submit">Guardar costo proyectado</button></form>':'')+'<p class="muted" style="margin-top:16px"><strong>Pendiente de prueba:</strong> Proceso de adjudicar costo proyectado a solicitud de pago aún debe ser probado. Requiere activar la migración de Fase 3.</p></section>';}
+
+  function liquidacionHtml(exp){
+    const l=liquidaciones.find(x=>x.exportacion_id===exp.id)||{};
+    const v=x=>l[x]??"";
+    const linked=tipo=>cobrosRefineria.find(c=>c.exportacion_id===exp.id&&c.tipo===tipo);
+    const money=value=>Number(value).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})+" USD";
+    const rows=[["ANTICIPO","Anticipo","anticipo_usd"],["BALANCE","Balance","balance_usd"]].map(([tipo,label,key])=>{
+      const c=linked(tipo),b=c?.movimientos_bancarios;
+      return '<tr><td>'+label+'</td><td>'+money(l[key])+'</td><td class="'+(c?"state-ok":"state-pending")+'">'+(c?"Conciliado":"No conciliado")+'</td><td>'+
+        (c?escapeHtml(b?.fecha_movimiento||"")+" — "+escapeHtml(b?.descripcion_original||c.movimiento_bancario_id):
+        profile.rol==="admin"&&Number(l[key])>0?'<button type="button" data-conciliar-cobro="'+tipo+'">Conciliar</button>':"—")+'</td></tr>';
+    }).join("");
+    const saved=l.exportacion_id?'<section id="liquidacionGuardada" style="margin-top:24px"><h3>Liquidación registrada — '+escapeHtml(exp.codigo)+'</h3><p>Fecha: '+escapeHtml(l.fecha_liquidacion)+'</p><p>Valor total del metal: <strong>'+money(l.valor_total_metal_usd)+'</strong> · Costo de refinería: <strong>'+money(l.costo_total_refineria_usd)+'</strong></p><table><thead><tr><th>Concepto</th><th>Valor</th><th>Estado</th><th>Ingreso vinculado / Acción</th></tr></thead><tbody>'+rows+'</tbody></table></section>':"";
+    return '<section style="margin-top:28px;border-top:1px solid #ddd;padding-top:18px"><h3>Liquidación de refinería (USD)</h3>'+
+      '<form id="liquidacionForm" style="display:grid;gap:10px">'+
+      '<label>Fecha de Liquidación <input type="date" name="fecha" required value="'+escapeHtml(v("fecha_liquidacion"))+'"></label>'+
+      '<label>Valor total del metal (USD) <input type="number" name="metal" min="0" step="0.01" required value="'+escapeHtml(v("valor_total_metal_usd"))+'"></label>'+
+      '<label>Costo total de refinería (USD) <input type="number" name="refineria" min="0" step="0.01" required value="'+escapeHtml(v("costo_total_refineria_usd"))+'"></label>'+
+      '<label>Anticipo (USD) <input type="number" name="anticipo" min="0" step="0.01" required '+(linked("ANTICIPO")?"readonly ":"")+'value="'+escapeHtml(v("anticipo_usd"))+'"></label>'+
+      '<label>Balance (USD) <input type="number" name="balance" readonly value="'+escapeHtml(v("balance_usd"))+'"></label>'+
+      (profile.rol==="admin"?'<button type="submit">'+(l.exportacion_id?"Actualizar liquidación":"Guardar liquidación")+'</button>':'<p class="muted">Solo lectura</p>')+
+      '</form>'+saved+'</section>';
+  }
+  let cobroContext=null,cobroSearchVersion=0;
+  const dialog=document.getElementById("cobrosDialog");
+  document.getElementById("closeCobros").addEventListener("click",()=>dialog.close());
+  dialog.addEventListener("close",()=>{cobroContext=null;++cobroSearchVersion;});
+  document.getElementById("searchCobros").addEventListener("submit",ev=>{ev.preventDefault();searchCobros();});
+  function openCobros(exp,tipo){
+    const l=liquidaciones.find(x=>x.exportacion_id===exp.id);if(!l)return;
+    cobroContext={exp,tipo,amount:Number(tipo==="ANTICIPO"?l.anticipo_usd:l.balance_usd)};
+    document.getElementById("cobrosTitle").textContent="Conciliar "+tipo.toLowerCase()+" — "+exp.codigo;
+    document.getElementById("cobrosAmount").textContent="Ingresos disponibles por "+cobroContext.amount.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})+" USD. Selecciona manualmente el pago de la refinería.";
+    if(tipo==="ANTICIPO")document.getElementById("cobrosAmount").textContent+=" Al vincular se reconocerá la exportación en el Balance con la fecha del ingreso: salida de inventario, cuenta por cobrar y costos por pagar. La deuda de material se conserva.";
+    document.getElementById("cobrosQuery").value="";
+    dialog.showModal();searchCobros();
+  }
+  async function searchCobros(){
+    if(!cobroContext)return;
+    const ctx=cobroContext,version=++cobroSearchVersion;
+    const status=document.getElementById("cobrosStatus"),results=document.getElementById("cobrosResults");
+    status.textContent="Buscando ingresos…";results.replaceChildren();
+    try{
+      const {data,error}=await supabaseClient.rpc("buscar_cobros_refineria",{p_exportacion_id:ctx.exp.id,p_tipo:ctx.tipo,p_busqueda:document.getElementById("cobrosQuery").value.trim()});
+      if(error)throw error;if(version!==cobroSearchVersion||cobroContext!==ctx)return;
+      const rows=data||[];status.textContent=rows.length?rows.length+" ingreso(s) disponible(s) con el mismo valor en USD.":"No hay ingresos disponibles que coincidan con el valor y la búsqueda.";
+      if(!rows.length)return;
+      results.innerHTML='<table><thead><tr><th>Fecha</th><th>Banco / cuenta</th><th>Descripción / referencia</th><th>USD</th><th></th></tr></thead><tbody>'+rows.map(b=>'<tr><td>'+escapeHtml(b.fecha_movimiento)+'</td><td>'+escapeHtml(b.banco||"")+" / "+escapeHtml(b.nombre_cuenta||"")+'</td><td>'+escapeHtml(b.descripcion_original)+'<p class="muted">'+escapeHtml(b.referencia||"")+'</p></td><td>'+Number(b.valor).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})+'</td><td><button type="button" data-link-cobro="'+escapeHtml(b.id)+'">Vincular</button></td></tr>').join("")+'</tbody></table>';
+      results.querySelectorAll("[data-link-cobro]").forEach(btn=>btn.addEventListener("click",async()=>{
+        results.querySelectorAll("button").forEach(x=>x.disabled=true);status.textContent="Guardando vínculo…";
+        try{
+          const {error}=await supabaseClient.rpc("conciliar_cobro_refineria",{p_exportacion_id:ctx.exp.id,p_tipo:ctx.tipo,p_movimiento_bancario_id:btn.dataset.linkCobro});
+          if(error)throw error;await loadLiquidaciones();dialog.close();show(ctx.exp);
+          document.getElementById("liquidacionGuardada")?.scrollIntoView({behavior:"smooth"});
+        }catch(error){status.textContent=error.message;results.querySelectorAll("button").forEach(x=>x.disabled=false);}
+      }));
+    }catch(error){if(version===cobroSearchVersion)status.textContent=error.message;}
+  }
+  async function loadLiquidaciones(){
+    const [l,c]=await Promise.all([
+      supabaseClient.from("exportacion_liquidaciones_refineria").select("*"),
+      supabaseClient.from("exportacion_cobros_refineria").select("id,exportacion_id,tipo,movimiento_bancario_id,monto_usd,created_at,movimientos_bancarios(fecha_movimiento,descripcion_original,valor)")
+    ]);
+    if(l.error)throw l.error;if(c.error)throw c.error;
+    liquidaciones=l.data||[];cobrosRefineria=c.data||[];
+  }
+  function materialHtml(exp){
+    const rows=comprasMaterial.filter(c=>c.exportacion_id===exp.id);
+    const amount=c=>Number(c.valor_total).toLocaleString("es-PE",{minimumFractionDigits:2,maximumFractionDigits:2})+" "+escapeHtml(c.moneda);
+    return '<section style="margin-top:24px"><h3>Compra de Material registrada</h3><table><thead><tr><th>Concepto</th><th>Modalidad</th><th>Fecha</th><th>Valor</th></tr></thead><tbody>'+rows.map(c=>'<tr><td>'+escapeHtml(c.concepto)+'</td><td>'+escapeHtml(c.modalidad)+'</td><td>'+escapeHtml(c.fecha_recepcion)+'</td><td>'+amount(c)+'</td></tr>').join("")+'</tbody></table></section>';
+  }
   function comprasOroHtml(exp){
     const proveedorOptions=beneficiarios.map(b=>'<option value="'+escapeHtml(b.id)+'">'+escapeHtml(b.nombre)+'</option>').join("");
-    return '<section style="margin-top:28px;border-top:1px solid #ddd;padding-top:18px"><h3>Compra de Material a Crédito</h3><p class="muted">Al guardar, la compra se imputa a COMPRA DE MATERIAL en esta exportación. El inventario y las cuentas por pagar se habilitarán en la siguiente etapa.</p>'+
+    return '<section style="margin-top:28px;border-top:1px solid #ddd;padding-top:18px"><h3>Compra de Material a Crédito</h3><p class="muted">Al guardar, la compra se imputa a COMPRA DE MATERIAL en esta exportación. El inventario y las cuentas por pagar se reconocen en el Balance General desde la fecha de recepción.</p>'+
       '<form id="compraOroForm" style="display:grid;gap:10px"><label>Proveedor <select required name="proveedor"><option value="">Seleccionar proveedor</option>'+proveedorOptions+'</select></label>'+
       '<label>Valor total <input type="number" min="0.01" step="0.01" required name="valor"></label>'+
       '<label>Moneda de la compra y de la deuda <select name="moneda" required><option>PEN</option><option>USD</option></select></label>'+
@@ -97,8 +194,10 @@ const escapeHtml=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;"
   async function loadGoldPurchases(){
     // La tabla se habilita mediante migracion posterior. No interrumpir exportaciones actuales.
     const {data,error}=await supabaseClient.from("exportacion_compras_oro").select("id,exportacion_id,modalidad,valor_total,moneda,estado");
-    if(error){comprasOro=[];return;}
+    if(error)throw error;
     comprasOro=data||[];
+    const {data:material,error:materialError}=await supabaseClient.from("v_exportacion_compras_material").select("exportacion_id,modalidad,moneda,valor_total,fecha_recepcion,concepto");
+    if(materialError)throw materialError;comprasMaterial=material||[];
   }
   async function loadDrafts(){const {data,error}=await supabaseClient.from("solicitud_pago_items").select("id,exportacion_id,beneficiario_id,rubro_exportacion,moneda,concepto,naturaleza_economica,estado").eq("estado","BORRADOR").not("exportacion_id","is",null);if(error)throw error;borradores=data||[];}
   async function loadCosts(){const {data,error}=await supabaseClient.from("exportacion_costos_modelo").select("id,exportacion_id,rubro,concepto,moneda,monto_proyectado,estado,solicitud_item_id,beneficiario_id");if(error)throw error;costos=data||[];}
@@ -106,7 +205,8 @@ const escapeHtml=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;"
    const {data,error}=await supabaseClient.from("exportaciones").select("id,codigo,estado,fecha_inicio,created_at,moneda_resultado,pen_por_usd").order("codigo");
    if(error)throw error;exports=data||[];
    await loadGoldPurchases();
-   const {data:rows,error:imputError}=await supabaseClient.from("exportacion_imputaciones").select("exportacion_id,rubro,moneda,monto,signo");
+   await loadLiquidaciones();
+   const {data:rows,error:imputError}=await supabaseClient.from("exportacion_imputaciones").select("exportacion_id,rubro,origen,moneda,monto,signo");
    if(imputError)throw imputError;imputaciones=rows||[];const {data:b,error:be}=await supabaseClient.from("beneficiarios").select("id,nombre").eq("activo",true).order("nombre");if(be)throw be;beneficiarios=b||[];await loadCosts();await loadDrafts();list.replaceChildren();
    for(const exp of exports){const btn=document.createElement("button");btn.className="tile";btn.innerHTML='<strong>'+escapeHtml(exp.codigo)+'</strong><p class="muted">Creada: '+escapeHtml(exp.created_at?.slice(0,10)||"—")+'</p><span class="muted">'+escapeHtml(exp.estado)+'</span>';btn.addEventListener("click",()=>show(exp));list.append(btn);}
    if(!exports.length)list.textContent="No hay exportaciones registradas.";
