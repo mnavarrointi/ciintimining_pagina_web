@@ -24,7 +24,7 @@ begin
  select * into strict p from prestamos_grupo where id=new.prestamo_id;
  select * into strict bp from balance_posiciones where id=new.posicion_id and activo
  and metadata->>'prestamo_id'=p.id::text;
- if trim(bp.moneda)<>p.moneda or bp.lado<>case when p.tipo='POR_PAGAR' then 'PASIVO' else 'ACTIVO' end then
+ if trim(bp.moneda)<>p.moneda or bp.lado<>(case when p.tipo='POR_PAGAR' then 'PASIVO' else 'ACTIVO' end) then
  raise exception 'La posición del Balance no corresponde al préstamo.'; end if;
  if exists(select 1 from prestamos_aplicaciones where prestamo_id=p.id) then
  raise exception 'El total y la moneda quedan fijos desde el primer pago vinculado.'; end if;
