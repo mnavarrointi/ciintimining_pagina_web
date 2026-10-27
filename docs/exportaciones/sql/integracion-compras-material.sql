@@ -17,6 +17,25 @@ where i.origen='BANCO' and i.rubro='COMPRA DE MATERIAL' and i.signo=-1
              where c.movimiento_bancario_id=b.id and c.estado='CONFIRMADA'
                and t.estado not in ('ANULADO','CANCELADO'))
 union all
+-- Legacy AXP-026 cash purchases already confirmed before structured rubro assignment.
+-- Once backfilled, the imputacion branch above takes over without duplicating the bank movement.
+select b.id,t.exportacion_id,'CONTADO'::text,b.id,b.fecha_movimiento,
+       trim(b.moneda)::text,b.valor,
+       replace(t.concepto,'AXP-025 (ORO SUR DETRACCION)','AXP-026 (ORO SUR DETRACCION)')::text
+from public.movimientos_bancarios b
+join lateral (
+ select mt.* from public.conciliaciones cr
+ join public.movimientos_tesoreria mt on mt.id=cr.movimiento_tesoreria_id
+ join public.exportaciones e on e.id=mt.exportacion_id
+ where cr.movimiento_bancario_id=b.id and cr.estado='CONFIRMADA'
+   and mt.estado='PAGADO' and mt.rol_exportacion='COMPRA_METAL'
+   and mt.solicitud_item_id is null and e.codigo='AXP-026'
+ order by cr.created_at desc limit 1
+) t on true
+where b.naturaleza='DEBITO' and b.estado_conciliacion='CONCILIADO'
+ and trim(b.moneda) in ('PEN','USD')
+ and not exists(select 1 from public.exportacion_imputaciones i where i.movimiento_bancario_id=b.id)
+union all
 select c.id,c.exportacion_id,'CREDITO'::text,c.id,c.fecha_recepcion,
        trim(c.moneda)::text,c.valor_total,
        ('Material a crédito - '||coalesce(b.nombre,'Proveedor'))::text
@@ -30,7 +49,7 @@ CREATE OR REPLACE FUNCTION public.obtener_balance_fecha(p_fecha date)
  RETURNS TABLE(posicion_id uuid, codigo text, lado text, categoria text, nombre text, empresa text, moneda character, fuente text, valor_original numeric, tasa_usd numeric, valor_usd numeric, fecha_valor date, actualizado boolean)
  LANGUAGE sql
  SET search_path TO 'public', 'pg_temp'
-AS $function$;
+AS $function$
 with fx as (
  select x.moneda, case when x.moneda='USD' then 1::numeric else (select t.unidades_por_usd from public.tasas_cambio_diarias t where t.moneda=x.moneda and t.fecha<=p_fecha order by t.fecha desc limit 1) end tasa
  from (values ('COP'::char(3)),('USD'::char(3)),('PEN'::char(3))) x(moneda)
@@ -142,7 +161,7 @@ CREATE OR REPLACE FUNCTION public.obtener_variacion_balance_fecha(p_fecha date)
  RETURNS TABLE(posicion_id uuid, codigo text, lado text, categoria text, nombre text, empresa text, moneda character, valor_anterior numeric, valor_actual numeric, cambio_moneda_original numeric, tasa_anterior numeric, tasa_actual numeric, usd_anterior numeric, usd_actual numeric, cambio_usd_movimiento numeric, cambio_usd_tasa numeric, cambio_usd_total numeric, impacto_patrimonio_usd numeric)
  LANGUAGE sql
  SET search_path TO 'public', 'pg_temp'
-AS $function$;
+AS $function$
 with anterior as (
   select * from public.obtener_balance_fecha(p_fecha - 1)
 ),
