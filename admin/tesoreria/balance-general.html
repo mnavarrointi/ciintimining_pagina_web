@@ -1074,6 +1074,9 @@
 
 
   let variationRows = [];
+  let loanApplicationParts = [];
+  let loanApplicationsEnabled = false;
+  let loanApplicationsError = "";
   let loanRepaymentAdjustments = [];
 
   let falconDetail = null;
@@ -2648,6 +2651,36 @@
     }catch(error){exportPatrimonialLoadError=error.message||String(error);}
   }
 
+  async function loadLoanApplications(date) {
+    loanApplicationParts=[];loanApplicationsEnabled=false;loanApplicationsError="";
+    const {data,error}=await supabaseClient.rpc("obtener_partidas_prestamos_fecha",{p_fecha:date});
+    if(error){
+      if(error.code==="PGRST202"||error.code==="42883")return;
+      loanApplicationsError=error.message;return;
+    }
+    loanApplicationsEnabled=true;loanApplicationParts=data||[];
+  }
+
+  function applyLoanApplications(rows) {
+    const bankParts=new Map(loanApplicationParts.filter(p=>p.movimiento_bancario_id).map(p=>[p.movimiento_bancario_id,p]));
+    const result=rows.map(row=>{
+      const part=bankParts.get(row.id);
+      return part?{...row,naturaleza_patrimonial:"TRANSFERENCIA_NO_OPERATIVA",
+        pareja_transferencia_id:part.pareja_id,concepto_detalle:part.nombre}:row;
+    });
+    const seen=new Set(result.map(r=>r.id));
+    for(const p of loanApplicationParts){
+      const id=p.movimiento_bancario_id||p.id;if(seen.has(id))continue;
+      result.push({id,naturaleza_patrimonial:"TRANSFERENCIA_NO_OPERATIVA",
+        pareja_transferencia_id:p.pareja_id,moneda:p.moneda,valor_original:Math.abs(Number(p.valor)),
+        tipo_movimiento:Number(p.valor)>0?"CREDITO":"DEBITO",
+        banco_nombre:p.tipo==="BANCO"?"Pago bancario vinculado":"Balance · Préstamos",
+        beneficiario_nombre:p.tercero,concepto_detalle:p.nombre});
+      seen.add(id);
+    }
+    return result;
+  }
+
   function exportPatrimonialMovements() {
     const isSettlement=p=>p.tipo==="BANCO_BALANCE"||p.tipo==="CANCELA_CXC";
     const attributes=p=>isSettlement(p)?{
@@ -2684,10 +2717,10 @@
     if(!panel) return;
     const fx = variationRows.reduce((sum,r)=>sum+Number(r.cambio_usd_tasa||0)*(r.lado==="PASIVO"?-1:1),0);
     const flow = variationRows.reduce((sum,r)=>sum+Number(r.cambio_usd_movimiento||0)*(r.lado==="PASIVO"?-1:1),0);
-    const loadErrors=[patrimonialLoadError,exportPatrimonialLoadError].filter(Boolean);
+    const loadErrors=[patrimonialLoadError,exportPatrimonialLoadError,loanApplicationsError].filter(Boolean);
     // Cierre provisional 30/09: clasificar en exportaciones la variacion
     // del oro ya registrada en Balance. No se crea otro activo ni banco.
-    const periodMovements = exportPatrimonialMovements();
+    const periodMovements = applyLoanApplications(exportPatrimonialMovements());
     // Ajustes puntuales: la contrapartida procede de la variación real del pasivo.
     for(const adjustment of loanRepaymentAdjustments) {
       const bankId=adjustment.fuente_referencia.split(":")[1];
@@ -2782,6 +2815,22 @@
           if(net>0) transfers.incoming-=net;
           else transfers.outgoing-=net;
         }
+      }
+    }
+    const nonOperating=groups.get("TRANSFERENCIA_NO_OPERATIVA");
+    if(nonOperating){
+      const pairs=new Map();nonOperating.fxDifference=0;
+      for(const entry of nonOperating.details){
+        const id=entry.row.pareja_transferencia_id;
+        if(!id?.startsWith("prestamo-aplicacion:")||entry.impact===null)continue;
+        if(!pairs.has(id))pairs.set(id,[]);pairs.get(id).push(entry);
+      }
+      for(const entries of pairs.values()){
+        if(!entries.some(x=>x.impact>0)||!entries.some(x=>x.impact<0))continue;
+        if(new Set(entries.map(x=>x.row.moneda)).size<2)continue;
+        const net=entries.reduce((sum,x)=>sum+x.impact,0);
+        nonOperating.fxDifference+=net;
+        if(net>0)nonOperating.incoming-=net;else nonOperating.outgoing-=net;
       }
     }
     const rows=Object.entries(PATRIMONIAL_NATURES).filter(([key])=>key!=="DIFERENCIA_CAMBIARIA");
@@ -2891,10 +2940,18 @@
 
       loadPatrimonialPeriod(date),
 
-      loadExportPatrimonial(date)
+      loadExportPatrimonial(date),
+
+      loadLoanApplications(date)
 
     ]);
 
+
+    if(loanApplicationsEnabled){
+      const {data:variation,error:variationError}=await supabaseClient.rpc("obtener_variacion_balance_fecha_prestamos",{p_fecha:date});
+      if(variationError)throw variationError;
+      variationRows=(variation||[]).filter(row=>Math.abs(Number(row.cambio_usd_total||0))>0.000001);
+    }
 
     const {
       data,
@@ -2902,7 +2959,7 @@
     } =
       await supabaseClient
         .rpc(
-          "obtener_balance_fecha_integrado",
+          loanApplicationsEnabled ? "obtener_balance_fecha_prestamos" : "obtener_balance_fecha_integrado",
           {
             p_fecha:date
           }
