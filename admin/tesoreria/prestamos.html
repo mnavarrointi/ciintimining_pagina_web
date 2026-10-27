@@ -1,23 +1,63 @@
 <!doctype html>
-<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Préstamos | Inti Mining</title><link rel="stylesheet" href="../../styles.css"><style>body{font-family:Arial,sans-serif;background:#f5f6f8;color:#222;margin:0}main{max-width:1100px;margin:28px auto;padding:0 18px}.card{background:#fff;border:1px solid #ddd;border-radius:12px;padding:22px;margin:16px 0}input,select,button{padding:10px;border-radius:6px;border:1px solid #ccc}button{background:#222;color:white;cursor:pointer}button:disabled{opacity:.5}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}label{display:grid;gap:5px;font-size:13px}table{width:100%;border-collapse:collapse}td,th{text-align:left;padding:11px;border-bottom:1px solid #eee}small{color:#666}.error{color:#a22}a{color:#333}</style></head><body><main><p><a href="../index.html">← Panel administrativo</a></p><h1>Préstamos frente a terceros</h1><p>Registro simplificado de préstamos por cobrar y por pagar. Los nuevos préstamos y sus devoluciones se originarán en conciliaciones bancarias confirmadas.</p><div id="status">Verificando acceso…</div><section id="app" hidden><div class="card"><h2>Préstamos registrados</h2><div id="list">Cargando…</div></div></section></main><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="../../js/supabase-config.js"></script><script src="../../js/auth.js"></script><script>
-(async function(){
-const status=document.getElementById('status'),app=document.getElementById('app');let loans=[];
-try{
- const {data:{user},error:authError}=await supabaseClient.auth.getUser();if(authError||!user)throw Error('Inicia sesión desde el panel.');
- const {data:profile,error:profileError}=await supabaseClient.from('usuarios_app').select('rol,activo').eq('user_id',user.id).single();
- if(profileError||!profile?.activo||!['admin','consulta'].includes(profile.rol))throw Error('Acceso no autorizado.');
- app.hidden=false;status.textContent='';
- async function load(){
- const [a,b]=await Promise.all([supabaseClient.from('prestamos_grupo').select('*').order('created_at',{ascending:false}),supabaseClient.from('prestamos_aplicaciones').select('prestamo_id,valor_capital,fecha,moneda_pago,valor_pagado,nota').order('fecha',{ascending:false})]);
- if(a.error)throw a.error;if(b.error)throw b.error;
- loans=a.data.map(p=>({...p,aplicaciones:b.data.filter(x=>x.prestamo_id===p.id)}));
- const list=document.getElementById('list');list.replaceChildren();
- if(!loans.length){list.textContent='No hay préstamos registrados. Puedes crear el primero después de verificar la operación.';return;}
- const table=document.createElement('table'),head=document.createElement('tr');for(const h of ['Beneficiario','Tipo','Monto original','Fecha','Moneda','Saldo pendiente']){const th=document.createElement('th');th.textContent=h;head.append(th);}table.append(head);
- for(const p of loans){const saldo=p.capital_inicial-p.aplicaciones.reduce((s,a)=>s+Number(a.valor_capital),0),tr=document.createElement('tr');for(const value of [p.tercero,p.tipo==='POR_PAGAR'?'Por pagar':'Por cobrar',Number(p.capital_inicial).toLocaleString('es-CO'),p.fecha_inicio,p.moneda,saldo.toLocaleString('es-CO')]){const td=document.createElement('td');td.textContent=value;tr.append(td);}table.append(tr);}
- list.append(table);
- }
- await load();
-}catch(err){status.textContent=err.message;status.className='error';}
-})();
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Préstamos | Inti Mining</title><link rel="stylesheet" href="../../styles.css">
+<style>body{font-family:Arial,sans-serif;background:#f5f6f8;color:#222;margin:0}main{max-width:1200px;margin:28px auto;padding:0 18px}.card{background:white;border:1px solid #ddd;border-radius:12px;padding:22px;margin:16px 0}input,select,button{padding:10px;border-radius:6px;border:1px solid #ccc;font:inherit}button{background:#222;color:white;cursor:pointer}button:disabled{opacity:.5;cursor:default}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}label{display:grid;gap:5px;font-size:13px}table{width:100%;border-collapse:collapse}td,th{text-align:left;padding:11px;border-bottom:1px solid #eee;vertical-align:top}small,.muted{color:#666}.error{color:#a22}a{color:#333}.scroll{overflow:auto}dialog{border:0;border-radius:12px;padding:24px;width:min(1000px,90vw);max-height:85vh;overflow:auto;margin:auto}dialog::backdrop{background:#0007}.heading{display:flex;justify-content:space-between;align-items:center;gap:15px}.metrics{background:#f4f6f8;border-radius:8px;padding:14px;margin:16px 0}.notice{background:#fff4d6;padding:12px;border-radius:8px}.secondary{background:#eee;color:#222}</style></head>
+<body><main><p><a href="../index.html">← Panel administrativo</a></p><h1>Préstamos frente a terceros</h1><p>Configura el total a devolver y vincula pagos bancarios ya conciliados. La fecha de cada pago determina la reducción en el Balance.</p><div id="status" role="status">Verificando acceso…</div><section id="app" hidden><div class="card"><h2>Operaciones</h2><div id="list" class="scroll"></div></div></section></main>
+<dialog id="operation"><div class="heading"><h2 id="loanTitle"></h2><button id="close" class="secondary">Cerrar</button></div><div id="operationStatus" role="status"></div><div id="operationBody"></div></dialog>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="../../js/supabase-config.js"></script><script src="../../js/auth.js"></script><script>
+const $=id=>document.getElementById(id);
+const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const money=(n,c)=>Number(n).toLocaleString("es-CO",{minimumFractionDigits:2,maximumFractionDigits:2})+" "+c;
+let loans=[],conditions=[],applications=[],activeId=null,isAdmin=false,enabled=false,searchVersion=0;
+const paid=id=>applications.filter(a=>a.prestamo_id===id).reduce((s,a)=>s+Number(a.valor_pagado),0);
+const capitalPaid=id=>applications.filter(a=>a.prestamo_id===id).reduce((s,a)=>s+Number(a.valor_capital),0);
+const condition=id=>conditions.find(c=>c.prestamo_id===id);
+function errorAt(id,e){$(id).textContent=e.message||String(e);$(id).className="error";}
+async function load(){
+ const results=await Promise.all([
+ supabaseClient.from("prestamos_grupo").select("*").order("created_at",{ascending:false}),
+ supabaseClient.from("prestamos_aplicaciones").select("*,movimientos_bancarios(fecha_movimiento,descripcion_original,referencia)").order("fecha",{ascending:false}),
+ supabaseClient.from("prestamos_devolucion_condiciones").select("*")]);
+ for(const r of results.slice(0,2))if(r.error)throw r.error;
+ loans=results[0].data||[];applications=results[1].data||[];enabled=!results[2].error;conditions=results[2].data||[];
+ $("status").className=enabled?"":"notice";
+ $("status").textContent=enabled?"":"La vinculación de pagos está pendiente de activación. Los préstamos existentes siguen disponibles para consulta.";
+ $("list").innerHTML=loans.length?'<table><thead><tr><th>Tercero</th><th>Tipo</th><th>Capital pendiente</th><th>Total a devolver</th><th>Pagos vinculados</th><th>Saldo pendiente</th><th></th></tr></thead><tbody>'+loans.map(p=>{
+ const d=condition(p.id),remaining=Number(p.capital_inicial)-capitalPaid(p.id);
+ return '<tr><td>'+esc(p.tercero)+'</td><td>'+(p.tipo==="POR_PAGAR"?"Por pagar":"Por cobrar")+'</td><td>'+esc(money(remaining,p.moneda))+'</td><td>'+(d?esc(money(d.total_devolver,d.moneda)):"Sin configurar")+'</td><td>'+(d?esc(money(paid(p.id),d.moneda)):"—")+'</td><td>'+(d?esc(money(Number(d.total_devolver)-paid(p.id),d.moneda)):"—")+'</td><td><button data-open="'+esc(p.id)+'">Abrir operación</button></td></tr>';
+ }).join("")+'</tbody></table>':"No hay préstamos registrados.";
+ document.querySelectorAll("[data-open]").forEach(b=>b.onclick=()=>openLoan(b.dataset.open));
+}
+function openLoan(id){
+ activeId=id;searchVersion++;$("operationStatus").textContent="";$("operationStatus").className="";
+ const p=loans.find(x=>x.id===id),d=condition(id),history=applications.filter(a=>a.prestamo_id===id),locked=history.length>0;
+ $("loanTitle").textContent=p.tercero;
+ $("operationBody").innerHTML='<p>Capital original: <strong>'+esc(money(p.capital_inicial,p.moneda))+'</strong> · '+esc(p.fecha_inicio)+'</p>'+
+ (!enabled?'<p class="notice">Pendiente de activar la vinculación en la base de datos.</p>':'<form id="termsForm"><div class="grid"><label>Total a devolver<input id="returnTotal" type="number" min="0.01" step="0.01" required value="'+(d?esc(d.total_devolver):"")+'" '+(!isAdmin||locked?"disabled":"")+'></label><label>Moneda<select id="returnCurrency" '+(!isAdmin||locked?"disabled":"")+'>'+["COP","USD","PEN"].map(c=>'<option '+(c===(d?.moneda||p.moneda)?"selected":"")+'>'+c+'</option>').join("")+'</select></label></div><p class="muted">Si la moneda cambia, los pagos cancelan proporcionalmente el capital original. El total y la moneda quedan fijos después del primer pago.</p>'+(isAdmin&&!locked?'<button id="saveTerms">Guardar total y moneda</button>':"")+'</form>')+
+ (d?'<div class="metrics"><div>Total: <strong>'+esc(money(d.total_devolver,d.moneda))+'</strong></div><div>Vinculado: '+esc(money(paid(id),d.moneda))+'</div><div>Saldo pendiente: <strong>'+esc(money(Number(d.total_devolver)-paid(id),d.moneda))+'</strong></div><div>Capital pendiente: '+esc(money(Number(p.capital_inicial)-capitalPaid(id),p.moneda))+'</div></div>':"")+
+ '<h3>Pagos vinculados</h3><div class="scroll">'+(history.length?'<table><thead><tr><th>Fecha efectiva</th><th>Pago</th><th>Capital cancelado</th><th>Movimiento bancario</th></tr></thead><tbody>'+history.map(a=>'<tr><td>'+esc(a.fecha)+'</td><td>'+esc(money(a.valor_pagado,a.moneda_pago))+'</td><td>'+esc(money(a.valor_capital,p.moneda))+'</td><td>'+esc(a.movimientos_bancarios?.descripcion_original||a.movimiento_bancario_id)+'</td></tr>').join("")+'</tbody></table>':"Aún no hay pagos vinculados.")+'</div>'+
+ (d&&isAdmin&&Number(d.total_devolver)-paid(id)>0?'<h3>Vincular pago bancario</h3><p>Se muestran pagos conciliados, de la misma moneda y disponibles. Verifica el beneficiario antes de vincular.</p><form id="searchForm"><div class="grid"><label>Buscar por concepto, banco o referencia<input id="paymentSearch" type="search"></label><button id="searchPayments">Buscar pagos</button></div></form><div id="candidates" class="scroll"></div>':"");
+ if(!$("operation").open)$("operation").showModal();
+ const form=$("termsForm");if(form)form.onsubmit=async e=>{e.preventDefault();const btn=$("saveTerms");if(!btn)return;btn.disabled=true;try{
+ const {error}=await supabaseClient.rpc("guardar_condiciones_prestamo",{p_prestamo_id:id,p_total:Number($("returnTotal").value),p_moneda:$("returnCurrency").value});if(error)throw error;
+ await load();if(activeId===id)openLoan(id);
+ }catch(err){errorAt("operationStatus",err);}finally{if(btn.isConnected)btn.disabled=false;}};
+ const search=$("searchForm");if(search){search.onsubmit=e=>{e.preventDefault();findPayments(id);};findPayments(id);}
+}
+async function findPayments(id){
+ const seq=++searchVersion,q=$("paymentSearch")?.value||"";const box=$("candidates");if(!box)return;box.textContent="Buscando…";
+ try{const {data,error}=await supabaseClient.rpc("buscar_pagos_prestamo",{p_prestamo_id:id,p_busqueda:q});if(error)throw error;
+ if(activeId!==id||searchVersion!==seq)return;
+ box.innerHTML=data?.length?'<table><thead><tr><th>Fecha</th><th>Banco</th><th>Beneficiario / descripción</th><th>Valor</th><th></th></tr></thead><tbody>'+data.map(b=>'<tr><td>'+esc(b.fecha)+'</td><td>'+esc(b.banco)+'</td><td>'+esc(b.beneficiario||"Sin beneficiario")+'<br><small>'+esc(b.descripcion)+'</small></td><td>'+esc(money(b.valor,b.moneda))+'</td><td><button data-link="'+esc(b.id)+'">Vincular</button></td></tr>').join("")+'</tbody></table>':"No hay pagos disponibles con esos criterios.";
+ box.querySelectorAll("[data-link]").forEach(btn=>btn.onclick=async()=>{
+ const b=data.find(x=>x.id===btn.dataset.link),p=loans.find(x=>x.id===id);
+ if(!confirm("Vincular "+money(b.valor,b.moneda)+" del "+b.fecha+" a "+p.tercero+"? La amortización se reflejará en esa fecha."))return;
+ box.querySelectorAll("button").forEach(x=>x.disabled=true);
+ try{const {error}=await supabaseClient.rpc("vincular_pago_prestamo",{p_prestamo_id:id,p_movimiento_id:b.id});if(error)throw error;await load();if(activeId===id)openLoan(id);}
+ catch(err){if(activeId===id)errorAt("operationStatus",err);if(activeId===id)findPayments(id);}
+ });
+ }catch(err){if(activeId===id&&seq===searchVersion)errorAt("candidates",err);}
+}
+$("close").onclick=()=>{$("operation").close();activeId=null;searchVersion++;};
+$("operation").addEventListener("close",()=>{activeId=null;searchVersion++;});
+(async()=>{const user=await getAuthorizedUser();if(!user){location.href="../../login.html";return;}if(!["admin","consulta"].includes(user.rol))throw Error("Acceso no autorizado.");isAdmin=user.rol==="admin";$("app").hidden=false;await load();})().catch(e=>errorAt("status",e));
 </script></body></html>
