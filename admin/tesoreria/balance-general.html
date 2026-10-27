@@ -2649,21 +2649,32 @@
   }
 
   function exportPatrimonialMovements() {
+    const isSettlement=p=>p.tipo==="BANCO_BALANCE"||p.tipo==="CANCELA_CXC";
+    const attributes=p=>isSettlement(p)?{
+      naturaleza_patrimonial:"TRANSFERENCIA_INTERNA",
+      pareja_transferencia_id:"refinery-settlement:"+p.id.replace(/^(BANCO_BALANCE|CANCELA_CXC):/,""),
+      concepto_detalle:p.nombre,exportacion_referencia:p.exportacion
+    }:{
+      naturaleza_patrimonial:"EXPORTACION",
+      exportacion_codigo:p.exportacion,concepto_detalle:p.nombre
+    };
     const banks=new Map(exportPatrimonialParts.filter(p=>p.movimiento_bancario_id).map(p=>[p.movimiento_bancario_id,p]));
     const rows=patrimonialMovements.map(row=>{
       const part=banks.get(row.id);
-      return part?{...row,naturaleza_patrimonial:"EXPORTACION",exportacion_codigo:part.exportacion,concepto_detalle:part.nombre}:row;
+      return part?{...row,...attributes(part)}:{...row};
     });
     const seen=new Set(rows.map(row=>row.id));
     for(const p of exportPatrimonialParts) {
-      if(p.movimiento_bancario_id&&seen.has(p.movimiento_bancario_id))continue;
+      const id=p.movimiento_bancario_id||p.id;
+      if(seen.has(id))continue;
       rows.push({
-        id:p.movimiento_bancario_id||p.id,naturaleza_patrimonial:"EXPORTACION",
+        id,...attributes(p),
         moneda:p.moneda,valor_original:Math.abs(Number(p.valor)),
         tipo_movimiento:Number(p.valor)>=0?"CREDITO":"DEBITO",
         banco_nombre:p.movimiento_bancario_id?"Ingreso bancario · refinería":p.tipo==="INVENTARIO"?"Inventario · salida por exportación":p.tipo==="COSTO"?"Cuentas por pagar · costos de exportación":"Cuentas por cobrar · refinería",
-        beneficiario_nombre:p.exportacion,concepto_detalle:p.nombre,exportacion_codigo:p.exportacion
+        beneficiario_nombre:p.exportacion
       });
+      seen.add(id);
     }
     return rows;
   }
@@ -2905,6 +2916,8 @@
 
     balanceRows =
       (data || [])
+        .filter(row => !(String(row.codigo||"").startsWith("CXC_REFINERIA_") &&
+          row.valor_original !== null && Number(row.valor_original) === 0))
         .map(
           row => {
 
