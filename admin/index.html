@@ -314,6 +314,11 @@
         title: "Solicitudes de Pago",
         description: "Crear, editar y aprobar solicitudes de pago.",
         href: "tesoreria/solicitudes.html"
+      },
+      {
+        title: "Movimientos Diarios",
+        description: "Consulta diaria de saldos, ingresos y egresos por cuenta bancaria.",
+        href: "tesoreria/movimientos-diarios.html"
       }
     ];
 
@@ -401,9 +406,9 @@
 
         if (authorizedUser.rol === "tesoreria_pagos") {
           document.getElementById("panelTitle").textContent = "Panel de Tesorería";
-          document.getElementById("sectionTitle").textContent = "Solicitudes de Pago";
+          document.getElementById("sectionTitle").textContent = "Tesorería";
           document.getElementById("sectionDescription").textContent =
-            "Crear, editar y aprobar solicitudes de pago.";
+            "Gestión de solicitudes de pago y consulta de movimientos diarios.";
           renderModules(TESORERIA_PAGOS_MODULES);
         } else if (isConsulta) {
 
