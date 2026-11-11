@@ -1074,14 +1074,6 @@
                 </div>
               </div>
 
-              <div id="goldCreditLinkField" class="modal-field modal-field-full" style="display:none">
-                <label>Emparejar con compra a crédito activa</label>
-                <select id="goldCreditLinkSelect"><option value="">Seleccionar compra a crédito</option></select>
-                <div class="helper-text">Este vínculo no amortiza el pasivo ni modifica el Balance General.</div>
-                <button type="button" id="goldCreditLinkButton" class="secondary">Guardar relación con compra a crédito</button>
-                <div id="goldCreditLinkStatus" class="helper-text"></div>
-              </div>
-
               <div class="modal-field modal-field-full">
                 <label>Concepto *</label>
                 <input
@@ -4066,95 +4058,34 @@
 
 
   async function cargarCuentasPorPagarExportacion() {
-
-    const exportacionId =
-      explainExport.value;
-
-    const rol =
-      explainExportRole.value;
-
-    const requiereCxp =
-      rol === "PAGO_PROVEEDOR_METAL";
-
-    exportPayableField.style.display =
-      requiereCxp
-      ?
-      "block"
-      :
-      "none";
-
-    explainExportPayable.innerHTML =
-      '<option value="">Seleccionar cuenta por pagar</option>';
-
-    if (
-      !requiereCxp ||
-      !exportacionId
-    ) {
-      return;
-    }
-
-    const {
-      data,
-      error
-    } =
-      await supabaseClient
-        .from("cuentas_por_pagar_exportacion")
-        .select("id,codigo,nombre,moneda,estado")
-        .eq("exportacion_id",exportacionId)
-        .eq("estado","ABIERTA")
-        .eq("moneda",movimientoSeleccionado?.moneda || "PEN")
-        .order("codigo",{ascending:true});
-
-    if (error) {
-      throw error;
-    }
-
-    (data || []).forEach(
-      row => {
-        const option =
-          document.createElement("option");
-        option.value = row.id;
-        option.textContent =
-          `${row.nombre} · ${row.moneda}`;
-        explainExportPayable.appendChild(option);
-      }
-    );
-
-  }
-
-
-  const goldCreditLinkField=document.getElementById("goldCreditLinkField");
-  const goldCreditLinkSelect=document.getElementById("goldCreditLinkSelect");
-  const goldCreditLinkStatus=document.getElementById("goldCreditLinkStatus");
-  async function cargarComprasCreditoActivas(){
-    const enabled=explainClassification.value==="FLUJO_EXPORTACION"&&document.getElementById("explainExportRubro").value==="1"&&!!explainExport.value;
-    goldCreditLinkField.style.display=enabled?"block":"none";
-    goldCreditLinkSelect.innerHTML='<option value="">Seleccionar compra a crédito</option>';
-    goldCreditLinkStatus.textContent="";
-    if(!enabled)return;
-    const {data,error}=await supabaseClient.from("exportacion_compras_oro")
-      .select("id,valor_total,moneda,fecha_recepcion,proveedor_id,beneficiarios(nombre)")
-      .eq("exportacion_id",explainExport.value).eq("modalidad","CREDITO").eq("estado","ACTIVA")
-      .eq("moneda",movimientoSeleccionado?.moneda||"PEN").order("fecha_recepcion",{ascending:false});
-    if(error){goldCreditLinkStatus.textContent=error.message;return;}
-    (data||[]).forEach(c=>{
+    const exportacionId=explainExport.value;
+    const requiereCxp=explainExportRole.value==="PAGO_PROVEEDOR_METAL";
+    exportPayableField.style.display=requiereCxp?"block":"none";
+    explainExportPayable.innerHTML='<option value="">Seleccionar cuenta por pagar / compra a crédito</option>';
+    if(!requiereCxp||!exportacionId)return;
+    const moneda=movimientoSeleccionado?.moneda?.trim()||"PEN";
+    const [legacy,compras,pagos]=await Promise.all([
+      supabaseClient.from("cuentas_por_pagar_exportacion").select("id,codigo,nombre,moneda,estado")
+        .eq("exportacion_id",exportacionId).eq("estado","ABIERTA").eq("moneda",moneda).order("codigo",{ascending:true}),
+      supabaseClient.from("exportacion_compras_oro").select("id,valor_total,moneda,fecha_recepcion,beneficiarios(nombre)")
+        .eq("exportacion_id",exportacionId).eq("modalidad","CREDITO").eq("estado","ACTIVA").eq("moneda",moneda),
+      supabaseClient.from("v_pagos_credito_material").select("compra_id,valor").eq("exportacion_id",exportacionId)
+    ]);
+    for(const r of [legacy,compras,pagos])if(r.error)throw r.error;
+    for(const c of compras.data||[]){
+      if(c.fecha_recepcion>movimientoSeleccionado.fecha_movimiento)continue;
+      const saldo=Number(c.valor_total)-(pagos.data||[]).filter(p=>p.compra_id===c.id).reduce((sum,p)=>sum+Number(p.valor),0);
+      if(saldo<=0)continue;
       const option=document.createElement("option");option.value=c.id;
-      option.textContent=(c.beneficiarios?.nombre||"Proveedor")+" · "+c.valor_total+" "+c.moneda+" · recepción "+c.fecha_recepcion;
-      goldCreditLinkSelect.appendChild(option);
-    });
+      option.textContent=(c.beneficiarios?.nombre||"Proveedor")+" · saldo "+saldo.toLocaleString("es-PE",{minimumFractionDigits:2,maximumFractionDigits:2})+" "+c.moneda+" · recepción "+c.fecha_recepcion;
+      explainExportPayable.appendChild(option);
+    }
+    for(const row of legacy.data||[]){
+      const option=document.createElement("option");option.value=row.id;option.textContent=row.nombre+" · "+row.moneda;
+      explainExportPayable.appendChild(option);
+    }
+    if(explainExportPayable.options.length===2)explainExportPayable.selectedIndex=1;
   }
-  document.getElementById("explainExportRubro").addEventListener("change",cargarComprasCreditoActivas);
-  explainExport.addEventListener("change",cargarComprasCreditoActivas);
-  explainClassification.addEventListener("change",cargarComprasCreditoActivas);
-  document.getElementById("goldCreditLinkButton").addEventListener("click",async()=>{
-    if(!movimientoSeleccionado?.id||!goldCreditLinkSelect.value){goldCreditLinkStatus.textContent="Selecciona una compra a crédito.";return;}
-    const button=document.getElementById("goldCreditLinkButton");button.disabled=true;
-    const {error}=await supabaseClient.rpc("vincular_movimiento_compra_oro_credito",{
-      p_compra_id:goldCreditLinkSelect.value,p_movimiento_bancario_id:movimientoSeleccionado.id
-    });
-    button.disabled=false;
-    goldCreditLinkStatus.textContent=error?"Error: "+error.message:"Relación guardada. Sin amortización ni cambios de Balance.";
-  });
 
   async function prepararFlujoExportacion() {
 
