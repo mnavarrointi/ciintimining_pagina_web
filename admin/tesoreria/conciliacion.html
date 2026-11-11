@@ -44,7 +44,7 @@
       <strong>Selecciona el archivo descargado directamente del banco</strong>
       <input type="file" id="bankFile" accept=".xlsx,.xls,.csv,.pdf">
       <div class="preview-note">
-        Fondo Casa de Bolsa: usa preferiblemente el archivo Excel. El PDF queda disponible únicamente como formato de respaldo.
+        Fondo Casa de Bolsa: admite Excel y CSV. El archivo debe identificar el encargo registrado. El PDF está disponible como respaldo.
       </div>
     </div>
 
@@ -859,35 +859,35 @@ async function parseBanbif(file){
   }
 
   function detectarFechaCasaExcel(rows,file){
-    // Los archivos de Casa de Bolsa incluyen la fecha YYYY-MM-DD en el nombre.
-    // Esta es la fuente principal porque algunas celdas numéricas del reporte
-    // pueden ser interpretadas por XLSX como fechas seriales de 1900.
+    // La fecha contenida en el reporte corresponde al saldo; el nombre puede ser la fecha de descarga.
     const fm=file.name.match(/(20\d{2})[-_ ](\d{2})[-_ ](\d{2})/);
-    if(fm)return `${fm[1]}-${fm[2]}-${fm[3]}`;
-
-    // Respaldo: buscar únicamente fechas explícitas en texto o celdas Date reales.
+    const fechaNombre=fm?`${fm[1]}-${fm[2]}-${fm[3]}`:null;
+    const usarFecha=fecha=>{
+      if(fechaNombre&&fechaNombre!==fecha)advertenciasDeteccion.push(`Se usará la fecha del reporte (${fecha}); el nombre del archivo indica ${fechaNombre}.`);
+      return fecha;
+    };
     for(const row of rows.slice(0,12)){
       for(const cell of (row||[])){
         if(cell instanceof Date&&!isNaN(cell)){
           const y=cell.getFullYear();
-          if(y>=2020&&y<=2100)return fechaISO(cell);
+          if(y>=2020&&y<=2100)return usarFecha(fechaISO(cell));
         }
 
         if(typeof cell==="string"){
           const t=cell.trim();
           const esp=parseSpanishMonthDate(t);
-          if(esp)return esp;
+          if(esp)return usarFecha(esp);
 
           const isoMatch=t.match(/^(20\d{2})-(\d{2})-(\d{2})$/);
-          if(isoMatch)return `${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}`;
+          if(isoMatch)return usarFecha(`${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}`);
 
           const slash=t.match(/^(\d{1,2})\/(\d{1,2})\/(20\d{2})$/);
-          if(slash)return `${slash[3]}-${slash[2].padStart(2,"0")}-${slash[1].padStart(2,"0")}`;
+          if(slash)return usarFecha(`${slash[3]}-${slash[2].padStart(2,"0")}-${slash[1].padStart(2,"0")}`);
         }
       }
     }
 
-    return null;
+    return fechaNombre;
   }
 
   function detectarEncargoCasa(rows){
@@ -1044,29 +1044,22 @@ async function parseBanbif(file){
       throw new Error("El archivo de Fondo Casa de Bolsa no contiene todas las columnas obligatorias.");
     }
 
-    let dataRow=null;
-
-    for(let i=headerIndex+1;i<rows.length;i++){
-      const row=rows[i]||[];
+    const candidates=rows.slice(headerIndex+1).filter(row=>{
       const encargo=idxEncargo>=0?soloDigitos(row[idxEncargo]):"";
-      const saldoInicial=valorCasa(row,idxSaldoInicial);
-      const saldoFinal=valorCasa(row,idxSaldoFinal);
-
-      if(encargo==="250670009229"||saldoInicial!==0||saldoFinal!==0){
-        dataRow=row;
-        break;
-      }
+      return encargo.length>=8;
+    });
+    const known=candidates.filter(row=>cuentaPorNumero("Fondo Casa de Bolsa",soloDigitos(row[idxEncargo])));
+    const usable=known.length?known:candidates;
+    if(usable.length!==1){
+      throw new Error(usable.length?"El archivo contiene varios encargos. Carga un reporte individual para identificar la cuenta sin mezclar saldos.":"No se encontró un número de encargo válido en el reporte de Fondo Casa de Bolsa.");
     }
-
-    if(!dataRow){
-      throw new Error("No se encontró la fila de datos del encargo de Fondo Casa de Bolsa.");
-    }
-
-    const encargo=idxEncargo>=0?soloDigitos(dataRow[idxEncargo]):detectarEncargoCasa(rows);
-    cuentaDetectada=cuentaPorNumero("Fondo Casa de Bolsa",encargo||"250670009229");
-
+    const dataRow=usable[0];
+    const encargo=soloDigitos(dataRow[idxEncargo]);
+    cuentaDetectada=cuentaPorNumero("Fondo Casa de Bolsa",encargo);
     if(!cuentaDetectada){
-      throw new Error(`La cuenta Fondo Casa de Bolsa ${encargo||"250670009229"} no está registrada o habilitada.`);
+      const amounts=[idxSaldoInicial,idxRendimientos,idxAdiciones,idxRetiros,idxRetefuente,idxGmf,idxCanje,idxSaldoFinal];
+      const sinValores=amounts.every(i=>valorCasa(dataRow,i)===0);
+      throw new Error(`El reporte corresponde al encargo ${encargo}, que no está registrado o habilitado en Casa de Bolsa.${sinValores?" Además, todos sus saldos y movimientos son cero.":""} Verifica que descargaste el reporte de la cuenta correcta.`);
     }
 
     const fecha=detectarFechaCasaExcel(rows,file);
