@@ -2947,19 +2947,13 @@
     ]);
 
 
-    if(loanApplicationsEnabled){
-      const {data:variation,error:variationError}=await supabaseClient.rpc("obtener_variacion_balance_fecha_prestamos",{p_fecha:date});
-      if(variationError)throw variationError;
-      variationRows=(variation||[]).filter(row=>Math.abs(Number(row.cambio_usd_total||0))>0.000001);
-    }
-
     const {
       data,
       error
     } =
       await supabaseClient
         .rpc(
-          loanApplicationsEnabled ? "obtener_balance_fecha_prestamos" : "obtener_balance_fecha_integrado",
+          "obtener_balance_fecha_integrado",
           {
             p_fecha:date
           }
