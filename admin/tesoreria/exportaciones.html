@@ -14,7 +14,7 @@ const escapeHtml=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;"
   const {data:profile,error:profileError}=await supabaseClient.from("usuarios_app").select("rol,activo").eq("user_id",user.id).single();
   if(profileError||!profile?.activo||!["admin","consulta","tesoreria_pagos"].includes(profile.rol))throw Error("Acceso no autorizado.");
   create.hidden=profile.rol!=="admin";app.hidden=false;status.textContent="";
-  let exports=[];let imputaciones=[];let costos=[];let beneficiarios=[];let borradores=[];let comprasOro=[];let comprasMaterial=[];let liquidaciones=[];let cobrosRefineria=[];
+  let exports=[];let imputaciones=[];let costos=[];let beneficiarios=[];let borradores=[];let comprasOro=[];let pagosCompras=[];let comprasMaterial=[];let liquidaciones=[];let cobrosRefineria=[];
   function show(exp){
     detail.hidden=false;
     const rate=Number(exp.pen_por_usd);
@@ -77,6 +77,19 @@ const escapeHtml=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;"
     }
     detail.querySelectorAll("[data-conciliar-cobro]").forEach(btn=>btn.addEventListener("click",()=>openCobros(exp,btn.dataset.conciliarCobro)));
     const goldForm=document.getElementById("compraOroForm");
+    detail.querySelectorAll("[data-editar-compra]").forEach(button=>button.addEventListener("click",()=>{
+      const purchase=comprasOro.find(c=>c.id===button.dataset.editarCompra);
+      if(!purchase||!goldForm)return;
+      goldForm.dataset.compraId=purchase.id;
+      for(const [key,value] of Object.entries({proveedor:purchase.proveedor_id,valor:purchase.valor_total,moneda:purchase.moneda,recepcion:purchase.fecha_recepcion,pago:purchase.fecha_estimada_pago})){
+        goldForm.elements[key].value=value;
+      }
+      goldForm.querySelector('button[type="submit"]').textContent="Guardar cambios de compra";
+      goldForm.querySelector("[data-cancelar-compra]").hidden=false;
+      goldForm.querySelector("[data-gold-preview]").textContent="Editando compra registrada. Los cambios actualizarán el inventario y la cuenta por pagar.";
+      goldForm.scrollIntoView({behavior:"smooth",block:"center"});
+    }));
+    goldForm?.querySelector("[data-cancelar-compra]")?.addEventListener("click",()=>show(exp));
     if(goldForm){
       goldForm.addEventListener("submit",async event=>{
         event.preventDefault();
@@ -84,10 +97,24 @@ const escapeHtml=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;"
         const payload={p_exportacion_id:exp.id,p_proveedor_id:d.get("proveedor"),p_valor_total:Number(d.get("valor")),p_moneda:d.get("moneda"),p_fecha_recepcion:d.get("recepcion"),p_fecha_estimada_pago:d.get("pago"),p_moneda_base:d.get("moneda"),p_tasa_historica:1};
         if(!(payload.p_valor_total>0)){alert("El valor debe ser positivo");return;}
         if(payload.p_moneda===payload.p_moneda_base&&payload.p_tasa_historica!==1){alert("La tasa entre monedas iguales debe ser 1");return;}
-        if(!confirm("Registrar compra a crédito en "+exp.codigo+" por "+payload.p_valor_total+" "+payload.p_moneda+"? Se reflejará en la exportación y en el Balance desde la fecha de recepción."))return;
+        if(!confirm((goldForm.dataset.compraId?"Guardar cambios de compra a crédito en ":"Registrar compra a crédito en ")+exp.codigo+" por "+payload.p_valor_total+" "+payload.p_moneda+"? Se reflejará en la exportación y en el Balance desde la fecha de recepción."))return;
         btn.disabled=true;
-        const {error}=await supabaseClient.rpc("registrar_compra_oro_credito",payload);
-        if(error){alert("No se pudo registrar la compra: "+error.message);btn.disabled=false;return;}
+        const editing=goldForm.dataset.compraId;
+        let error;
+        if(editing){
+          const original=comprasOro.find(c=>c.id===editing);
+          const result=await supabaseClient.from("exportacion_compras_oro").update({
+            proveedor_id:payload.p_proveedor_id,valor_total:payload.p_valor_total,moneda:payload.p_moneda,
+            fecha_recepcion:payload.p_fecha_recepcion,fecha_estimada_pago:payload.p_fecha_estimada_pago,
+            moneda_base:payload.p_moneda_base,tasa_historica:payload.p_tasa_historica
+          }).eq("id",editing).eq("valor_total",original.valor_total).eq("proveedor_id",original.proveedor_id)
+            .eq("moneda",original.moneda).eq("fecha_recepcion",original.fecha_recepcion)
+            .eq("fecha_estimada_pago",original.fecha_estimada_pago).select("id").single();
+          error=result.error;
+        }else{
+          ({error}=await supabaseClient.rpc("registrar_compra_oro_credito",payload));
+        }
+        if(error){alert("No se pudo guardar la compra: "+error.message);btn.disabled=false;return;}
         await loadGoldPurchases();
    const {data:liqRows,error:liqError}=await supabaseClient.from("exportacion_liquidaciones_refineria").select("*");if(liqError)throw liqError;liquidaciones=liqRows||[];show(exp);
       });
@@ -181,9 +208,17 @@ const escapeHtml=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;"
     return '<section style="margin-top:24px"><h3>Compra de Material registrada</h3><table><thead><tr><th>Concepto</th><th>Modalidad</th><th>Fecha</th><th>Valor</th></tr></thead><tbody>'+rows.map(c=>'<tr><td>'+escapeHtml(c.concepto)+'</td><td>'+escapeHtml(c.modalidad)+'</td><td>'+escapeHtml(c.fecha_recepcion)+'</td><td>'+amount(c)+'</td></tr>').join("")+'</tbody></table></section>';
   }
   function comprasOroHtml(exp){
+    const purchases=comprasOro.filter(c=>c.exportacion_id===exp.id&&c.estado==="ACTIVA");
+    const records=purchases.map(c=>{
+      const supplier=beneficiarios.find(b=>b.id===c.proveedor_id);
+      const locked=pagosCompras.some(p=>p.compra_id===c.id)||cobrosRefineria.some(p=>p.exportacion_id===exp.id);
+      const editable=!locked&&exp.estado==="EN_CURSO"&&["admin","tesoreria_pagos"].includes(profile.rol);
+      return '<tr><td>'+escapeHtml(supplier?.nombre||"Proveedor")+'</td><td>'+Number(c.valor_total).toLocaleString("es-PE",{minimumFractionDigits:2,maximumFractionDigits:2})+' '+escapeHtml(c.moneda)+'</td><td>'+escapeHtml(c.fecha_recepcion)+'</td><td>'+escapeHtml(c.fecha_estimada_pago)+'</td><td>'+(editable?'<button type="button" data-editar-compra="'+escapeHtml(c.id)+'">Editar</button>':locked?'No editable: operación vinculada':'Solo lectura')+'</td></tr>';
+    }).join("");
+    const registered='<h4>Compras a crédito registradas</h4>'+(purchases.length?'<div style="overflow:auto"><table><thead><tr><th>Proveedor</th><th>Valor</th><th>Recepción</th><th>Pago estimado</th><th>Acción</th></tr></thead><tbody>'+records+'</tbody></table></div>':'<p class="muted">Sin compras a crédito registradas.</p>');
     const proveedorOptions=beneficiarios.map(b=>'<option value="'+escapeHtml(b.id)+'">'+escapeHtml(b.nombre)+'</option>').join("");
     return '<section style="margin-top:28px;border-top:1px solid #ddd;padding-top:18px"><h3>Compra de Material a Crédito</h3><p class="muted">Al guardar, la compra se imputa a COMPRA DE MATERIAL en esta exportación. El inventario y las cuentas por pagar se reconocen en el Balance General desde la fecha de recepción.</p>'+
-      '<form id="compraOroForm" style="display:grid;gap:10px"><label>Proveedor <select required name="proveedor"><option value="">Seleccionar proveedor</option>'+proveedorOptions+'</select></label>'+
+      registered+'<form id="compraOroForm" style="display:grid;gap:10px"><label>Proveedor <select required name="proveedor"><option value="">Seleccionar proveedor</option>'+proveedorOptions+'</select></label>'+
       '<label>Valor total <input type="number" min="0.01" step="0.01" required name="valor"></label>'+
       '<label>Moneda de la compra y de la deuda <select name="moneda" required><option>PEN</option><option>USD</option></select></label>'+
       '<label>Fecha recepción material <input type="date" required name="recepcion"></label>'+
@@ -192,14 +227,16 @@ const escapeHtml=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;"
       
       '<p class="muted" data-gold-preview>Introduce el valor y la moneda de la compra.</p>'+
       '<p class="error" data-gold-warning></p>'+
-      '<button type="submit">Registrar compra a crédito</button></form>'+
+      '<button type="submit">Registrar compra a crédito</button><button type="button" data-cancelar-compra hidden>Cancelar edición</button></form>'+
       '<p class="muted">El inventario y el pasivo se muestran en Balance General desde la recepción. La deuda conserva su moneda original. El pago todavía no amortiza el pasivo.</p></section>';
   }
   async function loadGoldPurchases(){
     // La tabla se habilita mediante migracion posterior. No interrumpir exportaciones actuales.
-    const {data,error}=await supabaseClient.from("exportacion_compras_oro").select("id,exportacion_id,modalidad,valor_total,moneda,estado");
+    const {data,error}=await supabaseClient.from("exportacion_compras_oro").select("*");
     if(error)throw error;
     comprasOro=data||[];
+    const {data:payments,error:paymentsError}=await supabaseClient.from("exportacion_vinculos_pago_credito_oro").select("compra_id");
+    if(paymentsError)throw paymentsError;pagosCompras=payments||[];
     const {data:material,error:materialError}=await supabaseClient.from("v_exportacion_compras_material").select("exportacion_id,modalidad,moneda,valor_total,fecha_recepcion,concepto");
     if(materialError)throw materialError;comprasMaterial=material||[];
   }
