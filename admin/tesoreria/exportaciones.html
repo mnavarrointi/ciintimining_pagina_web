@@ -18,8 +18,12 @@ const escapeHtml=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;"
   function show(exp){
     detail.hidden=false;
     const rate=Number(exp.pen_por_usd);
+    const liquidation=liquidaciones.find(x=>x.exportacion_id===exp.id);
     const fmt=(n,c)=>n.toLocaleString(c==="PEN"?"es-PE":"en-US",{minimumFractionDigits:2,maximumFractionDigits:2})+" "+c;
     const totals=RUBROS.map(name=>{
+      if(name==="COSTO DG"&&liquidation){
+        return {name,pen:0,usd:-Number(liquidation.costo_total_refineria_usd)};
+      }
       const lines=imputaciones.filter(x=>x.exportacion_id===exp.id&&x.rubro===name&&(name!=="COMPRA DE MATERIAL"||x.origen!=="BANCO"));
       const pen=lines.filter(x=>x.moneda==="PEN").reduce((v,x)=>v+Number(x.monto)*Number(x.signo),0);
       const usd=lines.filter(x=>x.moneda==="USD").reduce((v,x)=>v+Number(x.monto)*Number(x.signo),0);
@@ -39,7 +43,7 @@ const escapeHtml=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;"
     '<div style="margin:16px 0"><label>Tasa manual (soles por 1 USD): <input id="exportRate" type="number" min="0.000001" step="any" value="'+(exp.pen_por_usd||"")+'" style="max-width:180px;padding:8px"></label> <button id="saveRate">Guardar tasa</button></div>'+
     '<table><thead><tr><th>Rubro</th><th>Soles (PEN)</th><th>USD</th></tr></thead><tbody>'+rows+
     '<tr class="summary"><td>TOTAL RUBROS (incluye costos proyectados PEN y USD)</td>'+cells(total)+'</tr>'+
-    '<tr><td>VENTA — venta real pagada</td><td colspan="2">Pendiente</td></tr><tr><td>UTILIDAD BRUTA</td><td colspan="2">Pendiente</td></tr><tr><td>COMISIÓN TEO</td><td colspan="2">Pendiente</td></tr><tr><td>UTILIDAD NETA</td><td colspan="2">Pendiente</td></tr></tbody></table>'+
+    '<tr><td>VENTA — venta real pagada</td>'+(liquidation?cells({pen:0,usd:Number(liquidation.valor_total_metal_usd)}):'<td colspan="2">Pendiente</td>')+'</tr><tr><td>UTILIDAD BRUTA</td><td colspan="2">Pendiente</td></tr><tr><td>COMISIÓN TEO</td><td colspan="2">Pendiente</td></tr><tr><td>UTILIDAD NETA</td><td colspan="2">Pendiente</td></tr></tbody></table>'+
     '<p class="muted">Los importes positivos son ingresos y los negativos son egresos. Las solicitudes vinculadas y las conciliaciones se consolidan por rubro sin sumar dos veces el mismo pago.</p>'+materialHtml(exp)+costosHtml(exp)+comprasOroHtml(exp)+liquidacionHtml(exp);
     const button=document.getElementById("saveRate");button.disabled=profile.rol!=="admin";
     button.addEventListener("click",async()=>{
