@@ -2684,7 +2684,12 @@
 
   function exportPatrimonialMovements() {
     const isSettlement=p=>p.tipo==="BANCO_BALANCE"||p.tipo==="CANCELA_CXC";
-    const attributes=p=>isSettlement(p)?{
+    const attributes=p=>p.tipo==="AJUSTE_PROVEEDOR"?{
+      naturaleza_patrimonial:"AJUSTE",concepto_detalle:p.nombre,beneficiario_nombre:"PROSEGUR",banco_nombre:"Balance · Ajuste cuentas Prosegur"
+    }:p.tipo.endsWith("_PROVEEDOR")?{
+      naturaleza_patrimonial:"TRANSFERENCIA_INTERNA",pareja_transferencia_id:"liquidacion-proveedor:"+p.exportacion,
+      concepto_detalle:p.nombre,beneficiario_nombre:"PROSEGUR",banco_nombre:p.tipo==="BANCO_PROVEEDOR"?"Pago bancario Prosegur":"Balance · Liquidación Prosegur"
+    }:isSettlement(p)?{
       naturaleza_patrimonial:"TRANSFERENCIA_INTERNA",
       pareja_transferencia_id:"refinery-settlement:"+p.id.replace(/^(BANCO_BALANCE|CANCELA_CXC):/,""),
       concepto_detalle:p.nombre,exportacion_referencia:p.exportacion
@@ -2705,8 +2710,8 @@
         id,...attributes(p),
         moneda:p.moneda,valor_original:Math.abs(Number(p.valor)),
         tipo_movimiento:Number(p.valor)>=0?"CREDITO":"DEBITO",
-        banco_nombre:p.movimiento_bancario_id?"Ingreso bancario · refinería":p.tipo==="INVENTARIO"?"Inventario · salida por exportación":p.tipo==="COSTO"?"Cuentas por pagar · costos de exportación":"Cuentas por cobrar · refinería",
-        beneficiario_nombre:p.exportacion
+        banco_nombre:p.tipo.endsWith("_PROVEEDOR")?(p.tipo==="BANCO_PROVEEDOR"?"Pago bancario Prosegur":p.tipo==="AJUSTE_PROVEEDOR"?"Balance · Ajuste cuentas Prosegur":"Balance · Liquidación Prosegur"):p.movimiento_bancario_id?"Ingreso bancario · refinería":p.tipo==="INVENTARIO"?"Inventario · salida por exportación":p.tipo==="COSTO"?"Cuentas por pagar · costos de exportación":"Cuentas por cobrar · refinería",
+        beneficiario_nombre:p.tipo.endsWith("_PROVEEDOR")?"PROSEGUR":p.exportacion
       });
       seen.add(id);
     }
